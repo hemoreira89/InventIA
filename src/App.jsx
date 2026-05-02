@@ -149,25 +149,28 @@ function Badge({ val, suffix="%" }) {
   );
 }
 
-function Card({ children, style={}, accent=false }) {
+function Card({ children, style={}, accent=false, className="" }) {
   return (
-    <div style={{background:"#0c0c22",border:`1px solid ${accent?"#7b61ff44":"#1e1e42"}`,
-      borderRadius:16,padding:"16px",...style}}>
+    <div className={`card-hover ${className}`} style={{
+      background:"#0c0c1f",
+      border:`1px solid ${accent?"#7b61ff44":"#1f1f3a"}`,
+      borderRadius:10,padding:"16px",...style
+    }}>
       {children}
     </div>
   );
 }
 
 function STitle({ children, color="#7b61ff" }) {
-  return <div style={{fontSize:11,color,fontWeight:700,letterSpacing:1.2,marginBottom:10}}>{children}</div>;
+  return <div style={{fontSize:10,color,fontWeight:700,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>{children}</div>;
 }
 
 function Stat({ label, value, color, mono=false }) {
   return (
-    <div style={{background:"#07071a",borderRadius:10,padding:"10px 12px"}}>
-      <div style={{fontSize:10,color:"#444470",marginBottom:3}}>{label}</div>
-      <div style={{fontSize:14,fontWeight:700,color:color||"#e8e8ff",
-        fontFamily:mono?"'Space Mono',monospace":"inherit"}}>{value}</div>
+    <div style={{background:"#0a0a14",borderRadius:8,padding:"10px 12px",border:"1px solid #1a1a2e"}}>
+      <div style={{fontSize:9,color:"#5a5a7a",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
+      <div style={{fontSize:14,fontWeight:700,color:color||"#e4e4f0",
+        fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
     </div>
   );
 }
@@ -234,7 +237,8 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   }) || [];
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:16,alignItems:"start"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
       <Card>
         <STitle>REGISTRAR COMPRA</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -265,8 +269,23 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         </div>
       )}
 
+      {historico.length > 0 && (
+        <Card>
+          <STitle>HISTÓRICO DE COMPRAS</STitle>
+          {[...historico].reverse().slice(0,8).map((h,i) => (
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{h.data}</span></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#e8e8ff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#555580"}}>{fmtBRL(h.pm)} cada</div>}</div>
+            </div>
+          ))}
+        </Card>
+      )}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
       {carteira.length > 0 ? <>
         <STitle>ATIVOS ({carteira.length})</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
         {carteira.map((a,i) => {
           const pos = dados?.posicoes?.find(p => p.ticker === a.ticker);
           return (
@@ -284,7 +303,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {pos && (
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:"#fff",fontSize:13,fontFamily:"'Space Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
+                      <div style={{fontWeight:700,color:"#fff",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
                       {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
                     </div>
                   )}
@@ -309,6 +328,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
             </Card>
           );
         })}
+        </div>
       </> : (
         <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #1e1e42"}}>
           <div style={{fontSize:28,marginBottom:8}}>📋</div>
@@ -320,17 +340,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         </Card>
       )}
 
-      {historico.length > 0 && (
-        <Card>
-          <STitle>HISTÓRICO DE COMPRAS</STitle>
-          {[...historico].reverse().slice(0,8).map((h,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{h.data}</span></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#e8e8ff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#555580"}}>{fmtBRL(h.pm)} cada</div>}</div>
-            </div>
-          ))}
-        </Card>
-      )}
+      </div>
     </div>
   );
 }
@@ -368,11 +378,11 @@ function TabGraficos({ dados }) {
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {TABS_G.map(t => (
-          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"7px 12px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",background:g===t.k?"#7b61ff":"#0c0c22",border:`1px solid ${g===t.k?"#7b61ff":"#1e1e42"}`,color:g===t.k?"#fff":"#555580"}}>{t.l}</button>
+          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",background:g===t.k?"#7b61ff":"#0c0c1f",border:`1px solid ${g===t.k?"#7b61ff":"#1f1f3a"}`,color:g===t.k?"#fff":"#7a7a9a",transition:"all .15s"}}>{t.l}</button>
         ))}
       </div>
 
-      <Card>
+      <Card style={{minHeight:380}}>
         {g==="pizza" && <>
           <STitle>ALOCAÇÃO POR ATIVO</STitle>
           {pizza.length > 0 ? <>
@@ -445,7 +455,7 @@ function TabGraficos({ dados }) {
               <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="#ffd60a" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{textAlign:"center",marginTop:8,fontFamily:"'Space Mono',monospace",fontSize:14,fontWeight:700,color:"#ffd60a"}}>
+          <div style={{textAlign:"center",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:"#ffd60a"}}>
             Estimativa anual: {fmtBRL(divs.reduce((s,d)=>s+d.dividendos,0))}
           </div>
         </>}
@@ -486,24 +496,24 @@ function TabMeta({ dados }) {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <Card accent>
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+      <Card accent style={{position:"sticky",top:120}}>
         <STitle color="#ffd60a">🎯 MODO PRIMEIRO MILHÃO</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Meta patrimonial (R$)</div>
             <input type="number" value={meta} onChange={e=>setMeta(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
             <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
             <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Taxa anual (%)</div>
             <input type="number" value={taxaAnual} onChange={e=>setTaxaAnual(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"#555580",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
@@ -515,12 +525,12 @@ function TabMeta({ dados }) {
       {resultado && <>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
-            <div style={{fontSize:32,fontWeight:900,color:"#ffd60a",fontFamily:"'Space Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
+            <div style={{fontSize:32,fontWeight:900,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
             <div style={{fontSize:12,color:"#ffd60a",fontWeight:700}}>anos</div>
             <div style={{fontSize:11,color:"#444470",marginTop:2}}>{resultado.meses} meses</div>
           </Card>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
-            <div style={{fontSize:20,fontWeight:900,color:"#00e5a0",fontFamily:"'Space Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
+            <div style={{fontSize:20,fontWeight:900,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
             <div style={{fontSize:11,color:"#00e5a0",fontWeight:700}}>renda mensal potencial</div>
             <div style={{fontSize:10,color:"#444470",marginTop:2}}>ao atingir a meta</div>
           </Card>
@@ -561,14 +571,14 @@ function TabCenarios({ dados }) {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <Card>
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+      <Card style={{position:"sticky",top:120}}>
         <STitle color="#00b4d8">📊 SIMULADOR DE CENÁRIOS</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div>
             <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
             <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Período</div>
@@ -591,7 +601,7 @@ function TabCenarios({ dados }) {
             return (
               <Card key={c.name}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontSize:12,color:"#888",marginBottom:2}}>{c.name}</div><div style={{fontFamily:"'Space Mono',monospace",fontSize:18,fontWeight:700,color:c.color}}>{fmtK(final)}</div></div>
+                  <div><div style={{fontSize:12,color:"#888",marginBottom:2}}>{c.name}</div><div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:18,fontWeight:700,color:c.color}}>{fmtK(final)}</div></div>
                   <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#444470"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
                 </div>
               </Card>
@@ -638,8 +648,8 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
   const atingiram = enriched.filter(w => w.atingiu);
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <Card>
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+      <Card style={{position:"sticky",top:120}}>
         <STitle color="#e040fb">👁️ WATCHLIST</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
@@ -654,6 +664,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
         </button>
       </Card>
 
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {atingiram.length > 0 && (
         <div style={{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:12,padding:"14px 16px"}}>
           <STitle color="#00e5a0">🎯 PREÇO ALVO ATINGIDO!</STitle>
@@ -667,7 +678,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
       )}
 
       {enriched.length > 0 ? (
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:14}}>
           {enriched.map(w => (
             <Card key={w.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -695,6 +706,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
       ) : (
         <div style={{textAlign:"center",padding:"32px 0",color:"#333360",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
       )}
+      </div>
     </div>
   );
 }
@@ -714,8 +726,8 @@ function TabIR({ dados }) {
   const ir = calcIR(vendas);
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <Card>
+    <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
+      <Card style={{position:"sticky",top:120}}>
         <STitle color="#ffd60a">💸 CALCULADORA DE IR — RENDA VARIÁVEL</STitle>
         <div style={{fontSize:12,color:"#555580",lineHeight:1.7,marginBottom:12}}>
           Ações têm isenção de IR para vendas até <b style={{color:"#ffd60a"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
@@ -732,6 +744,7 @@ function TabIR({ dados }) {
         </button>
       </Card>
 
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {vendas.length > 0 && <>
         <Card>
           <STitle>VENDAS SIMULADAS</STitle>
@@ -755,6 +768,7 @@ function TabIR({ dados }) {
           {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"#ff6b85",lineHeight:1.6}}>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
         </div>
       </>}
+      </div>
     </div>
   );
 }
@@ -791,7 +805,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <Card accent>
           <div style={{display:"flex",gap:14,alignItems:"center"}}>
             <div style={{textAlign:"center",minWidth:70}}>
-              <div style={{fontSize:40,fontWeight:900,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",fontFamily:"'Space Mono',monospace",lineHeight:1}}>{score}</div>
+              <div style={{fontSize:40,fontWeight:900,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
               <div style={{fontSize:10,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
               <div style={{fontSize:9,color:"#333360"}}>Score</div>
             </div>
@@ -810,7 +824,8 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <p style={{fontSize:13,color:"#8888bb",lineHeight:1.75}}>{a.diagnostico}</p>
       </Card>
 
-      {/* Alertas */}
+      {/* Alertas em grid */}
+      {a.alertas?.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
       {a.alertas?.map((al,i) => (
         <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
           <span style={{fontSize:18}}>{al.tipo==="perigo"?"🚨":al.tipo==="atencao"?"⚠️":"✅"}</span>
@@ -820,10 +835,12 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
           </div>
         </div>
       ))}
+      </div>}
 
       {/* Recomendações */}
       {a.recomendacoes?.length > 0 && <>
         <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => (
           <Card key={i} style={{borderColor:r.nova?"#00e5a030":"#1e1e42"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
@@ -861,6 +878,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
             )}
           </Card>
         ))}
+        </div>
       </>}
 
       {/* Vender */}
@@ -1089,117 +1107,215 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
     {k:"ir",l:"💸",label:"IR"},
   ];
 
+  // Métricas para a barra superior
+  const metricaCarteira = dados?.totalCarteira || 0;
+  const metricaPosicoes = dados?.posicoes?.length || 0;
+  const metricaDY = dados?.posicoes?.length ? (dados.posicoes.reduce((s,p)=>s+(p.dy||0)*(p.peso/100),0)) : 0;
+  const horaAtual = new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+
   return (
-    <div style={{minHeight:"100vh",background:"#07071a",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e8e8ff",paddingBottom:100}}>
+    <div style={{minHeight:"100vh",background:"#0a0a14",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#e4e4f0"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e1e42;border-radius:2px}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        body{background:#0a0a14}
+        ::-webkit-scrollbar{width:8px;height:8px}
+        ::-webkit-scrollbar-track{background:#0a0a14}
+        ::-webkit-scrollbar-thumb{background:#1f1f3a;border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:#2a2a4a}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-        .anim{animation:fadeUp .4s ease both}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+        @keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
+        .anim{animation:fadeUp .35s ease both}
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
-        input,select,button{outline:none;font-family:inherit}
-        input:focus,select:focus{border-color:#7b61ff!important}
+        input,select,button,textarea{outline:none;font-family:inherit}
+        input:focus,select:focus{border-color:#7b61ff!important;box-shadow:0 0 0 3px rgba(123,97,255,0.1)}
+        button:hover:not(:disabled){filter:brightness(1.1)}
+        .tab-btn{transition:all .15s ease}
+        .tab-btn:hover{background:#1a1a30!important;color:#a0a0c0!important}
+        .card-hover{transition:border-color .2s ease,transform .2s ease}
+        .card-hover:hover{border-color:#2a2a4a!important;transform:translateY(-1px)}
       `}</style>
 
-      {/* HERO */}
-      <div style={{padding:"26px 20px 0",textAlign:"center"}} className="anim">
-        <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#7b61ff12",border:"1px solid #7b61ff25",borderRadius:30,padding:"4px 14px",marginBottom:10}}>
-          <span style={{fontSize:14}}>🤖</span>
-          <span style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:2}}>GEMINI 2.5 PRO + GOOGLE SEARCH · B3</span>
-        </div>
-        <h1 style={{fontSize:"clamp(20px,5vw,32px)",fontWeight:900,lineHeight:1.1,marginBottom:4}}>
-          <span style={{background:"linear-gradient(135deg,#7b61ff,#00e5a0)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>InvestIA</span>
-          {" "}<span style={{color:"#e8e8ff"}}>Advisor Pro</span>
-        </h1>
-        {dados?.totalCarteira > 0 && (
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:16,fontWeight:700,color:"#00e5a0",marginTop:6}}>
-            {fmtBRL(dados.totalCarteira)} <span style={{fontSize:11,color:"#333360",fontWeight:400}}>em carteira (estimado)</span>
+      {/* TOP BAR - Estilo TradingView */}
+      <div style={{
+        position:"sticky",top:0,zIndex:100,
+        background:"rgba(10,10,20,0.85)",backdropFilter:"blur(20px)",
+        borderBottom:"1px solid #1a1a30"
+      }}>
+        {/* Linha 1: Brand + Métricas + Status */}
+        <div style={{
+          display:"flex",alignItems:"center",justifyContent:"space-between",
+          padding:"10px 24px",gap:24,flexWrap:"wrap"
+        }}>
+          {/* Brand */}
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{
+              width:36,height:36,borderRadius:8,
+              background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:18,fontWeight:900,color:"#0a0a14"
+            }}>✦</div>
+            <div>
+              <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3}}>
+                InvestIA <span style={{color:"#7b61ff"}}>Pro</span>
+              </div>
+              <div style={{fontSize:9,color:"#5a5a7a",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
+            </div>
           </div>
-        )}
-        {savedMsg && <div style={{fontSize:11,color:"#00e5a0",marginTop:4}}>{savedMsg}</div>}
+
+          {/* Métricas centralizadas */}
+          <div style={{display:"flex",alignItems:"center",gap:32,flex:1,justifyContent:"center"}}>
+            <Metric label="PATRIMÔNIO" value={metricaCarteira>0?fmtK(metricaCarteira):"—"} accent={metricaCarteira>0?"#00e5a0":null}/>
+            <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}/>
+            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"#ffd60a":null}/>
+            <Metric label="WATCHLIST" value={watchlist.length||"—"}/>
+          </div>
+
+          {/* Status à direita */}
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5a5a7a"}}>
+              <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"#00e5a0"}}/>
+              <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
+            </div>
+            <button onClick={salvar} style={{
+              background:"#0c0c1f",border:"1px solid #1f1f3a",borderRadius:6,
+              padding:"7px 12px",color:"#a0a0c0",fontSize:11,cursor:"pointer",fontWeight:600
+            }}>{savedMsg||"Salvar"}</button>
+          </div>
+        </div>
+
+        {/* Linha 2: Tabs */}
+        <div style={{display:"flex",padding:"0 24px",gap:2,borderTop:"1px solid #1a1a30"}}>
+          {TABS.map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} className="tab-btn"
+              style={{
+                background:"transparent",border:"none",cursor:"pointer",
+                padding:"12px 18px",fontSize:13,fontWeight:600,
+                color:tab===t.k?"#fff":"#5a5a7a",
+                borderBottom:`2px solid ${tab===t.k?"#7b61ff":"transparent"}`,
+                display:"flex",alignItems:"center",gap:7
+              }}>
+              <span style={{fontSize:14}}>{t.l}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* PAINEL */}
-      <div style={{maxWidth:560,margin:"14px auto 0",padding:"0 16px"}} className="anim">
-        <div style={{background:"#0c0c22",border:"1px solid #1e1e42",borderRadius:16,padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",gap:8}}>
-            <input type="text" placeholder="💰 Valor do aporte (R$)" value={aporte} onChange={handleAporte}
-              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
-            <button onClick={salvar} style={{background:"#00e5a018",border:"1px solid #00e5a030",borderRadius:9,padding:"10px 14px",color:"#00e5a0",fontSize:13,cursor:"pointer",fontWeight:700}}>💾</button>
+      {/* CONTEÚDO PRINCIPAL */}
+      <div style={{padding:"20px 24px",maxWidth:1600,margin:"0 auto"}}>
+        {/* PAINEL DE ANÁLISE - Horizontal */}
+        <div className="anim" style={{
+          background:"#0c0c1f",border:"1px solid #1f1f3a",borderRadius:12,
+          padding:"16px 20px",marginBottom:20,
+          display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"
+        }}>
+          <div style={{flex:"1 1 200px",minWidth:160}}>
+            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
+            <input type="text" placeholder="R$ 0,00" value={aporte} onChange={handleAporte}
+              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
+                padding:"10px 14px",fontSize:18,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+            <div style={{display:"flex",gap:5,marginTop:7}}>
+              {[500,1000,2000,5000].map(vv => (
+                <button key={vv} onClick={()=>setAporte(vv.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}))}
+                  style={{flex:1,background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:5,
+                    padding:"5px 0",fontSize:10,color:"#7a7a9a",cursor:"pointer",
+                    fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>
+                  {fmtK(vv)}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div style={{display:"flex",gap:8}}>
+          <div style={{width:1,alignSelf:"stretch",background:"#1a1a30"}}/>
+
+          <div style={{flex:"1 1 160px",minWidth:140}}>
+            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
             <select value={perfil} onChange={e=>setPerfil(e.target.value)}
-              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:12,color:"#e8e8ff",cursor:"pointer"}}>
+              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>
               <option value="conservador">🛡 Conservador</option>
               <option value="moderado">⚖ Moderado</option>
               <option value="arrojado">🚀 Arrojado</option>
             </select>
+          </div>
+
+          <div style={{flex:"1 1 160px",minWidth:140}}>
+            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>FOCO</div>
             <select value={foco} onChange={e=>setFoco(e.target.value)}
-              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:12,color:"#e8e8ff",cursor:"pointer"}}>
+              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>
               <option value="acoes">📈 Ações</option>
               <option value="fiis">🏢 FIIs</option>
               <option value="misto">⚡ Misto</option>
             </select>
           </div>
 
-          <div style={{display:"flex",gap:6}}>
-            {[500,1000,2000,5000].map(vv => (
-              <button key={vv} onClick={()=>setAporte(vv.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}))}
-                style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:8,padding:"7px 0",fontSize:11,color:"#555580",cursor:"pointer",fontFamily:"'Space Mono'"}}>
-                {fmtK(vv)}
-              </button>
-            ))}
-          </div>
-
-          {erro && <div style={{background:"#ff4d6d10",border:"1px solid #ff4d6d28",borderRadius:9,padding:"10px 12px",color:"#ff6b85",fontSize:12}}>⚠️ {erro}</div>}
-
-          <button onClick={analisar} disabled={loading}
-            style={{background:loading?"#10102a":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontWeight:800,fontSize:14,cursor:loading?"not-allowed":"pointer",boxShadow:loading?"none":"0 6px 24px #7b61ff30"}}>
-            {loading
-              ? <span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-                  <span className="spin" style={{width:15,height:15,borderRadius:"50%",border:"2.5px solid #7b61ff33",borderTopColor:"#7b61ff",display:"inline-block"}}/>
-                  <span style={{fontSize:12,color:"#555580"}}>{fase}</span>
-                </span>
-              : `✦ Analisar com Gemini${carteira.length>0?` (${carteira.length} ativo${carteira.length>1?"s":""})`:" · mercado"}`}
-          </button>
-
-          {!loading && <div style={{textAlign:"center",fontSize:11,color:"#333360"}}>
-            Gemini 2.5 Pro + Google Search · cotações reais · grátis
-          </div>}
-        </div>
-      </div>
-
-      {/* TABS */}
-      <div style={{maxWidth:560,margin:"14px auto 0",padding:"0 16px"}}>
-        <div style={{display:"flex",gap:0,background:"#0c0c22",border:"1px solid #1e1e42",borderRadius:12,padding:4,marginBottom:14}}>
-          {TABS.map(t => (
-            <button key={t.k} onClick={()=>setTab(t.k)} title={t.label}
-              style={{flex:1,padding:"10px 4px",borderRadius:9,fontSize:16,cursor:"pointer",
-                background:tab===t.k?"#7b61ff":"transparent",color:tab===t.k?"#fff":"#444470",
-                border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-              <span>{t.l}</span>
-              {tab===t.k && <span style={{fontSize:8,color:"#e8e8ff",fontWeight:700}}>{t.label}</span>}
+          <div style={{flex:"2 1 280px",minWidth:240}}>
+            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>&nbsp;</div>
+            <button onClick={analisar} disabled={loading}
+              style={{
+                width:"100%",
+                background:loading?"#1a1a30":"linear-gradient(135deg,#7b61ff,#5540dd)",
+                border:"none",borderRadius:8,padding:"12px 18px",color:"#fff",
+                fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
+                boxShadow:loading?"none":"0 4px 14px rgba(123,97,255,0.35)",
+                display:"flex",alignItems:"center",justifyContent:"center",gap:10
+              }}>
+              {loading
+                ? <>
+                    <span className="spin" style={{width:14,height:14,borderRadius:"50%",border:"2px solid #7b61ff44",borderTopColor:"#7b61ff",display:"inline-block"}}/>
+                    <span style={{fontSize:12,color:"#a0a0c0"}}>{fase||"Analisando..."}</span>
+                  </>
+                : <><span>✦</span> <span>Analisar{carteira.length>0?` carteira (${carteira.length})`:" mercado"}</span></>
+              }
             </button>
-          ))}
+          </div>
         </div>
 
-        {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar}/>}
-        {tab==="graficos" && <TabGraficos dados={dados}/>}
-        {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
-        {tab==="meta" && <TabMeta dados={dados}/>}
-        {tab==="cenarios" && <TabCenarios dados={dados}/>}
-        {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar}/>}
-        {tab==="ir" && <TabIR dados={dados}/>}
-      </div>
+        {erro && (
+          <div style={{
+            background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,
+            padding:"10px 14px",color:"#ff6b85",fontSize:12,marginBottom:16
+          }}>⚠️ {erro}</div>
+        )}
 
-      <div style={{marginTop:20,textAlign:"center",fontSize:11,color:"#1a1a3a"}}>
-        Powered by <span style={{color:"#7b61ff"}}>Gemini 2.5 Pro</span> + Google Search · confirme preços na corretora
+        {/* ÁREA DE CONTEÚDO - Tab atual */}
+        <div className="anim">
+          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar}/>}
+          {tab==="graficos" && <TabGraficos dados={dados}/>}
+          {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
+          {tab==="meta" && <TabMeta dados={dados}/>}
+          {tab==="cenarios" && <TabCenarios dados={dados}/>}
+          {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar}/>}
+          {tab==="ir" && <TabIR dados={dados}/>}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          marginTop:40,padding:"20px 0",borderTop:"1px solid #1a1a30",
+          textAlign:"center",fontSize:11,color:"#3a3a5a"
+        }}>
+          Powered by <span style={{color:"#7b61ff",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
+          Cotações em tempo real · Confirme preços na sua corretora antes de operar
+        </div>
       </div>
+    </div>
+  );
+}
+
+// Componente Metric para a barra superior
+function Metric({ label, value, accent }) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
+      <div style={{fontSize:9,color:"#3a3a5a",fontWeight:700,letterSpacing:1.5}}>{label}</div>
+      <div style={{
+        fontSize:14,fontWeight:700,color:accent||"#e4e4f0",
+        fontFamily:"'JetBrains Mono',monospace"
+      }}>{value}</div>
     </div>
   );
 }
