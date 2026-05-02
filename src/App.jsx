@@ -10,13 +10,16 @@ import {
   Sparkles, Save, FileDown, Plus, X, Trash2, Calendar, AlertTriangle,
   CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
-  Building2, Landmark, Factory, LogOut, User
+  Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
+  FileSearch, Bell, Download, Upload, ExternalLink, Clock
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
   registrarCompra, carregarCompras,
   carregarWatchlist, salvarWatchlist, removerWatchlist,
-  salvarAnalise, carregarAnalises
+  salvarAnalise, carregarAnalises,
+  registrarProvento, carregarProventos, removerProvento,
+  registrarVenda, carregarVendas
 } from "./supabase";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -982,6 +985,713 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   );
 }
 
+// ─── Tab: Análise de Ticker Individual ────────────────────────────────────────
+function TabTicker({ userId, chamarIAComSearch }) {
+  const [ticker, setTicker] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [erro, setErro] = useState("");
+  const [fase, setFase] = useState("");
+
+  const analisar = async () => {
+    const t = ticker.toUpperCase().trim();
+    if (!t) { setErro("Digite um ticker"); return; }
+    setErro(""); setLoading(true); setResultado(null);
+    try {
+      setFase("🔍 Buscando dados de " + t + "...");
+      const prompt = `Você é analista financeiro do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+
+PASSO 1 — Use Google Search para buscar dados atuais de ${t} na B3:
+- Pesquise: "${t} cotação hoje preço"
+- Pesquise: "${t} dividend yield P/L ROE fundamentos"
+- Pesquise: "${t} resultado trimestral receita lucro"
+
+PASSO 2 — Faça análise fundamentalista completa do ativo.
+
+PASSO 3 — Retorne APENAS este JSON (sem markdown):
+{
+  "ticker": "${t}",
+  "nome": "Nome completo da empresa",
+  "tipo": "Ação|FII|ETF|BDR",
+  "setor": "Setor principal",
+  "preco": 49.08,
+  "fontePreco": "Status Invest / Investing.com / etc",
+  "variacaoDia": 1.2,
+  "variacaoAno": 60.5,
+  "indicadores": {
+    "dy": 5.18,
+    "pl": 5.5,
+    "pvp": 1.2,
+    "roe": 18.5,
+    "margemLiquida": 22.3,
+    "divEbitda": 0.8,
+    "min52": 30.71,
+    "max52": 51.20,
+    "canal52": 72
+  },
+  "fundamentos": "Análise dos fundamentos em 2-3 parágrafos: receita, lucro, dívida, geração de caixa, vantagens competitivas",
+  "tese": {
+    "tipo": "comprar|aguardar|evitar",
+    "score": 80,
+    "argumentos_positivos": ["ponto 1", "ponto 2", "ponto 3"],
+    "argumentos_negativos": ["ponto 1", "ponto 2"],
+    "preco_alvo": 55.0,
+    "horizonte": "12 meses"
+  },
+  "comparaveis": ["TICKER1", "TICKER2", "TICKER3"],
+  "ultimoDividendo": {
+    "valor": 0.48,
+    "data": "2026-03-15"
+  },
+  "resumo": "Resumo final em 2 frases sobre se vale a pena ou não no momento atual",
+  "aviso": "Análise gerada com dados públicos via Google Search. Não é recomendação financeira profissional."
+}
+
+Use APENAS números reais encontrados na busca. Se não encontrar algum dado, omita o campo.`;
+
+      setFase("🧠 Gemini analisando " + t + "...");
+      const r = await chamarIAComSearch(prompt);
+      setResultado(r);
+    } catch (e) {
+      setErro(e.message || "Erro na análise");
+    } finally {
+      setLoading(false);
+      setFase("");
+    }
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSearch size={12} strokeWidth={2.5}/>ANÁLISE INDIVIDUAL DE TICKER</span></STitle>
+        <div style={{display:"flex",gap:10}}>
+          <input
+            type="text"
+            placeholder="Ex: PETR4, ITUB4, MXRF11, BBAS3..."
+            value={ticker}
+            onChange={e=>setTicker(e.target.value.toUpperCase())}
+            onKeyDown={e=>e.key==="Enter"&&analisar()}
+            style={{flex:1,background:"#000",border:"1px solid #252535",borderRadius:8,padding:"12px 16px",fontSize:16,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
+          />
+          <button onClick={analisar} disabled={loading} style={{background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"#fff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
+            {loading ? <Loader2 size={15} className="spin"/> : <Sparkles size={15} strokeWidth={2.5}/>}
+            {loading ? fase || "Analisando..." : "Analisar"}
+          </button>
+        </div>
+        {erro && <div style={{marginTop:10,background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+      </Card>
+
+      {resultado && (
+        <>
+          {/* Header do ativo */}
+          <Card>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:54,height:54,borderRadius:12,background:"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#7b61ff"}}>{resultado.ticker.slice(0,4)}</div>
+                <div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>{resultado.ticker}</div>
+                  <div style={{fontSize:13,color:"#a8a8b8"}}>{resultado.nome} · {resultado.setor}</div>
+                </div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:28,fontWeight:800,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.preco)}</div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+                  {resultado.variacaoDia != null && <Badge val={resultado.variacaoDia}/>}
+                  {resultado.variacaoAno != null && <span style={{fontSize:11,color:resultado.variacaoAno>=0?"#00e5a0":"#ff4d6d",fontWeight:600}}>Ano: {resultado.variacaoAno>=0?"+":""}{fmt(resultado.variacaoAno,1)}%</span>}
+                </div>
+                {resultado.fontePreco && <div style={{fontSize:10,color:"#5a5a6a",marginTop:4}}>Fonte: {resultado.fontePreco}</div>}
+              </div>
+            </div>
+          </Card>
+
+          {/* Indicadores */}
+          {resultado.indicadores && (
+            <Card>
+              <STitle>INDICADORES FUNDAMENTALISTAS</STitle>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10}}>
+                {resultado.indicadores.dy != null && <Stat label="DIVIDEND YIELD" value={fmt(resultado.indicadores.dy,2)+"%"} color="#ffd60a" mono/>}
+                {resultado.indicadores.pl != null && <Stat label="P/L" value={fmt(resultado.indicadores.pl,2)} color="#7b61ff" mono/>}
+                {resultado.indicadores.pvp != null && <Stat label="P/VP" value={fmt(resultado.indicadores.pvp,2)} color="#7b61ff" mono/>}
+                {resultado.indicadores.roe != null && <Stat label="ROE" value={fmt(resultado.indicadores.roe,1)+"%"} color="#00e5a0" mono/>}
+                {resultado.indicadores.margemLiquida != null && <Stat label="MARGEM LÍQ." value={fmt(resultado.indicadores.margemLiquida,1)+"%"} mono/>}
+                {resultado.indicadores.divEbitda != null && <Stat label="DÍV/EBITDA" value={fmt(resultado.indicadores.divEbitda,2)} mono/>}
+                {resultado.indicadores.min52 != null && <Stat label="MÍN 52S" value={fmtBRL(resultado.indicadores.min52)} color="#ff4d6d" mono/>}
+                {resultado.indicadores.max52 != null && <Stat label="MÁX 52S" value={fmtBRL(resultado.indicadores.max52)} color="#00e5a0" mono/>}
+                {resultado.indicadores.canal52 != null && <Stat label="CANAL 52S" value={resultado.indicadores.canal52+"%"} color={resultado.indicadores.canal52<=30?"#00e5a0":resultado.indicadores.canal52<=70?"#ffd60a":"#ff4d6d"} mono/>}
+              </div>
+            </Card>
+          )}
+
+          {/* Tese */}
+          {resultado.tese && (
+            <Card style={{border:`1px solid ${resultado.tese.tipo==="comprar"?"#00e5a040":resultado.tese.tipo==="aguardar"?"#ffd60a40":"#ff4d6d40"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{
+                    fontSize:11,fontWeight:800,letterSpacing:1.5,padding:"5px 12px",borderRadius:6,
+                    background:resultado.tese.tipo==="comprar"?"#00e5a020":resultado.tese.tipo==="aguardar"?"#ffd60a20":"#ff4d6d20",
+                    color:resultado.tese.tipo==="comprar"?"#00e5a0":resultado.tese.tipo==="aguardar"?"#ffd60a":"#ff4d6d"
+                  }}>{resultado.tese.tipo.toUpperCase()}</span>
+                  {resultado.tese.score && <span style={{fontSize:11,color:"#a8a8b8"}}>Score <b style={{color:"#fff"}}>{resultado.tese.score}/100</b></span>}
+                </div>
+                {resultado.tese.preco_alvo && (
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
+                    <div style={{fontSize:11,color:resultado.tese.preco_alvo>resultado.preco?"#00e5a0":"#ff4d6d",fontWeight:600}}>
+                      {resultado.tese.preco_alvo>resultado.preco?"+":""}{fmt((resultado.tese.preco_alvo-resultado.preco)/resultado.preco*100,1)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                {resultado.tese.argumentos_positivos?.length>0 && (
+                  <div>
+                    <div style={{fontSize:10,color:"#00e5a0",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><CheckCircle2 size={12}/>PONTOS POSITIVOS</div>
+                    {resultado.tese.argumentos_positivos.map((arg,i) => (
+                      <div key={i} style={{fontSize:12,color:"#a8a8b8",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
+                        <span style={{position:"absolute",left:0,color:"#00e5a0"}}>+</span>{arg}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {resultado.tese.argumentos_negativos?.length>0 && (
+                  <div>
+                    <div style={{fontSize:10,color:"#ff4d6d",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><AlertCircle size={12}/>PONTOS DE ATENÇÃO</div>
+                    {resultado.tese.argumentos_negativos.map((arg,i) => (
+                      <div key={i} style={{fontSize:12,color:"#a8a8b8",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
+                        <span style={{position:"absolute",left:0,color:"#ff4d6d"}}>−</span>{arg}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Fundamentos */}
+          {resultado.fundamentos && (
+            <Card>
+              <STitle>ANÁLISE FUNDAMENTALISTA</STitle>
+              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.fundamentos}</div>
+            </Card>
+          )}
+
+          {/* Resumo + comparáveis */}
+          <div style={{display:"grid",gridTemplateColumns:resultado.comparaveis?.length?"2fr 1fr":"1fr",gap:14}}>
+            {resultado.resumo && (
+              <Card accent>
+                <STitle>RESUMO</STitle>
+                <div style={{fontSize:14,color:"#fff",lineHeight:1.6,fontWeight:500}}>{resultado.resumo}</div>
+                {resultado.ultimoDividendo && (
+                  <div style={{marginTop:12,padding:"10px 14px",background:"#ffd60a10",border:"1px solid #ffd60a25",borderRadius:8,display:"flex",alignItems:"center",gap:10}}>
+                    <Coins size={16} color="#ffd60a"/>
+                    <div style={{fontSize:12,color:"#a8a8b8"}}>Último provento: <b style={{color:"#ffd60a"}}>{fmtBRL(resultado.ultimoDividendo.valor)}</b> em {resultado.ultimoDividendo.data}</div>
+                  </div>
+                )}
+              </Card>
+            )}
+            {resultado.comparaveis?.length > 0 && (
+              <Card>
+                <STitle>ATIVOS COMPARÁVEIS</STitle>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {resultado.comparaveis.map((t,i) => (
+                    <button key={i} onClick={()=>{setTicker(t); setTimeout(analisar, 100);}} style={{
+                      background:"#1a1a25",border:"1px solid #252535",borderRadius:6,padding:"8px 12px",
+                      color:"#7b61ff",fontWeight:700,fontSize:12,cursor:"pointer",textAlign:"left",
+                      fontFamily:"'JetBrains Mono',monospace",display:"flex",alignItems:"center",justifyContent:"space-between"
+                    }}>
+                      {t} <ChevronRight size={14}/>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+        </>
+      )}
+
+      {!resultado && !loading && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+          <FileSearch size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:8}}>Análise profunda de qualquer ticker da B3</div>
+          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.7}}>
+            Digite um ticker acima e o Gemini busca preço atual,<br/>
+            indicadores, fundamentos e gera tese de investimento completa.
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Comparador de Ativos ────────────────────────────────────────────────
+function TabComparador({ chamarIAComSearch }) {
+  const [tickers, setTickers] = useState(["", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [erro, setErro] = useState("");
+  const [fase, setFase] = useState("");
+
+  const comparar = async () => {
+    const ts = tickers.map(t=>t.toUpperCase().trim()).filter(Boolean);
+    if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers"); return; }
+    setErro(""); setLoading(true); setResultado(null);
+    try {
+      setFase("🔍 Comparando " + ts.join(", "));
+      const prompt = `Você é analista financeiro do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+
+PASSO 1 — Use Google Search para buscar dados atuais de cada ticker:
+${ts.map(t => `- "${t} cotação dividend yield P/L ROE fundamentos"`).join("\\n")}
+
+PASSO 2 — Faça comparação completa lado a lado.
+
+PASSO 3 — Retorne APENAS este JSON:
+{
+  "tickers": ["${ts.join('","')}"],
+  "ativos": [
+    {
+      "ticker": "${ts[0]}",
+      "nome": "Nome",
+      "setor": "Setor",
+      "preco": 49.08,
+      "dy": 5.18,
+      "pl": 5.5,
+      "pvp": 1.2,
+      "roe": 18.5,
+      "score": 80,
+      "ponto_forte": "principal vantagem em uma frase curta",
+      "ponto_fraco": "principal risco em uma frase curta"
+    }
+  ],
+  "comparativo": "Análise comparativa em 2-3 parágrafos: quem é melhor para renda, quem é melhor para crescimento, qual o trade-off de cada um",
+  "vencedor": {
+    "ticker": "TICKER",
+    "motivo": "Por que esse é a melhor opção considerando o conjunto"
+  },
+  "ranking": [
+    {"ticker":"TICKER","posicao":1,"justificativa":"motivo"}
+  ],
+  "aviso": "Análise comparativa via Google Search."
+}`;
+
+      setFase("🧠 Comparando ativos...");
+      const r = await chamarIAComSearch(prompt);
+      setResultado(r);
+    } catch (e) {
+      setErro(e.message || "Erro");
+    } finally {
+      setLoading(false);
+      setFase("");
+    }
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><GitCompare size={12} strokeWidth={2.5}/>COMPARADOR DE ATIVOS</span></STitle>
+        <div style={{fontSize:12,color:"#a8a8b8",marginBottom:12,lineHeight:1.6}}>
+          Compare 2 a 4 ativos lado a lado. A IA analisa fundamentos, valuation e indica qual é a melhor escolha.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:14}}>
+          {tickers.map((t,i) => (
+            <input
+              key={i}
+              type="text"
+              placeholder={`Ticker ${i+1}`}
+              value={t}
+              onChange={e=>{const u=[...tickers];u[i]=e.target.value.toUpperCase();setTickers(u);}}
+              style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"12px 14px",fontSize:14,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
+            />
+          ))}
+        </div>
+        <button onClick={comparar} disabled={loading} style={{width:"100%",background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"13px",color:"#fff",fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          {loading ? <><Loader2 size={15} className="spin"/>{fase || "Comparando..."}</> : <><GitCompare size={15} strokeWidth={2.5}/>Comparar Ativos</>}
+        </button>
+        {erro && <div style={{marginTop:10,background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+      </Card>
+
+      {resultado && (
+        <>
+          {/* Vencedor */}
+          {resultado.vencedor && (
+            <Card accent style={{background:"linear-gradient(135deg,#7b61ff10,#00e5a005)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#7b61ff,#00e5a0)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={22} color="#000" strokeWidth={2.5}/></div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:"#7b61ff",fontWeight:700,letterSpacing:1.5,marginBottom:4}}>VENCEDOR DA COMPARAÇÃO</div>
+                  <div style={{fontSize:24,fontWeight:800,color:"#fff",marginBottom:6}}>{resultado.vencedor.ticker}</div>
+                  <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6}}>{resultado.vencedor.motivo}</div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Tabela comparativa */}
+          {resultado.ativos?.length > 0 && (
+            <Card>
+              <STitle>COMPARAÇÃO LADO A LADO</STitle>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead>
+                    <tr style={{borderBottom:"1px solid #252535"}}>
+                      <th style={{textAlign:"left",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>ATIVO</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>PREÇO</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>DY</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>P/L</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>P/VP</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>ROE</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>SCORE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultado.ativos.map((a,i) => (
+                      <tr key={i} style={{borderBottom:"1px solid #1a1a25"}}>
+                        <td style={{padding:"12px 8px"}}>
+                          <div style={{fontWeight:700,color:a.ticker===resultado.vencedor?.ticker?"#7b61ff":"#fff"}}>{a.ticker}</div>
+                          <div style={{fontSize:10,color:"#7a7a8a"}}>{a.setor}</div>
+                        </td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff",fontWeight:600}}>{fmtBRL(a.preco)}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#ffd60a",fontWeight:600}}>{a.dy?fmt(a.dy,2)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff"}}>{a.pl?fmt(a.pl,2):"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff"}}>{a.pvp?fmt(a.pvp,2):"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#00e5a0",fontWeight:600}}>{a.roe?fmt(a.roe,1)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px"}}>
+                          <span style={{
+                            padding:"4px 10px",borderRadius:6,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
+                            background:a.score>=70?"#00e5a020":a.score>=50?"#ffd60a20":"#ff4d6d20",
+                            color:a.score>=70?"#00e5a0":a.score>=50?"#ffd60a":"#ff4d6d"
+                          }}>{a.score}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Pontos fortes/fracos */}
+          {resultado.ativos?.length > 0 && (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+              {resultado.ativos.map((a,i) => (
+                <Card key={i}>
+                  <div style={{fontWeight:800,fontSize:15,color:"#fff",marginBottom:10}}>{a.ticker}</div>
+                  {a.ponto_forte && (
+                    <div style={{marginBottom:8,fontSize:12,color:"#a8a8b8",display:"flex",gap:8}}>
+                      <CheckCircle2 size={14} color="#00e5a0" style={{flexShrink:0,marginTop:2}}/>
+                      <div>{a.ponto_forte}</div>
+                    </div>
+                  )}
+                  {a.ponto_fraco && (
+                    <div style={{fontSize:12,color:"#a8a8b8",display:"flex",gap:8}}>
+                      <AlertCircle size={14} color="#ff4d6d" style={{flexShrink:0,marginTop:2}}/>
+                      <div>{a.ponto_fraco}</div>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Análise comparativa */}
+          {resultado.comparativo && (
+            <Card>
+              <STitle>ANÁLISE COMPARATIVA</STitle>
+              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.comparativo}</div>
+            </Card>
+          )}
+
+          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+        </>
+      )}
+
+      {!resultado && !loading && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+          <GitCompare size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"#7a7a8a",fontSize:13}}>Compare ativos lado a lado e descubra a melhor escolha</div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Histórico de Análises ───────────────────────────────────────────────
+function TabHistorico({ userId }) {
+  const [analises, setAnalises] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandido, setExpandido] = useState(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    carregarAnalises(userId, 50)
+      .then(setAnalises)
+      .catch(e => console.error(e))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  if (loading) return <Card style={{textAlign:"center",padding:"40px"}}><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"0 auto"}}/></Card>;
+
+  if (!analises.length) return (
+    <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+      <History size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+      <div style={{color:"#7a7a8a",fontSize:13}}>Nenhuma análise no histórico ainda</div>
+      <div style={{color:"#5a5a6a",fontSize:12,marginTop:6}}>Rode uma análise IA e ela aparecerá aqui automaticamente</div>
+    </Card>
+  );
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><History size={12} strokeWidth={2.5}/>HISTÓRICO DE ANÁLISES ({analises.length})</span></STitle>
+
+      {analises.map(a => {
+        const isOpen = expandido === a.id;
+        const data = new Date(a.created_at);
+        return (
+          <Card key={a.id} style={{cursor:"pointer"}} className="card-hover">
+            <div onClick={() => setExpandido(isOpen ? null : a.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:14,flex:1}}>
+                <div style={{width:42,height:42,borderRadius:10,background:a.tipo==="carteira"?"#7b61ff20":"#00e5a020",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {a.tipo==="carteira" ? <Briefcase size={18} color="#7b61ff"/> : <Brain size={18} color="#00e5a0"/>}
+                </div>
+                <div>
+                  <div style={{fontWeight:700,color:"#fff",fontSize:14,marginBottom:2}}>
+                    Análise {a.tipo === "carteira" ? "de carteira" : "de mercado"}
+                    {a.aporte && <span style={{color:"#7a7a8a",fontWeight:500,fontSize:12,marginLeft:8}}>· {fmtBRL(a.aporte)}</span>}
+                  </div>
+                  <div style={{fontSize:11,color:"#7a7a8a",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Clock size={11}/>{data.toLocaleDateString("pt-BR")} {data.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
+                    {a.perfil && <span>· {a.perfil}</span>}
+                    {a.foco && <span>· {a.foco}</span>}
+                    {a.resultado?.recomendacoes?.length && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight size={16} color="#7a7a8a" style={{transform:isOpen?"rotate(90deg)":"rotate(0)",transition:"transform .2s"}}/>
+            </div>
+
+            {isOpen && (
+              <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1a1a25"}}>
+                {a.resultado?.diagnostico && (
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:1,marginBottom:6}}>DIAGNÓSTICO</div>
+                    <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6}}>{a.resultado.diagnostico}</div>
+                  </div>
+                )}
+                {a.resultado?.recomendacoes?.length > 0 && (
+                  <div>
+                    <div style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:1,marginBottom:8}}>RECOMENDAÇÕES</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+                      {a.resultado.recomendacoes.map((r,i) => (
+                        <div key={i} style={{background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:"10px 12px"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                            <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{r.ticker}</span>
+                            <span style={{fontSize:11,color:"#7b61ff",fontWeight:700}}>{r.alocacao}%</span>
+                          </div>
+                          {r.precoReal && <div style={{fontSize:11,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(r.precoReal)}</div>}
+                          {r.dy && <div style={{fontSize:10,color:"#ffd60a"}}>DY {fmt(r.dy)}%</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Tab: Proventos ───────────────────────────────────────────────────────────
+function TabProventos({ userId }) {
+  const [proventos, setProventos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ticker, setTicker] = useState("");
+  const [tipo, setTipo] = useState("dividendo");
+  const [valor, setValor] = useState("");
+  const [data, setData] = useState("");
+  const [obs, setObs] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    carregarProventos(userId)
+      .then(setProventos)
+      .catch(e => console.error(e))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const adicionar = async () => {
+    const t = ticker.toUpperCase().trim();
+    if (!t || !valor || !data) return;
+    setSalvando(true);
+    try {
+      const novo = await registrarProvento(userId, {
+        ticker: t, tipo, valor: Number(valor),
+        data_pagamento: data, observacao: obs
+      });
+      setProventos(prev => [novo, ...prev]);
+      setTicker(""); setValor(""); setData(""); setObs("");
+    } catch (e) {
+      alert("Erro: " + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const remover = async (id) => {
+    if (!confirm("Remover este provento?")) return;
+    try {
+      await removerProvento(id);
+      setProventos(p => p.filter(x => x.id !== id));
+    } catch (e) { alert("Erro: " + e.message); }
+  };
+
+  // Estatísticas
+  const totalAno = proventos.filter(p => new Date(p.data_pagamento).getFullYear() === new Date().getFullYear()).reduce((s,p) => s + Number(p.valor), 0);
+  const totalMes = proventos.filter(p => {
+    const d = new Date(p.data_pagamento);
+    return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
+  }).reduce((s,p) => s + Number(p.valor), 0);
+  const totalGeral = proventos.reduce((s,p) => s + Number(p.valor), 0);
+
+  // Gráfico mensal últimos 12 meses
+  const meses = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const ano = d.getFullYear(), mes = d.getMonth();
+    const total = proventos.filter(p => {
+      const dp = new Date(p.data_pagamento);
+      return dp.getFullYear() === ano && dp.getMonth() === mes;
+    }).reduce((s,p) => s + Number(p.valor), 0);
+    meses.push({
+      mes: d.toLocaleDateString("pt-BR",{month:"short"}).replace(".",""),
+      valor: total
+    });
+  }
+
+  // Por ticker
+  const porTicker = {};
+  proventos.forEach(p => {
+    if (!porTicker[p.ticker]) porTicker[p.ticker] = 0;
+    porTicker[p.ticker] += Number(p.valor);
+  });
+  const topTickers = Object.entries(porTicker).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+      {/* Coluna esquerda: registrar + stats */}
+      <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
+        <Card>
+          <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <input type="text" placeholder="Ticker (ex: TAEE11)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}/>
+            <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}>
+              <option value="dividendo">Dividendo</option>
+              <option value="jcp">JCP</option>
+              <option value="rendimento">Rendimento (FII)</option>
+              <option value="bonificacao">Bonificação</option>
+            </select>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <input type="number" step="0.01" placeholder="Valor R$" value={valor} onChange={e=>setValor(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}/>
+              <input type="date" value={data} onChange={e=>setData(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}/>
+            </div>
+            <input type="text" placeholder="Observação (opcional)" value={obs} onChange={e=>setObs(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}/>
+            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"#1a1a25":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              {salvando ? <Loader2 size={14} className="spin"/> : <Plus size={14} strokeWidth={2.5}/>}
+              Registrar
+            </button>
+          </div>
+        </Card>
+
+        <Card>
+          <STitle>RESUMO</STitle>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <Stat label="ESTE MÊS" value={fmtBRL(totalMes)} color="#00e5a0" mono/>
+            <Stat label="ESTE ANO" value={fmtBRL(totalAno)} color="#ffd60a" mono/>
+            <Stat label="TOTAL ACUMULADO" value={fmtBRL(totalGeral)} color="#7b61ff" mono/>
+            <Stat label="MÉDIA MENSAL (12M)" value={fmtBRL(meses.reduce((s,m)=>s+m.valor,0)/12)} mono/>
+          </div>
+        </Card>
+      </div>
+
+      {/* Coluna direita: gráfico + lista */}
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {meses.some(m => m.valor > 0) && (
+          <Card>
+            <STitle>RECEBIMENTOS — ÚLTIMOS 12 MESES</STitle>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={meses} margin={{left:0,right:0,top:5,bottom:5}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
+                <XAxis dataKey="mes" tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
+                <Tooltip content={<TTip/>}/>
+                <Bar dataKey="valor" name="Proventos" fill="#ffd60a" radius={[4,4,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+
+        {topTickers.length > 0 && (
+          <Card>
+            <STitle>TOP 5 PAGADORES</STitle>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {topTickers.map(([t,v],i) => {
+                const pct = (v / totalGeral) * 100;
+                return (
+                  <div key={t}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                      <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{t}</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:"#ffd60a",fontWeight:700,fontSize:13}}>{fmtBRL(v)}</span>
+                    </div>
+                    <div style={{background:"#1a1a25",borderRadius:4,height:6,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#ffd60a,#f77f00)",borderRadius:4}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {loading ? <Card><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"20px auto",display:"block"}}/></Card> : proventos.length === 0 ? (
+          <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+            <Coins size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+            <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>Nenhum provento registrado</div>
+            <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6}}>Adicione seus dividendos, JCP e rendimentos<br/>recebidos para acompanhar sua renda passiva.</div>
+          </Card>
+        ) : (
+          <Card>
+            <STitle>HISTÓRICO ({proventos.length})</STitle>
+            <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:500,overflowY:"auto"}}>
+              {proventos.map(p => (
+                <div key={p.id} style={{background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:32,height:32,borderRadius:8,background:"#ffd60a15",display:"flex",alignItems:"center",justifyContent:"center"}}><Coins size={14} color="#ffd60a"/></div>
+                    <div>
+                      <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.ticker} <span style={{fontSize:10,color:"#7a7a8a",fontWeight:500,marginLeft:4,textTransform:"uppercase"}}>{p.tipo}</span></div>
+                      <div style={{fontSize:11,color:"#7a7a8a"}}>{new Date(p.data_pagamento).toLocaleDateString("pt-BR")}{p.observacao && ` · ${p.observacao}`}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"#ffd60a",fontSize:14}}>{fmtBRL(p.valor)}</span>
+                    <button onClick={()=>remover(p.id)} style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"5px 7px",color:"#ff4d6d",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── App Principal ────────────────────────────────────────────────────────────
 export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("carteira");
@@ -1239,9 +1949,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
     {k:"carteira",icon:Briefcase,label:"Carteira"},
     {k:"graficos",icon:BarChart3,label:"Gráficos"},
     {k:"analise",icon:Brain,label:"Análise IA"},
+    {k:"ticker",icon:FileSearch,label:"Analisar Ticker"},
+    {k:"comparador",icon:GitCompare,label:"Comparador"},
+    {k:"historico",icon:History,label:"Histórico"},
+    {k:"proventos",icon:Coins,label:"Proventos"},
+    {k:"watchlist",icon:Eye,label:"Watchlist"},
     {k:"meta",icon:Target,label:"1º Milhão"},
     {k:"cenarios",icon:TrendingUp,label:"Cenários"},
-    {k:"watchlist",icon:Eye,label:"Watchlist"},
     {k:"ir",icon:Receipt,label:"IR"},
   ];
 
@@ -1442,6 +2156,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId}/>}
           {tab==="graficos" && <TabGraficos dados={dados}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
+          {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
+          {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
+          {tab==="historico" && <TabHistorico userId={userId}/>}
+          {tab==="proventos" && <TabProventos userId={userId}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}
           {tab==="cenarios" && <TabCenarios dados={dados}/>}
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId}/>}
