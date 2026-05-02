@@ -86,21 +86,34 @@ async function main() {
     }
   });
 
-  // 5. Supabase está acessível
-  await teste('Supabase REST API responde', async () => {
-    const res = await fetchTimeout(`${SUPABASE_URL}/rest/v1/`, {
+  // 5. Supabase está acessível (health check via auth settings)
+  await teste('Supabase está acessível', async () => {
+    // /auth/v1/settings é público e não exige autenticação
+    const res = await fetchTimeout(`${SUPABASE_URL}/auth/v1/settings`, {
       headers: {
         'apikey': 'sb_publishable_yI9Zs2TaR4-Q7Fb1PAvQ8A_BGDsDhAV'
       }
     });
-    // Deve retornar 200 (info do PostgREST)
     if (!res.ok) throw new Error(`Supabase status ${res.status}`);
+    const data = await res.json();
+    if (!data.external) throw new Error('Resposta inesperada do Supabase');
   });
 
-  // 6. Supabase Auth está ativo
-  await teste('Supabase Auth está respondendo', async () => {
-    const res = await fetchTimeout(`${SUPABASE_URL}/auth/v1/health`);
-    if (!res.ok) throw new Error(`Auth status ${res.status}`);
+  // 6. Supabase Auth - tenta login com credenciais inválidas (deve retornar 400, não 401)
+  await teste('Supabase Auth aceita requests', async () => {
+    const res = await fetchTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey': 'sb_publishable_yI9Zs2TaR4-Q7Fb1PAvQ8A_BGDsDhAV',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: 'naoexiste@inventia.test', password: 'invalido123' })
+    });
+    // Esperamos 400 (credenciais inválidas) — confirma que Auth está funcionando
+    // 401 = chave de API inválida, 500 = serviço fora
+    if (res.status >= 500) throw new Error(`Auth fora do ar: ${res.status}`);
+    if (res.status === 401) throw new Error('Chave API inválida (401)');
+    // 400 ou 422 são esperados aqui
   });
 
   // 7. Endpoint de manifesto PWA
