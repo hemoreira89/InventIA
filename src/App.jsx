@@ -63,7 +63,8 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, useSearch: true, model: "pro" })
+      // 'flash' começa pelo 2.5-flash que é 5x mais rápido que pro
+      body: JSON.stringify({ prompt, useSearch: true, model: "flash" })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -2170,47 +2171,29 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         ? `\nIMPORTANTE: Considere APENAS estes tickers: ${universoTickers.slice(0, 50).join(", ")}.`
         : "";
 
-      const prompt = `Você é analista da B3 com acesso a dados em tempo real. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+      const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
 
-OBJETIVO: ${cfg.titulo} — ${cfg.descricao}
-PERFIL DO INVESTIDOR: ${filtros.perfil}
+Tipo: ${cfg.titulo} — ${cfg.descricao}
+Perfil: ${filtros.perfil}
 ${setorTxt}${universoTxt}
 
-PASSO 1 — Use Google Search para escanear o mercado:
-- "melhores ${filtros.tipo.replace(/_/g," ")} B3 ${new Date().getFullYear()}"
-- "ranking ações descontadas P/L P/VP baixo bovespa"
-- Verifique cotações atuais nos sites Status Invest, Investidor10, Investing.com
+Use Google Search 1x: "${filtros.tipo.replace(/_/g," ")} B3 ${new Date().getFullYear()}"
 
-PASSO 2 — Selecione 8-10 ativos que melhor se enquadram nos critérios.
-
-PASSO 3 — Retorne APENAS este JSON:
+Selecione 5-8 ativos. Responda APENAS com JSON (sem markdown):
 {
   "tipo": "${filtros.tipo}",
-  "data_busca": "${new Date().toISOString().split("T")[0]}",
-  "criterios_usados": "Descrição em 1 frase dos critérios aplicados na busca",
+  "criterios_usados": "1 frase dos critérios",
   "oportunidades": [
-    {
-      "ticker": "TICKER",
-      "nome": "Nome empresa",
-      "setor": "Setor",
-      "preco": 22.50,
-      "dy": 8.5,
-      "pl": 4.2,
-      "pvp": 0.65,
-      "score": 85,
-      "destaque": "O motivo principal pelo qual está nesta lista (1 frase impactante)",
-      "risco_principal": "Maior risco em 1 frase",
-      "potencial_upside": 25
-    }
+    {"ticker":"TICKER","nome":"Nome","setor":"Setor","preco":22.5,"dy":8.5,"pl":4.2,"pvp":0.65,"score":85,"destaque":"motivo principal em 1 frase","risco_principal":"risco em 1 frase","potencial_upside":25}
   ],
-  "contexto_macro": "Análise em 2 parágrafos sobre o momento atual do mercado e por que essas oportunidades fazem sentido AGORA",
-  "aviso": "Lista gerada por IA usando dados públicos. Não é recomendação personalizada."
+  "contexto_macro": "1 parágrafo sobre o mercado atual",
+  "aviso": "Lista gerada por IA. Confirme antes de operar."
 }
 
-Use APENAS dados reais encontrados na busca. Ordene as oportunidades por score (maior primeiro).`;
+Ordene por score (maior primeiro).`;
 
       setFase("🧠 IA selecionando oportunidades...");
-      const r = await chamarIAComSearch(prompt, 4000);
+      const r = await chamarIAComSearch(prompt);
       setResultado(r);
     } catch (e) {
       setErro(e.message || "Erro");
@@ -2537,49 +2520,29 @@ export default function App({ session, onLogout }) {
         ...universoFiltrado
       ])].join(", ");
 
-      const prompt = `Você é um analista financeiro sênior do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+      const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
 
-PASSO 1 — Use web_search APENAS UMA VEZ para buscar cotações reais:
-Pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(0,8).join(" ")}"
+Use Google Search 1x: "cotações ${todosOsTickers.split(", ").slice(0,6).join(" ")} hoje"
 
-PASSO 2 — Análise:
 ${temCarteira
-  ? `Carteira do investidor: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
-Recomende como alocar R$ ${v.toFixed(2)} (perfil ${perfilDesc}, foco ${focoDesc}). Considere reforçar posições existentes ou diversificar.`
-  : `Recomende as melhores oportunidades de ${focoDesc} para R$ ${v.toFixed(2)}, perfil ${perfilDesc}.`
-}
+  ? `Carteira: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
+Aloque R$ ${v.toFixed(2)} (perfil ${perfil}, ${focoDesc}). Pode reforçar ou diversificar.`
+  : `Recomende ${focoDesc} para R$ ${v.toFixed(2)} (perfil ${perfil}).`}
 
-PASSO 3 — Retorne APENAS este JSON (sem markdown):
+Use APENAS estes tickers: ${universoFiltrado.slice(0, 20).join(", ")}.
+
+Responda APENAS com JSON (sem markdown):
 {
-  "diagnostico": "2-3 frases com contexto real do mercado hoje",
+  "diagnostico": "1-2 frases sobre o mercado",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
-    {
-      "ticker":"PETR4",
-      "nome":"Petrobras PN",
-      "tipo":"Ação",
-      "setor":"Petróleo",
-      "acao":"Comprar",
-      "nova":${!temCarteira},
-      "alocacao":30,
-      "precoReal":48.50,
-      "precoEstimado":48.50,
-      "dy":12.5,
-      "pl":4.2,
-      "score":82,
-      "canal52":35,
-      "fontePreco":"Google Finance",
-      "justificativa":"Análise citando o preço real encontrado e contexto"
-    }
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"score":82,"canal52":35,"justificativa":"breve"}
   ],
-  "vender": ${temCarteira ? `[{"ticker":"XXXX3","motivo":"motivo"}]` : "[]"},
-  "aviso": "Dados em tempo real. Confirme na sua corretora."
+  "vender": ${temCarteira ? `[]` : "[]"},
+  "aviso": "Confirme na sua corretora."
 }
 
-Regras OBRIGATÓRIAS:
-- 3 a 5 recomendações (não mais)
-- Soma de alocacao = 100
-- Retorne SOMENTE o JSON final`;
+Regras: 3 a 5 recomendações, alocação soma 100, SOMENTE JSON.`;
 
       setFase("🧠 Gemini 2.5 Pro analisando...");
       const analise = await chamarIAComSearch(prompt);
