@@ -123,20 +123,34 @@ async function main() {
   const userId = authData.user.id;
   console.log('✓ Logado:', userId);
 
-  // Pega ou cria carteira principal
-  let { data: carteira } = await supabase
+  // Pega ou cria carteira principal (sem .single() que quebra se não houver)
+  let carteira = null;
+  const { data: carteirasExistentes, error: errCart } = await supabase
     .from('carteiras')
     .select('*')
     .eq('user_id', userId)
-    .limit(1)
-    .single();
+    .limit(1);
 
-  if (!carteira) {
-    const { data: novaCarteira } = await supabase
+  if (errCart) {
+    console.error('❌ Erro ao buscar carteira:', errCart.message);
+    process.exit(1);
+  }
+
+  if (carteirasExistentes && carteirasExistentes.length > 0) {
+    carteira = carteirasExistentes[0];
+    console.log('✓ Carteira existente encontrada');
+  } else {
+    console.log('📦 Criando carteira nova...');
+    const { data: novaCarteira, error: errNova } = await supabase
       .from('carteiras')
       .insert({ user_id: userId, nome: 'Principal', descricao: 'Carteira de teste' })
       .select()
       .single();
+
+    if (errNova || !novaCarteira) {
+      console.error('❌ Erro ao criar carteira:', errNova?.message || 'sem dados retornados');
+      process.exit(1);
+    }
     carteira = novaCarteira;
   }
 
