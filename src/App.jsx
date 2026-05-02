@@ -24,16 +24,17 @@ import {
   salvarSnapshotPatrimonio, carregarSnapshotsPatrimonio,
   getCachedPrice, setCachedPrice, clearPriceCache
 } from "./supabase";
+import {
+  CDI_ANO, IBOV_HIST, PALETTE,
+  fmt, fmtBRL, fmtK, sleep, extrairJSON,
+  juroCompostos, gerarProjecao, calcularIR,
+  calcularPesos, novoPrecoMedio, quantidadeComprável,
+  dyMedioCarteira, alertasRebalanceamento,
+  tickerValido, tipoTicker
+} from "./lib/calc";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
-const PALETTE = ["#7b61ff","#00e5a0","#ffd60a","#ff4d6d","#00b4d8","#f77f00","#9ef01a","#e040fb","#40c4ff","#ff6b6b","#a8dadc","#e63946"];
-const CDI_ANO = 13.75;
-const IBOV_HIST = 12.5;
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const fmt = (n, d=2) => n != null && !isNaN(n) ? Number(n).toFixed(d) : "–";
-const fmtBRL = n => n != null && !isNaN(n) ? Number(n).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}) : "–";
-const fmtK = n => n >= 1e6 ? `R$${(n/1e6).toFixed(1)}M` : n >= 1000 ? `R$${(n/1000).toFixed(0)}k` : fmtBRL(n);
 
 // ─── Storage — agora usamos Supabase, mantemos localStorage como cache ──────
 const store = {
@@ -42,26 +43,8 @@ const store = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-// Extrai JSON de qualquer texto — mesmo que venha com explicações ao redor
-function extrairJSON(text) {
-  if (!text || !text.trim()) throw new Error("Resposta vazia da IA");
-  // Tenta direto primeiro
-  try { return JSON.parse(text.trim()); } catch(_) {}
-  // Remove blocos markdown
-  const semMd = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  try { return JSON.parse(semMd); } catch(_) {}
-  // Extrai o maior bloco JSON do texto (entre { e })
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) {
-    try { return JSON.parse(match[0]); } catch(_) {}
-  }
-  // Extrai array JSON
-  const arrMatch = text.match(/\[[\s\S]*\]/);
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch(_) {}
-  }
-  throw new Error("Não foi possível extrair JSON da resposta: " + text.slice(0, 200));
-}
+// extrairJSON agora vem de ./lib/calc
+
 
 // ─── IA Principal — via Vercel API proxy (chave segura no servidor) ──────────
 const API_URL = "/api/analyze";
@@ -102,24 +85,9 @@ async function chamarIA(prompt) {
   return extrairJSON(data.text);
 }
 
-// ─── Cálculos ─────────────────────────────────────────────────────────────────
-function juroCompostos(pv, pmt, taxa, n) {
-  const r = taxa / 100 / 12;
-  if (r === 0) return pv + pmt * n;
-  return pv * Math.pow(1+r, n) + pmt * (Math.pow(1+r, n) - 1) / r;
-}
+// ─── Cálculos ────────────────────────────────────────────────────────────────
+// juroCompostos e gerarProjecao agora vêm de ./lib/calc
 
-function gerarProjecao(pv, pmt, taxa, anos) {
-  const pts = [];
-  for (let m = 0; m <= anos * 12; m += 3) {
-    pts.push({
-      ano: `${(m/12).toFixed(1)}a`,
-      "Com juros": Math.round(juroCompostos(pv, pmt, taxa, m)),
-      "Sem juros": Math.round(pv + pmt * m),
-    });
-  }
-  return pts;
-}
 
 function simularCenarios(pv, pmt, anos) {
   const cenarios = [
