@@ -1204,19 +1204,22 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* Linha 2: Tabs */}
         <div style={{display:"flex",padding:"0 24px",gap:2,borderTop:"1px solid #1a1a25"}}>
-          {TABS.map(t => (
-            <button key={t.k} onClick={()=>setTab(t.k)} className="tab-btn"
-              style={{
-                background:"transparent",border:"none",cursor:"pointer",
-                padding:"12px 18px",fontSize:13,fontWeight:600,
-                color:tab===t.k?"#ffffff":"#7a7a8a",
-                borderBottom:`2px solid ${tab===t.k?"#7b61ff":"transparent"}`,
-                display:"flex",alignItems:"center",gap:7
-              }}>
-              <span style={{fontSize:14}}>{t.l}</span>
-              <span>{t.label}</span>
-            </button>
-          ))}
+          {TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.k} onClick={()=>setTab(t.k)} className="tab-btn"
+                style={{
+                  background:"transparent",border:"none",cursor:"pointer",
+                  padding:"12px 18px",fontSize:13,fontWeight:600,
+                  color:tab===t.k?"#ffffff":"#9090a0",
+                  borderBottom:`2px solid ${tab===t.k?"#7b61ff":"transparent"}`,
+                  display:"flex",alignItems:"center",gap:8
+                }}>
+                <Icon size={15} strokeWidth={2}/>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
