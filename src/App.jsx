@@ -152,8 +152,8 @@ function Badge({ val, suffix="%" }) {
 function Card({ children, style={}, accent=false, className="" }) {
   return (
     <div className={`card-hover ${className}`} style={{
-      background:"#0c0c1f",
-      border:`1px solid ${accent?"#7b61ff44":"#1f1f3a"}`,
+      background:"#0a0a0f",
+      border:`1px solid ${accent?"#7b61ff44":"#252535"}`,
       borderRadius:10,padding:"16px",...style
     }}>
       {children}
@@ -167,9 +167,9 @@ function STitle({ children, color="#7b61ff" }) {
 
 function Stat({ label, value, color, mono=false }) {
   return (
-    <div style={{background:"#0a0a14",borderRadius:8,padding:"10px 12px",border:"1px solid #1a1a2e"}}>
-      <div style={{fontSize:9,color:"#5a5a7a",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
-      <div style={{fontSize:14,fontWeight:700,color:color||"#e4e4f0",
+    <div style={{background:"#000000",borderRadius:8,padding:"10px 12px",border:"1px solid #1a1a25"}}>
+      <div style={{fontSize:9,color:"#7a7a8a",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
+      <div style={{fontSize:14,fontWeight:700,color:color||"#ffffff",
         fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
     </div>
   );
@@ -181,7 +181,7 @@ const TTip = ({active,payload,label}) => {
     <div style={{background:"#12122e",border:"1px solid #2a2a50",borderRadius:10,padding:"10px 14px",fontSize:12}}>
       {label && <div style={{color:"#888",marginBottom:4}}>{label}</div>}
       {payload.map((p,i) => (
-        <div key={i} style={{color:p.color||p.fill||"#e8e8ff",fontWeight:600,marginBottom:2}}>
+        <div key={i} style={{color:p.color||p.fill||"#ffffff",fontWeight:600,marginBottom:2}}>
           {p.name}: {typeof p.value==="number" ? p.value>=1000 ? fmtBRL(p.value) : `${fmt(p.value,1)}%` : p.value}
         </div>
       ))}
@@ -196,12 +196,12 @@ function LoadingCard({ fase }) {
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
         <div style={{position:"relative",width:56,height:56}}>
           <div className="spin" style={{width:56,height:56,borderRadius:"50%",
-            border:"3px solid #1e1e42",borderTopColor:"#7b61ff",position:"absolute"}}/>
+            border:"3px solid #252535",borderTopColor:"#7b61ff",position:"absolute"}}/>
           <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
             fontSize:20}}>✦</div>
         </div>
-        <div style={{fontSize:13,color:"#7777aa"}}>{fase}</div>
-        <div style={{fontSize:11,color:"#333360"}}>IA analisando o mercado...</div>
+        <div style={{fontSize:13,color:"#a8a8b8"}}>{fase}</div>
+        <div style={{fontSize:11,color:"#5a5a6a"}}>IA analisando o mercado...</div>
       </div>
     </Card>
   );
@@ -245,15 +245,15 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           <input placeholder="Ticker (PETR4)" value={ticker}
             onChange={e => setTicker(e.target.value.toUpperCase())}
             onKeyDown={e => e.key==="Enter"&&add()}
-            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           <input type="number" placeholder="Quantidade" value={qtd} onChange={e=>setQtd(e.target.value)}
-            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           <input type="number" placeholder="Preço médio R$" value={pm} onChange={e=>setPm(e.target.value)}
-            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           <input type="date" value={data} onChange={e=>setData(e.target.value)}
-            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           + Registrar Compra
         </button>
       </Card>
@@ -262,7 +262,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         <div style={{background:"#ffd60a0a",border:"1px solid #ffd60a25",borderRadius:12,padding:"12px 14px"}}>
           <STitle color="#ffd60a">⚖️ REBALANCEAMENTO NECESSÁRIO</STitle>
           {alertasReb.map(p => (
-            <div key={p.ticker} style={{fontSize:12,color:"#8888bb",marginBottom:3}}>
+            <div key={p.ticker} style={{fontSize:12,color:"#a8a8b8",marginBottom:3}}>
               {p.ticker}: atual {fmt(p.peso,1)}% · alvo {pesoAlvo[p.ticker]}% · desvio {fmt(Math.abs(p.peso-pesoAlvo[p.ticker]),1)}%
             </div>
           ))}
@@ -273,9 +273,9 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         <Card>
           <STitle>HISTÓRICO DE COMPRAS</STitle>
           {[...historico].reverse().slice(0,8).map((h,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{h.data}</span></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#e8e8ff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#555580"}}>{fmtBRL(h.pm)} cada</div>}</div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a25",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#6a6a7a",marginLeft:8}}>{h.data}</span></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#ffffff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#9090a0"}}>{fmtBRL(h.pm)} cada</div>}</div>
             </div>
           ))}
         </Card>
@@ -292,18 +292,18 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
             <Card key={a.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a40",display:"flex",
+                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a25",display:"flex",
                     alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,
                     color:PALETTE[i%PALETTE.length]}}>{a.ticker.slice(0,4)}</div>
                   <div>
-                    <div style={{fontWeight:700,color:"#eeeeff",fontSize:14}}>{a.ticker}</div>
-                    <div style={{fontSize:11,color:"#444470"}}>{a.qtd} cotas{a.pm?` · PM ${fmtBRL(a.pm)}`:""}</div>
+                    <div style={{fontWeight:700,color:"#ffffff",fontSize:14}}>{a.ticker}</div>
+                    <div style={{fontSize:11,color:"#6a6a7a"}}>{a.qtd} cotas{a.pm?` · PM ${fmtBRL(a.pm)}`:""}</div>
                   </div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {pos && (
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:"#fff",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
+                      <div style={{fontWeight:700,color:"#ffffff",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
                       {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
                     </div>
                   )}
@@ -315,25 +315,25 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
                   {pos.dy>0 && <span style={{fontSize:10,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
                   {pos.pl && <span style={{fontSize:10,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
-                  {pos.setor && <span style={{fontSize:10,background:"#ffffff08",color:"#666699",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
+                  {pos.setor && <span style={{fontSize:10,background:"#ffffff08",color:"#9090a0",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
                 </div>
               )}
               <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:11,color:"#333360"}}>Peso alvo %:</span>
+                <span style={{fontSize:11,color:"#5a5a6a"}}>Peso alvo %:</span>
                 <input type="number" placeholder="%" value={pesoAlvo[a.ticker]||""} min={0} max={100}
                   onChange={e => setPesoAlvo(p => ({...p,[a.ticker]:Number(e.target.value)}))}
-                  style={{width:58,background:"#07071a",border:"1px solid #1e1e42",borderRadius:7,padding:"4px 8px",fontSize:12,color:"#e8e8ff"}}/>
-                {pos && <span style={{fontSize:11,color:"#333360"}}>atual {fmt(pos.peso,1)}%</span>}
+                  style={{width:58,background:"#000000",border:"1px solid #252535",borderRadius:7,padding:"4px 8px",fontSize:12,color:"#ffffff"}}/>
+                {pos && <span style={{fontSize:11,color:"#5a5a6a"}}>atual {fmt(pos.peso,1)}%</span>}
               </div>
             </Card>
           );
         })}
         </div>
       </> : (
-        <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #1e1e42"}}>
+        <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #252535"}}>
           <div style={{fontSize:28,marginBottom:8}}>📋</div>
-          <div style={{color:"#444470",fontSize:13,marginBottom:6}}>Carteira vazia</div>
-          <div style={{color:"#333360",fontSize:12,lineHeight:1.7}}>
+          <div style={{color:"#6a6a7a",fontSize:13,marginBottom:6}}>Carteira vazia</div>
+          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.7}}>
             Adicione seus ativos acima para análise personalizada,<br/>
             ou analise sem carteira para ver oportunidades de mercado.
           </div>
@@ -348,7 +348,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 // ─── Tab: Gráficos ────────────────────────────────────────────────────────────
 function TabGraficos({ dados }) {
   const [g, setG] = useState("pizza");
-  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"#333360",fontSize:13}}>Rode a análise primeiro ↑</div>;
+  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"#5a5a6a",fontSize:13}}>Rode a análise primeiro ↑</div>;
 
   const pos = dados.posicoes || [];
   const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
@@ -378,7 +378,7 @@ function TabGraficos({ dados }) {
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {TABS_G.map(t => (
-          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",background:g===t.k?"#7b61ff":"#0c0c1f",border:`1px solid ${g===t.k?"#7b61ff":"#1f1f3a"}`,color:g===t.k?"#fff":"#7a7a9a",transition:"all .15s"}}>{t.l}</button>
+          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",background:g===t.k?"#7b61ff":"#0a0a0f",border:`1px solid ${g===t.k?"#7b61ff":"#252535"}`,color:g===t.k?"#ffffff":"#9090a0",transition:"all .15s"}}>{t.l}</button>
         ))}
       </div>
 
@@ -394,7 +394,7 @@ function TabGraficos({ dados }) {
             <div style={{display:"flex",flexWrap:"wrap",gap:"5px 12px",marginTop:8,justifyContent:"center"}}>
               {pizza.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:e.fill}}/><span style={{fontSize:10,color:"#888"}}>{e.name} {fmt(e.value,1)}%</span></div>)}
             </div>
-          </> : <div style={{textAlign:"center",color:"#333360",padding:"32px 0",fontSize:13}}>Sem ativos na carteira</div>}
+          </> : <div style={{textAlign:"center",color:"#5a5a6a",padding:"32px 0",fontSize:13}}>Sem ativos na carteira</div>}
         </>}
 
         {g==="setores" && <>
@@ -408,12 +408,12 @@ function TabGraficos({ dados }) {
 
         {g==="canal" && <>
           <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (estimado pela IA)</STitle>
-          <div style={{fontSize:10,color:"#333360",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
+          <div style={{fontSize:10,color:"#5a5a6a",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
           {canal.length > 0 ? <>
             <ResponsiveContainer width="100%" height={Math.max(130,canal.length*36)}>
               <BarChart data={canal} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" horizontal={false}/>
-                <XAxis type="number" domain={[0,100]} tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25" horizontal={false}/>
+                <XAxis type="number" domain={[0,100]} tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
                 <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
                 <Tooltip formatter={v=>[`${fmt(v,0)}%`,"Canal"]}/>
                 <Bar dataKey="posicao" radius={[0,6,6,0]}>
@@ -422,17 +422,17 @@ function TabGraficos({ dados }) {
               </BarChart>
             </ResponsiveContainer>
             <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
-              {[{c:"#00e5a0",l:"Oportunidade"},{c:"#ffd60a",l:"Neutro"},{c:"#ff4d6d",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"#555580"}}>{x.l}</span></div>)}
+              {[{c:"#00e5a0",l:"Oportunidade"},{c:"#ffd60a",l:"Neutro"},{c:"#ff4d6d",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"#9090a0"}}>{x.l}</span></div>)}
             </div>
-          </> : <div style={{textAlign:"center",color:"#333360",padding:"24px 0",fontSize:13}}>Sem dados</div>}
+          </> : <div style={{textAlign:"center",color:"#5a5a6a",padding:"24px 0",fontSize:13}}>Sem dados</div>}
         </>}
 
         {g==="perf" && perf.length > 0 && <>
           <STitle>PERFORMANCE vs PREÇO MÉDIO</STitle>
           <ResponsiveContainer width="100%" height={Math.max(130,perf.length*38)}>
             <BarChart data={perf} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" horizontal={false}/>
-              <XAxis type="number" tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v>0?"+":""}${fmt(v,1)}%`}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25" horizontal={false}/>
+              <XAxis type="number" tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v>0?"+":""}${fmt(v,1)}%`}/>
               <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
               <Tooltip formatter={v=>[`${v>=0?"+":""}${fmt(v,1)}%`,"Retorno"]}/>
               <Bar dataKey="retorno" radius={[0,6,6,0]}>{perf.map((e,i)=><Cell key={i} fill={e.fill}/>)}</Bar>
@@ -448,9 +448,9 @@ function TabGraficos({ dados }) {
                 <stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/>
                 <stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/>
               </linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
-              <XAxis dataKey="mes" tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
+              <XAxis dataKey="mes" tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="#ffd60a" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
@@ -464,9 +464,9 @@ function TabGraficos({ dados }) {
           <STitle>RADAR DA CARTEIRA</STitle>
           <ResponsiveContainer width="100%" height={210}>
             <RadarChart data={radar} cx="50%" cy="50%" outerRadius={75}>
-              <PolarGrid stroke="#1e1e42"/>
+              <PolarGrid stroke="#252535"/>
               <PolarAngleAxis dataKey="m" tick={{fill:"#888",fontSize:11}}/>
-              <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:"#333360",fontSize:9}}/>
+              <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:"#5a5a6a",fontSize:9}}/>
               <Radar name="Carteira" dataKey="v" stroke="#7b61ff" fill="#7b61ff" fillOpacity={0.3}/>
             </RadarChart>
           </ResponsiveContainer>
@@ -501,22 +501,22 @@ function TabMeta({ dados }) {
         <STitle color="#ffd60a">🎯 MODO PRIMEIRO MILHÃO</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
-            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Meta patrimonial (R$)</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Meta patrimonial (R$)</div>
             <input type="number" value={meta} onChange={e=>setMeta(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Taxa anual (%)</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Taxa anual (%)</div>
             <input type="number" value={taxaAnual} onChange={e=>setTaxaAnual(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
         </div>
-        {pv > 0 && <div style={{fontSize:12,color:"#555580",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
+        {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
         <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           ✦ Calcular Minha Meta
         </button>
@@ -527,12 +527,12 @@ function TabMeta({ dados }) {
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
             <div style={{fontSize:32,fontWeight:900,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
             <div style={{fontSize:12,color:"#ffd60a",fontWeight:700}}>anos</div>
-            <div style={{fontSize:11,color:"#444470",marginTop:2}}>{resultado.meses} meses</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginTop:2}}>{resultado.meses} meses</div>
           </Card>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
             <div style={{fontSize:20,fontWeight:900,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
             <div style={{fontSize:11,color:"#00e5a0",fontWeight:700}}>renda mensal potencial</div>
-            <div style={{fontSize:10,color:"#444470",marginTop:2}}>ao atingir a meta</div>
+            <div style={{fontSize:10,color:"#6a6a7a",marginTop:2}}>ao atingir a meta</div>
           </Card>
           <Stat label="Total aportado" value={fmtBRL(resultado.totalAportado)} mono/>
           <Stat label="Ganho com juros" value={fmtBRL(Math.max(0,resultado.totalJuros))} color="#00e5a0" mono/>
@@ -543,13 +543,13 @@ function TabMeta({ dados }) {
             <AreaChart data={resultado.projecao} margin={{left:0,right:0,top:5,bottom:5}}>
               <defs>
                 <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/><stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/></linearGradient>
-                <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#444470" stopOpacity={0.2}/><stop offset="95%" stopColor="#444470" stopOpacity={0}/></linearGradient>
+                <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6a6a7a" stopOpacity={0.2}/><stop offset="95%" stopColor="#6a6a7a" stopOpacity={0}/></linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
-              <XAxis dataKey="ano" tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
+              <XAxis dataKey="ano" tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
               <Tooltip content={<TTip/>}/>
-              <Area type="monotone" dataKey="Sem juros" stroke="#333360" strokeWidth={1} fill="url(#gs)" strokeDasharray="4 2"/>
+              <Area type="monotone" dataKey="Sem juros" stroke="#5a5a6a" strokeWidth={1} fill="url(#gs)" strokeDasharray="4 2"/>
               <Area type="monotone" dataKey="Com juros" stroke="#ffd60a" strokeWidth={2} fill="url(#gm)"/>
             </AreaChart>
           </ResponsiveContainer>
@@ -576,20 +576,20 @@ function TabCenarios({ dados }) {
         <STitle color="#00b4d8">📊 SIMULADOR DE CENÁRIOS</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div>
-            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Período</div>
+            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Período</div>
             <select value={anos} onChange={e=>setAnos(e.target.value)}
-              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",cursor:"pointer"}}>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",cursor:"pointer"}}>
               {[5,10,15,20,25,30].map(a => <option key={a} value={a}>{a} anos</option>)}
             </select>
           </div>
         </div>
-        {pv > 0 && <div style={{fontSize:12,color:"#555580",marginBottom:10}}>Ponto de partida: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
-        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Ponto de partida: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
+        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#ffffff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           ✦ Simular Cenários
         </button>
       </Card>
@@ -602,7 +602,7 @@ function TabCenarios({ dados }) {
               <Card key={c.name}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div><div style={{fontSize:12,color:"#888",marginBottom:2}}>{c.name}</div><div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:18,fontWeight:700,color:c.color}}>{fmtK(final)}</div></div>
-                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#444470"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#6a6a7a"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
                 </div>
               </Card>
             );
@@ -612,9 +612,9 @@ function TabCenarios({ dados }) {
           <STitle>COMPARATIVO DE CENÁRIOS</STitle>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={resultado.pts} margin={{left:0,right:0,top:5,bottom:5}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
-              <XAxis dataKey="ano" tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
+              <XAxis dataKey="ano" tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
               <Tooltip content={<TTip/>}/>
               <Legend wrapperStyle={{fontSize:11,color:"#888"}}/>
               {resultado.cenarios.map(c => <Line key={c.name} type="monotone" dataKey={c.name} stroke={c.color} strokeWidth={2} dot={false}/>)}
@@ -653,13 +653,13 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
         <STitle color="#e040fb">👁️ WATCHLIST</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
-            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           <input type="number" placeholder="Preço alvo R$" value={alvo} onChange={e=>setAlvo(e.target.value)}
-            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           <input placeholder="Nota (opcional)" value={nota} onChange={e=>setNota(e.target.value)}
-            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           + Adicionar à Watchlist
         </button>
       </Card>
@@ -671,7 +671,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
           {atingiram.map(w => (
             <div key={w.ticker} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
               <span style={{fontWeight:700,color:"#00e5a0",fontSize:14}}>{w.ticker}</span>
-              <span style={{fontSize:13,color:"#e8e8ff"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
+              <span style={{fontSize:13,color:"#ffffff"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
             </div>
           ))}
         </div>
@@ -683,28 +683,28 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
             <Card key={w.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#e040fb"}}>{w.ticker.slice(0,4)}</div>
-                  <div><div style={{fontWeight:700,color:"#eeeeff",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"#444470"}}>{w.nota}</div>}</div>
+                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#e040fb"}}>{w.ticker.slice(0,4)}</div>
+                  <div><div style={{fontWeight:700,color:"#ffffff",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"#6a6a7a"}}>{w.nota}</div>}</div>
                 </div>
                 <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
                   style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:7,padding:"5px 10px",color:"#ff4d6d",fontSize:12,cursor:"pointer"}}>✕</button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"#00e5a0":"#e8e8ff"} mono/>
+                <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"#00e5a0":"#ffffff"} mono/>
                 <Stat label="Preço alvo" value={fmtBRL(w.alvo)} color="#e040fb" mono/>
                 <Stat label="Distância" value={w.diff!=null?`${w.diff>0?"↓":"↑"} ${fmt(Math.abs(w.diff),1)}%`:"–"} color={w.diff!=null?(w.diff>0?"#00e5a0":"#ff4d6d"):"#888"}/>
               </div>
               {w.diff!=null && (
-                <div style={{marginTop:10,background:"#07071a",borderRadius:8,height:6,overflow:"hidden"}}>
+                <div style={{marginTop:10,background:"#000000",borderRadius:8,height:6,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${Math.min(100,Math.max(0,100-w.diff))}%`,background:w.atingiu?"#00e5a0":"#e040fb",borderRadius:8,transition:"width 1s ease"}}/>
                 </div>
               )}
-              <div style={{fontSize:10,color:"#333360",marginTop:4}}>Adicionado em {w.adicionado}</div>
+              <div style={{fontSize:10,color:"#5a5a6a",marginTop:4}}>Adicionado em {w.adicionado}</div>
             </Card>
           ))}
         </div>
       ) : (
-        <div style={{textAlign:"center",padding:"32px 0",color:"#333360",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
+        <div style={{textAlign:"center",padding:"32px 0",color:"#5a5a6a",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
       )}
       </div>
     </div>
@@ -729,14 +729,14 @@ function TabIR({ dados }) {
     <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="#ffd60a">💸 CALCULADORA DE IR — RENDA VARIÁVEL</STitle>
-        <div style={{fontSize:12,color:"#555580",lineHeight:1.7,marginBottom:12}}>
+        <div style={{fontSize:12,color:"#9090a0",lineHeight:1.7,marginBottom:12}}>
           Ações têm isenção de IR para vendas até <b style={{color:"#ffd60a"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
           {[{p:"Ticker",v:ticker,s:setTicker,up:true},{p:"Qtd",v:qtd,s:setQtd,t:"number"},{p:"Preço venda R$",v:precoV,s:setPrecoV,t:"number"}].map((f,i) => (
             <input key={i} type={f.t||"text"} placeholder={f.p} value={f.v}
               onChange={e=>f.s(f.up?e.target.value.toUpperCase():e.target.value)}
-              style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"10px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+              style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"10px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
           ))}
         </div>
         <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:"pointer"}}>
@@ -749,8 +749,8 @@ function TabIR({ dados }) {
         <Card>
           <STitle>VENDAS SIMULADAS</STitle>
           {vendas.map((v,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"#ffd60a"}}>{v.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a25",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"#ffd60a"}}>{v.ticker}</span><span style={{fontSize:11,color:"#6a6a7a",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
             </div>
           ))}
@@ -777,7 +777,7 @@ function TabIR({ dados }) {
 function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   if (loading) return <LoadingCard fase={fase}/>;
   if (!dados?.analise) return (
-    <div style={{textAlign:"center",padding:"48px 0",color:"#333360",fontSize:13}}>
+    <div style={{textAlign:"center",padding:"48px 0",color:"#5a5a6a",fontSize:13}}>
       Configure o aporte e clique em <b style={{color:"#7b61ff"}}>Analisar</b> ↑
     </div>
   );
@@ -795,7 +795,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
       {/* Badge IA */}
       <div style={{background:"#7b61ff12",border:"1px solid #7b61ff30",borderRadius:10,padding:"10px 14px",display:"flex",gap:8,alignItems:"center"}}>
         <span style={{fontSize:16}}>🤖</span>
-        <div style={{fontSize:11,color:"#7777aa",lineHeight:1.6}}>
+        <div style={{fontSize:11,color:"#a8a8b8",lineHeight:1.6}}>
           Análise gerada pelo Gemini 2.5 Pro com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
         </div>
       </div>
@@ -807,10 +807,10 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
             <div style={{textAlign:"center",minWidth:70}}>
               <div style={{fontSize:40,fontWeight:900,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
               <div style={{fontSize:10,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
-              <div style={{fontSize:9,color:"#333360"}}>Score</div>
+              <div style={{fontSize:9,color:"#5a5a6a"}}>Score</div>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:11,color:"#555580",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
+              <div style={{fontSize:11,color:"#9090a0",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
               {correlacoes.map((c,i) => <div key={i} style={{fontSize:12,color:"#ffd60a",marginBottom:3}}>⚠️ {c.n} ativos em {c.setor} — alta correlação</div>)}
               {!correlacoes.length && <div style={{fontSize:12,color:"#00e5a0"}}>✅ Boa diversificação setorial</div>}
             </div>
@@ -821,7 +821,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
       {/* Diagnóstico */}
       <Card>
         <STitle>{temCarteira?"DIAGNÓSTICO DA CARTEIRA":"CONTEXTO DO MERCADO"}</STitle>
-        <p style={{fontSize:13,color:"#8888bb",lineHeight:1.75}}>{a.diagnostico}</p>
+        <p style={{fontSize:13,color:"#a8a8b8",lineHeight:1.75}}>{a.diagnostico}</p>
       </Card>
 
       {/* Alertas em grid */}
@@ -830,8 +830,8 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
           <span style={{fontSize:18}}>{al.tipo==="perigo"?"🚨":al.tipo==="atencao"?"⚠️":"✅"}</span>
           <div>
-            <div style={{fontWeight:700,fontSize:13,color:"#e8e8ff",marginBottom:4}}>{al.titulo}</div>
-            <div style={{fontSize:12,color:"#8888bb",lineHeight:1.6}}>{al.descricao}</div>
+            <div style={{fontWeight:700,fontSize:13,color:"#ffffff",marginBottom:4}}>{al.titulo}</div>
+            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>{al.descricao}</div>
           </div>
         </div>
       ))}
@@ -842,37 +842,37 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => (
-          <Card key={i} style={{borderColor:r.nova?"#00e5a030":"#1e1e42"}}>
+          <Card key={i} style={{borderColor:r.nova?"#00e5a030":"#252535"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"#00e5a018":"#1a1a40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"#00e5a0":"#7b61ff"}}>{r.ticker.slice(0,4)}</div>
+                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"#00e5a018":"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"#00e5a0":"#7b61ff"}}>{r.ticker.slice(0,4)}</div>
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontWeight:800,fontSize:15,color:"#eeeeff"}}>{r.ticker}</span>
+                    <span style={{fontWeight:800,fontSize:15,color:"#ffffff"}}>{r.ticker}</span>
                     {r.nova && <span style={{fontSize:9,background:"#00e5a018",color:"#00e5a0",border:"1px solid #00e5a028",borderRadius:10,padding:"2px 6px",fontWeight:700}}>NOVO</span>}
                   </div>
-                  <div style={{fontSize:11,color:"#444470"}}>{r.acao} · {r.setor}</div>
+                  <div style={{fontSize:11,color:"#6a6a7a"}}>{r.acao} · {r.setor}</div>
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
                 <div style={{fontWeight:700,fontSize:16,color:"#7b61ff"}}>{r.alocacao}%</div>
-                <div style={{fontSize:12,color:"#444470"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
+                <div style={{fontSize:12,color:"#6a6a7a"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
               </div>
             </div>
 
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#9999cc",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"🟢 ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
+              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#a8a8b8",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"🟢 ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
               {r.dy && <span style={{fontSize:11,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
               {r.pl && <span style={{fontSize:11,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
               {r.score && <span style={{fontSize:11,background:"#00e5a012",color:"#00e5a0",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
               {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"#00e5a012":r.canal52<=70?"#ffd60a12":"#ff4d6d12",color:r.canal52<=30?"#00e5a0":r.canal52<=70?"#ffd60a":"#ff4d6d",borderRadius:10,padding:"3px 8px"}}>Canal {r.canal52}%</span>}
             </div>
 
-            <div style={{fontSize:12,color:"#7777aa",lineHeight:1.65,background:"#07071a",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
+            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.65,background:"#000000",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
 
             {r.unidades && (
-              <div style={{marginTop:8,fontSize:11,color:"#555580"}}>
+              <div style={{marginTop:8,fontSize:11,color:"#9090a0"}}>
                 ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
               </div>
             )}
@@ -887,7 +887,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         {a.vender.map((v,i) => (
           <Card key={i} style={{borderColor:"#ff4d6d20"}}>
             <div style={{fontWeight:700,fontSize:14,color:"#ff6b85",marginBottom:4}}>{v.ticker}</div>
-            <div style={{fontSize:12,color:"#7777aa",lineHeight:1.6}}>{v.motivo}</div>
+            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>{v.motivo}</div>
           </Card>
         ))}
       </>}
@@ -1114,15 +1114,15 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   const horaAtual = new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 
   return (
-    <div style={{minHeight:"100vh",background:"#0a0a14",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#e4e4f0"}}>
+    <div style={{minHeight:"100vh",background:"#000000",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#ffffff"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        body{background:#0a0a14}
+        body{background:#000000}
         ::-webkit-scrollbar{width:8px;height:8px}
-        ::-webkit-scrollbar-track{background:#0a0a14}
-        ::-webkit-scrollbar-thumb{background:#1f1f3a;border-radius:4px}
-        ::-webkit-scrollbar-thumb:hover{background:#2a2a4a}
+        ::-webkit-scrollbar-track{background:#000000}
+        ::-webkit-scrollbar-thumb{background:#252535;border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:#3a3a45}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
@@ -1131,19 +1131,19 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
         input,select,button,textarea{outline:none;font-family:inherit}
-        input:focus,select:focus{border-color:#7b61ff!important;box-shadow:0 0 0 3px rgba(123,97,255,0.1)}
+        input:focus,select:focus{border-color:#7b61ff!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
         button:hover:not(:disabled){filter:brightness(1.1)}
         .tab-btn{transition:all .15s ease}
-        .tab-btn:hover{background:#1a1a30!important;color:#a0a0c0!important}
+        .tab-btn:hover{background:#1a1a25!important;color:#a0a0c0!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
-        .card-hover:hover{border-color:#2a2a4a!important;transform:translateY(-1px)}
+        .card-hover:hover{border-color:#3a3a45!important;transform:translateY(-1px)}
       `}</style>
 
       {/* TOP BAR - Estilo TradingView */}
       <div style={{
         position:"sticky",top:0,zIndex:100,
-        background:"rgba(10,10,20,0.85)",backdropFilter:"blur(20px)",
-        borderBottom:"1px solid #1a1a30"
+        background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",
+        borderBottom:"1px solid #1a1a25"
       }}>
         {/* Linha 1: Brand + Métricas + Status */}
         <div style={{
@@ -1156,13 +1156,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               width:36,height:36,borderRadius:8,
               background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
               display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:18,fontWeight:900,color:"#0a0a14"
+              fontSize:18,fontWeight:900,color:"#000000"
             }}>✦</div>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3}}>
                 InvestIA <span style={{color:"#7b61ff"}}>Pro</span>
               </div>
-              <div style={{fontSize:9,color:"#5a5a7a",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
+              <div style={{fontSize:9,color:"#7a7a8a",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>
           </div>
 
@@ -1176,25 +1176,25 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
           {/* Status à direita */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5a5a7a"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#7a7a8a"}}>
               <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"#00e5a0"}}/>
               <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
             </div>
             <button onClick={salvar} style={{
-              background:"#0c0c1f",border:"1px solid #1f1f3a",borderRadius:6,
-              padding:"7px 12px",color:"#a0a0c0",fontSize:11,cursor:"pointer",fontWeight:600
+              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
+              padding:"7px 12px",color:"#c5c5d0",fontSize:11,cursor:"pointer",fontWeight:600
             }}>{savedMsg||"Salvar"}</button>
           </div>
         </div>
 
         {/* Linha 2: Tabs */}
-        <div style={{display:"flex",padding:"0 24px",gap:2,borderTop:"1px solid #1a1a30"}}>
+        <div style={{display:"flex",padding:"0 24px",gap:2,borderTop:"1px solid #1a1a25"}}>
           {TABS.map(t => (
             <button key={t.k} onClick={()=>setTab(t.k)} className="tab-btn"
               style={{
                 background:"transparent",border:"none",cursor:"pointer",
                 padding:"12px 18px",fontSize:13,fontWeight:600,
-                color:tab===t.k?"#fff":"#5a5a7a",
+                color:tab===t.k?"#ffffff":"#7a7a8a",
                 borderBottom:`2px solid ${tab===t.k?"#7b61ff":"transparent"}`,
                 display:"flex",alignItems:"center",gap:7
               }}>
@@ -1209,20 +1209,20 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       <div style={{padding:"20px 24px",maxWidth:1600,margin:"0 auto"}}>
         {/* PAINEL DE ANÁLISE - Horizontal */}
         <div className="anim" style={{
-          background:"#0c0c1f",border:"1px solid #1f1f3a",borderRadius:12,
+          background:"#0a0a0f",border:"1px solid #252535",borderRadius:12,
           padding:"16px 20px",marginBottom:20,
           display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"
         }}>
           <div style={{flex:"1 1 200px",minWidth:160}}>
-            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
+            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
             <input type="text" placeholder="R$ 0,00" value={aporte} onChange={handleAporte}
-              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
-                padding:"10px 14px",fontSize:18,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
+                padding:"10px 14px",fontSize:18,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
             <div style={{display:"flex",gap:5,marginTop:7}}>
               {[500,1000,2000,5000].map(vv => (
                 <button key={vv} onClick={()=>setAporte(vv.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}))}
-                  style={{flex:1,background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:5,
-                    padding:"5px 0",fontSize:10,color:"#7a7a9a",cursor:"pointer",
+                  style={{flex:1,background:"#000000",border:"1px solid #252535",borderRadius:5,
+                    padding:"5px 0",fontSize:10,color:"#9090a0",cursor:"pointer",
                     fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>
                   {fmtK(vv)}
                 </button>
@@ -1230,13 +1230,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             </div>
           </div>
 
-          <div style={{width:1,alignSelf:"stretch",background:"#1a1a30"}}/>
+          <div style={{width:1,alignSelf:"stretch",background:"#1a1a25"}}/>
 
           <div style={{flex:"1 1 160px",minWidth:140}}>
-            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
+            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
             <select value={perfil} onChange={e=>setPerfil(e.target.value)}
-              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
-                padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
               <option value="conservador">🛡 Conservador</option>
               <option value="moderado">⚖ Moderado</option>
               <option value="arrojado">🚀 Arrojado</option>
@@ -1244,10 +1244,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           </div>
 
           <div style={{flex:"1 1 160px",minWidth:140}}>
-            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>FOCO</div>
+            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>FOCO</div>
             <select value={foco} onChange={e=>setFoco(e.target.value)}
-              style={{width:"100%",background:"#0a0a14",border:"1px solid #1f1f3a",borderRadius:8,
-                padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>
+              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
               <option value="acoes">📈 Ações</option>
               <option value="fiis">🏢 FIIs</option>
               <option value="misto">⚡ Misto</option>
@@ -1255,12 +1255,12 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           </div>
 
           <div style={{flex:"2 1 280px",minWidth:240}}>
-            <div style={{fontSize:10,color:"#5a5a7a",fontWeight:700,letterSpacing:1,marginBottom:6}}>&nbsp;</div>
+            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>&nbsp;</div>
             <button onClick={analisar} disabled={loading}
               style={{
                 width:"100%",
-                background:loading?"#1a1a30":"linear-gradient(135deg,#7b61ff,#5540dd)",
-                border:"none",borderRadius:8,padding:"12px 18px",color:"#fff",
+                background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",
+                border:"none",borderRadius:8,padding:"12px 18px",color:"#ffffff",
                 fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
                 boxShadow:loading?"none":"0 4px 14px rgba(123,97,255,0.35)",
                 display:"flex",alignItems:"center",justifyContent:"center",gap:10
@@ -1268,7 +1268,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               {loading
                 ? <>
                     <span className="spin" style={{width:14,height:14,borderRadius:"50%",border:"2px solid #7b61ff44",borderTopColor:"#7b61ff",display:"inline-block"}}/>
-                    <span style={{fontSize:12,color:"#a0a0c0"}}>{fase||"Analisando..."}</span>
+                    <span style={{fontSize:12,color:"#c5c5d0"}}>{fase||"Analisando..."}</span>
                   </>
                 : <><span>✦</span> <span>Analisar{carteira.length>0?` carteira (${carteira.length})`:" mercado"}</span></>
               }
@@ -1296,8 +1296,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* Footer */}
         <div style={{
-          marginTop:40,padding:"20px 0",borderTop:"1px solid #1a1a30",
-          textAlign:"center",fontSize:11,color:"#3a3a5a"
+          marginTop:40,padding:"20px 0",borderTop:"1px solid #1a1a25",
+          textAlign:"center",fontSize:11,color:"#5a5a6a"
         }}>
           Powered by <span style={{color:"#7b61ff",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
           Cotações em tempo real · Confirme preços na sua corretora antes de operar
@@ -1311,9 +1311,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 function Metric({ label, value, accent }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
-      <div style={{fontSize:9,color:"#3a3a5a",fontWeight:700,letterSpacing:1.5}}>{label}</div>
+      <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:1.5}}>{label}</div>
       <div style={{
-        fontSize:14,fontWeight:700,color:accent||"#e4e4f0",
+        fontSize:14,fontWeight:700,color:accent||"#ffffff",
         fontFamily:"'JetBrains Mono',monospace"
       }}>{value}</div>
     </div>
