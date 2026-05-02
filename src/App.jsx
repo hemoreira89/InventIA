@@ -32,6 +32,12 @@ import {
   dyMedioCarteira, alertasRebalanceamento,
   tickerValido, tipoTicker
 } from "./lib/calc";
+import EmptyState from "./components/EmptyState";
+import CommandPalette from "./components/CommandPalette";
+import Sparkline from "./components/Sparkline";
+import LoadingSteps from "./components/LoadingSteps";
+import OnboardingHero from "./components/OnboardingHero";
+import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -544,14 +550,21 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         })}
         </div>
       </> : (
-        <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #252535"}}>
-          <div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Briefcase size={32} color="#444" strokeWidth={1.5}/></div>
-          <div style={{color:"#6a6a7a",fontSize:13,marginBottom:6}}>Carteira vazia</div>
-          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.7}}>
-            Adicione seus ativos acima para análise personalizada,<br/>
-            ou analise sem carteira para ver oportunidades de mercado.
-          </div>
-        </Card>
+        <EmptyState
+          icon={Briefcase}
+          iconColor="#7b61ff"
+          title="Sua carteira está pronta para começar"
+          description="Adicione ativos manualmente no formulário ao lado, importe um CSV existente, ou analise o mercado sem carteira para ver oportunidades."
+          examples={["PETR4", "ITUB4", "MXRF11", "VALE3", "BBAS3"]}
+          onExampleClick={(ex) => {
+            // Foca o input de ticker e preenche
+            setTicker(ex);
+            setTimeout(() => {
+              const input = document.querySelector('input[placeholder*="Ticker"]');
+              input?.focus();
+            }, 50);
+          }}
+        />
       )}
 
       </div>
@@ -1101,7 +1114,18 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => (
-          <Card key={i} style={{borderColor:r.nova?"#00e5a030":"#252535"}}>
+          <Card key={i} style={{
+            borderColor: r.score>=80 ? "#00e5a050" : r.score>=60 ? "#ffd60a40" : r.nova ? "#00e5a030" : "#252535",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            {/* Glow lateral baseado no score */}
+            {r.score >= 70 && (
+              <div style={{
+                position:"absolute",left:0,top:0,bottom:0,width:3,
+                background: r.score>=85 ? "linear-gradient(180deg,#00e5a0,#00b4d8)" : "#00e5a060"
+              }}/>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:40,height:40,borderRadius:10,background:r.nova?"#00e5a018":"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"#00e5a0":"#7b61ff"}}>{r.ticker.slice(0,4)}</div>
@@ -1163,13 +1187,30 @@ function TabTicker({ userId, chamarIAComSearch }) {
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState("");
   const [fase, setFase] = useState("");
+  const [step, setStep] = useState(0);
 
-  const analisar = async () => {
-    const t = ticker.toUpperCase().trim();
+  // Escuta eventos do Command Palette para análise direta
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.ticker) {
+        setTicker(e.detail.ticker);
+        // Executa análise automaticamente após setar o ticker
+        setTimeout(() => analisarTicker(e.detail.ticker), 100);
+      }
+    };
+    window.addEventListener("inventia:analyze-ticker", handler);
+    return () => window.removeEventListener("inventia:analyze-ticker", handler);
+  }, []);
+
+  const analisar = () => analisarTicker(ticker);
+
+  const analisarTicker = async (tickerArg) => {
+    const t = (tickerArg || "").toUpperCase().trim();
     if (!t) { setErro("Digite um ticker"); return; }
-    setErro(""); setLoading(true); setResultado(null);
+    setErro(""); setLoading(true); setResultado(null); setStep(0);
     try {
-      setFase("🔍 Buscando dados de " + t + "...");
+      setStep(1);
+      setFase("Buscando cotação atual...");
       const prompt = `Você é analista financeiro do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
 
 PASSO 1 — Use Google Search para buscar dados atuais de ${t} na B3:
@@ -1220,16 +1261,29 @@ PASSO 3 — Retorne APENAS este JSON (sem markdown):
 
 Use APENAS números reais encontrados na busca. Se não encontrar algum dado, omita o campo.`;
 
-      setFase("🧠 Gemini analisando " + t + "...");
+      setStep(2);
+      setFase("Analisando indicadores fundamentalistas...");
+      await sleep(300);
+      setStep(3);
+      setFase("Gemini gerando tese de investimento...");
       const r = await chamarIAComSearch(prompt);
+      setStep(4);
       setResultado(r);
     } catch (e) {
       setErro(e.message || "Erro na análise");
     } finally {
       setLoading(false);
       setFase("");
+      setTimeout(() => setStep(0), 500);
     }
   };
+
+  // Steps para o LoadingSteps
+  const steps = [
+    { label: "Buscando cotação atual" },
+    { label: "Coletando indicadores fundamentalistas", detail: "DY, P/L, ROE, P/VP..." },
+    { label: "Gemini gerando tese de investimento", detail: "Pode levar 10-20 segundos" },
+  ];
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -1251,6 +1305,11 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
         </div>
         {erro && <div style={{marginTop:10,background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
       </Card>
+
+      {/* LoadingSteps animado durante análise */}
+      {loading && step > 0 && (
+        <LoadingSteps steps={steps} currentStep={step - 1} accent="#7b61ff"/>
+      )}
 
       {resultado && (
         <>
@@ -2327,8 +2386,31 @@ export default function App({ session, onLogout }) {
   const [carteiraId, setCarteiraId] = useState(null);
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [confirmacao, setConfirmacao] = useState({open:false});
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return localStorage.getItem("inventia_hide_onboarding") !== "true"; }
+    catch { return true; }
+  });
+  const privacy = usePrivacyMode();
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
+
+  // Atalho global Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  const fecharOnboarding = () => {
+    setShowOnboarding(false);
+    try { localStorage.setItem("inventia_hide_onboarding", "true"); } catch {}
+  };
 
   const userId = session?.user?.id;
   const userEmail = session?.user?.email;
@@ -2574,25 +2656,37 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   }, [carteira, watchlist, aporte, foco, perfil]);
 
   const TABS = [
-    {k:"carteira",icon:Briefcase,label:"Carteira"},
-    {k:"patrimonio",icon:Activity,label:"Patrimônio"},
-    {k:"graficos",icon:BarChart3,label:"Gráficos"},
-    {k:"analise",icon:Brain,label:"Análise IA"},
-    {k:"ticker",icon:FileSearch,label:"Analisar Ticker"},
-    {k:"comparador",icon:GitCompare,label:"Comparador"},
-    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades"},
-    {k:"historico",icon:History,label:"Histórico"},
-    {k:"proventos",icon:Coins,label:"Proventos"},
-    {k:"watchlist",icon:Eye,label:"Watchlist"},
-    {k:"meta",icon:Target,label:"1º Milhão"},
-    {k:"cenarios",icon:TrendingUp,label:"Cenários"},
-    {k:"ir",icon:Receipt,label:"IR"},
+    {k:"carteira",icon:Briefcase,label:"Carteira",cor:"#00e5a0",grupo:"portfolio"},
+    {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"#00e5a0",grupo:"portfolio"},
+    {k:"graficos",icon:BarChart3,label:"Gráficos",cor:"#00e5a0",grupo:"portfolio"},
+    {k:"analise",icon:Brain,label:"Análise IA",cor:"#7b61ff",grupo:"analysis"},
+    {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"#7b61ff",grupo:"analysis"},
+    {k:"comparador",icon:GitCompare,label:"Comparador",cor:"#7b61ff",grupo:"analysis"},
+    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"#7b61ff",grupo:"analysis"},
+    {k:"historico",icon:History,label:"Histórico",cor:"#ffd60a",grupo:"control"},
+    {k:"proventos",icon:Coins,label:"Proventos",cor:"#ffd60a",grupo:"control"},
+    {k:"watchlist",icon:Eye,label:"Watchlist",cor:"#ffd60a",grupo:"control"},
+    {k:"ir",icon:Receipt,label:"IR",cor:"#ffd60a",grupo:"control"},
+    {k:"meta",icon:Target,label:"1º Milhão",cor:"#00b4d8",grupo:"planning"},
+    {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"#00b4d8",grupo:"planning"},
   ];
 
   // Métricas para a barra superior
   const metricaCarteira = dados?.totalCarteira || 0;
   const metricaPosicoes = dados?.posicoes?.length || 0;
   const metricaDY = dados?.posicoes?.length ? (dados.posicoes.reduce((s,p)=>s+(p.dy||0)*(p.peso/100),0)) : 0;
+
+  // Sparklines fake (em produção viria dos snapshots de patrimônio)
+  // Gerados a partir dos snapshots reais quando disponíveis
+  const [sparkPatrimonio, setSparkPatrimonio] = useState([]);
+  useEffect(() => {
+    if (!userId) return;
+    carregarSnapshotsPatrimonio(userId, 30).then(snaps => {
+      if (snaps?.length >= 2) {
+        setSparkPatrimonio(snaps.map(s => Number(s.valor)));
+      }
+    }).catch(() => {});
+  }, [userId, dados?.totalCarteira]);
 
   // Relógio em tempo real
   const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -2614,6 +2708,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         ::-webkit-scrollbar-thumb{background:#252535;border-radius:4px}
         ::-webkit-scrollbar-thumb:hover{background:#3a3a45}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideIn{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
@@ -2656,16 +2752,22 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             </div>
           </div>
 
-          {/* Métricas centralizadas */}
+          {/* Métricas centralizadas com sparklines */}
           <div style={{display:"flex",alignItems:"center",gap:32,flex:1,justifyContent:"center"}}>
-            <Metric label="PATRIMÔNIO" value={metricaCarteira>0?fmtK(metricaCarteira):"—"} accent={metricaCarteira>0?"#00e5a0":null}/>
+            <Metric
+              label="PATRIMÔNIO"
+              value={metricaCarteira>0 ? (privacy.hidden ? "R$●●●●" : fmtK(metricaCarteira)) : "—"}
+              accent={metricaCarteira>0?"#00e5a0":null}
+              sparkline={sparkPatrimonio}
+              sparkColor="auto"
+            />
             <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}/>
             <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"#ffd60a":null}/>
             <Metric label="WATCHLIST" value={watchlist.length||"—"}/>
           </div>
 
           {/* Status à direita */}
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#7a7a8a"}}>
               <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"#00e5a0"}}/>
               <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
@@ -2673,6 +2775,25 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             {savedMsg && (
               <span style={{fontSize:11,color:"#00e5a0",fontWeight:600}}>{savedMsg}</span>
             )}
+
+            {/* Botão Ctrl+K */}
+            <button onClick={() => setPaletteOpen(true)} title="Busca rápida (Ctrl+K)" style={{
+              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
+              padding:"7px 10px",color:"#c5c5d0",cursor:"pointer",
+              display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:600
+            }}>
+              <Search size={13}/>
+              <kbd style={{
+                background:"#1a1a25",border:"1px solid #2a2a35",borderRadius:3,
+                padding:"1px 5px",fontSize:9,color:"#7a7a8a",
+                fontFamily:"'JetBrains Mono',monospace"
+              }}>⌘K</kbd>
+            </button>
+
+            {/* Modo Privacidade */}
+            <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
+
+            {/* User badge */}
             <div style={{
               display:"flex",alignItems:"center",gap:8,
               background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
@@ -2689,22 +2810,36 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           </div>
         </div>
 
-        {/* Linha 2: Tabs */}
-        <div style={{display:"flex",padding:"0 24px",gap:2,borderTop:"1px solid #1a1a25"}}>
-          {TABS.map(t => {
+        {/* Linha 2: Tabs com agrupamento por cor */}
+        <div style={{display:"flex",padding:"0 24px",gap:0,borderTop:"1px solid #1a1a25",alignItems:"center",overflowX:"auto"}}>
+          {TABS.map((t, i) => {
             const Icon = t.icon;
+            const ativo = tab === t.k;
+            const grupoAtual = t.grupo;
+            const grupoAnterior = i > 0 ? TABS[i-1].grupo : null;
+            const novoGrupo = grupoAnterior && grupoAnterior !== grupoAtual;
+
             return (
-              <button key={t.k} onClick={()=>setTab(t.k)} className="tab-btn"
-                style={{
-                  background:"transparent",border:"none",cursor:"pointer",
-                  padding:"12px 18px",fontSize:13,fontWeight:600,
-                  color:tab===t.k?"#ffffff":"#9090a0",
-                  borderBottom:`2px solid ${tab===t.k?"#7b61ff":"transparent"}`,
-                  display:"flex",alignItems:"center",gap:8
-                }}>
-                <Icon size={15} strokeWidth={2}/>
-                <span>{t.label}</span>
-              </button>
+              <div key={t.k} style={{display:"flex",alignItems:"center"}}>
+                {novoGrupo && (
+                  <div style={{
+                    width:1,height:18,background:"#252535",margin:"0 8px"
+                  }}/>
+                )}
+                <button onClick={()=>setTab(t.k)} className="tab-btn"
+                  style={{
+                    background:"transparent",border:"none",cursor:"pointer",
+                    padding:"12px 14px",fontSize:13,fontWeight:600,
+                    color:ativo ? "#ffffff" : "#9090a0",
+                    borderBottom:`2px solid ${ativo ? t.cor : "transparent"}`,
+                    display:"flex",alignItems:"center",gap:7,
+                    whiteSpace:"nowrap",
+                    position:"relative"
+                  }}>
+                  <Icon size={14} strokeWidth={2} color={ativo ? t.cor : undefined}/>
+                  <span>{t.label}</span>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -2790,7 +2925,28 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         )}
 
         {/* ÁREA DE CONTEÚDO - Tab atual */}
-        <div className="anim">
+        {/* Onboarding hero - mostrado apenas se carteira vazia + não foi fechado */}
+        {showOnboarding && tab === "carteira" && carteira.length === 0 && !carregandoDados && (
+          <OnboardingHero
+            onAddAtivo={() => {
+              fecharOnboarding();
+              setTimeout(() => {
+                document.querySelector('input[placeholder*="Ticker"]')?.focus();
+              }, 100);
+            }}
+            onImportCSV={() => {
+              fecharOnboarding();
+              setTimeout(() => document.querySelector('input[type="file"]')?.click(), 100);
+            }}
+            onAnalyzeMercado={() => {
+              fecharOnboarding();
+              setTab("oportunidades");
+            }}
+            onClose={fecharOnboarding}
+          />
+        )}
+
+        <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="graficos" && <TabGraficos dados={dados}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
@@ -2819,6 +2975,21 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           onCancel={() => setConfirmacao({open:false})}
         />
 
+        {/* Command Palette (Ctrl+K) */}
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          onNavigate={(target) => setTab(target)}
+          onAnalyzeTicker={(t) => {
+            setTab("ticker");
+            // O TabTicker pega o ticker do estado interno, então passamos via window evento
+            setTimeout(() => {
+              const evt = new CustomEvent("inventia:analyze-ticker", { detail: { ticker: t } });
+              window.dispatchEvent(evt);
+            }, 100);
+          }}
+        />
+
         {/* Footer */}
         <div style={{
           marginTop:40,padding:"20px 0",borderTop:"1px solid #1a1a25",
@@ -2833,14 +3004,19 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 }
 
 // Componente Metric para a barra superior
-function Metric({ label, value, accent }) {
+function Metric({ label, value, accent, sparkline, sparkColor = "#7b61ff" }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
       <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:1.5}}>{label}</div>
-      <div style={{
-        fontSize:14,fontWeight:700,color:accent||"#ffffff",
-        fontFamily:"'JetBrains Mono',monospace"
-      }}>{value}</div>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{
+          fontSize:14,fontWeight:700,color:accent||"#ffffff",
+          fontFamily:"'JetBrains Mono',monospace"
+        }}>{value}</div>
+        {sparkline && sparkline.length >= 2 && (
+          <Sparkline data={sparkline} width={50} height={18} color={sparkColor}/>
+        )}
+      </div>
     </div>
   );
 }
