@@ -1,3 +1,10 @@
+// Vercel Serverless Function com timeout estendido
+// Usa Node runtime com maxDuration = 60s (limite do plano Hobby)
+
+export const config = {
+  maxDuration: 60
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,9 +20,10 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'API key não configurada' });
 
     // Tenta modelos em ordem de preferência
+    // Para queries com search, começa pelo flash (mais rápido) para evitar timeout
     const modelos = model === 'pro'
-      ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']
-      : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
+      ? ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro']
+      : ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
     let lastError = null;
 
@@ -32,15 +40,21 @@ export default async function handler(req, res) {
         };
         if (useSearch) body.tools = [{ googleSearch: {} }];
 
+        // Timeout de 50s por modelo (deixa 10s de margem para o Vercel)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 50000);
+
         const geminiRes = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (geminiRes.status === 429 || geminiRes.status === 503) {
           lastError = `${modelId} indisponível (${geminiRes.status})`;
-          continue; // tenta próximo modelo
+          continue;
         }
 
         if (!geminiRes.ok) {
@@ -56,12 +70,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ text, modelUsado: modelId });
 
       } catch (e) {
-        lastError = e.message;
+        if (e.name === 'AbortError') {
+          lastError = `${modelId} timeout (>50s)`;
+        } else {
+          lastError = e.message;
+        }
         continue;
       }
     }
 
-    return res.status(503).json({ error: `Todos os modelos indisponíveis. Último erro: ${lastError}` });
+    return res.status(503).json({ error: `IA temporariamente indisponível. ${lastError}. Tente novamente em alguns segundos.` });
 
   } catch (err) {
     console.error('Erro proxy:', err);

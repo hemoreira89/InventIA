@@ -74,7 +74,10 @@ async function chamarIAComSearch(prompt) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `API error ${res.status}`);
+    if (res.status === 504) {
+      throw new Error("A análise demorou muito (timeout). Tente novamente — geralmente funciona na 2ª tentativa.");
+    }
+    throw new Error(err.error || `Erro ${res.status} na API`);
   }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
@@ -89,7 +92,10 @@ async function chamarIA(prompt) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `API error ${res.status}`);
+    if (res.status === 504) {
+      throw new Error("A análise demorou muito (timeout). Tente novamente.");
+    }
+    throw new Error(err.error || `Erro ${res.status} na API`);
   }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
