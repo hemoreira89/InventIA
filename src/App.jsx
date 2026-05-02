@@ -1,0 +1,1205 @@
+import { useState, useEffect, useCallback } from "react";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, RadarChart, Radar, PolarGrid,
+  PolarAngleAxis, PolarRadiusAxis, LineChart, Line, Legend
+} from "recharts";
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const SK = "investia_v4";
+const PALETTE = ["#7b61ff","#00e5a0","#ffd60a","#ff4d6d","#00b4d8","#f77f00","#9ef01a","#e040fb","#40c4ff","#ff6b6b","#a8dadc","#e63946"];
+const CDI_ANO = 13.75;
+const IBOV_HIST = 12.5;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmt = (n, d=2) => n != null && !isNaN(n) ? Number(n).toFixed(d) : "–";
+const fmtBRL = n => n != null && !isNaN(n) ? Number(n).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}) : "–";
+const fmtK = n => n >= 1e6 ? `R$${(n/1e6).toFixed(1)}M` : n >= 1000 ? `R$${(n/1000).toFixed(0)}k` : fmtBRL(n);
+
+// ─── Storage — localStorage para PWA ─────────────────────────────────────────
+const store = {
+  save: async d => { try { localStorage.setItem(SK, JSON.stringify(d)); return true; } catch(_) { return false; } },
+  load: async () => { try { const r = localStorage.getItem(SK); return r ? JSON.parse(r) : null; } catch(_) { return null; } }
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Extrai JSON de qualquer texto — mesmo que venha com explicações ao redor
+function extrairJSON(text) {
+  if (!text || !text.trim()) throw new Error("Resposta vazia da IA");
+  // Tenta direto primeiro
+  try { return JSON.parse(text.trim()); } catch(_) {}
+  // Remove blocos markdown
+  const semMd = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  try { return JSON.parse(semMd); } catch(_) {}
+  // Extrai o maior bloco JSON do texto (entre { e })
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch(_) {}
+  }
+  // Extrai array JSON
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch[0]); } catch(_) {}
+  }
+  throw new Error("Não foi possível extrair JSON da resposta: " + text.slice(0, 200));
+}
+
+// ─── IA Principal — via Vercel API proxy (chave segura no servidor) ──────────
+const API_URL = "/api/analyze";
+
+async function chamarIAComSearch(prompt) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, useSearch: true, model: "pro" })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return extrairJSON(data.text);
+}
+
+async function chamarIA(prompt) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, useSearch: true, model: "flash" })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return extrairJSON(data.text);
+}
+
+// ─── Cálculos ─────────────────────────────────────────────────────────────────
+function juroCompostos(pv, pmt, taxa, n) {
+  const r = taxa / 100 / 12;
+  if (r === 0) return pv + pmt * n;
+  return pv * Math.pow(1+r, n) + pmt * (Math.pow(1+r, n) - 1) / r;
+}
+
+function gerarProjecao(pv, pmt, taxa, anos) {
+  const pts = [];
+  for (let m = 0; m <= anos * 12; m += 3) {
+    pts.push({
+      ano: `${(m/12).toFixed(1)}a`,
+      "Com juros": Math.round(juroCompostos(pv, pmt, taxa, m)),
+      "Sem juros": Math.round(pv + pmt * m),
+    });
+  }
+  return pts;
+}
+
+function simularCenarios(pv, pmt, anos) {
+  const cenarios = [
+    { name:"Conservador (CDI)", taxa:CDI_ANO, color:"#00e5a0" },
+    { name:"Moderado (IBOV hist.)", taxa:IBOV_HIST, color:"#7b61ff" },
+    { name:"Arrojado (18% a.a.)", taxa:18, color:"#ffd60a" },
+  ];
+  const pts = [];
+  for (let m = 0; m <= anos*12; m += Math.max(1, Math.round(anos*12/20))) {
+    const obj = { ano: `${(m/12).toFixed(1)}a` };
+    cenarios.forEach(c => { obj[c.name] = Math.round(juroCompostos(pv, pmt, c.taxa, m)); });
+    pts.push(obj);
+  }
+  return { pts, cenarios };
+}
+
+function calcIR(vendas) {
+  const totalVendas = vendas.reduce((s,v) => s + v.qtd * v.precoVenda, 0);
+  const lucro = vendas.reduce((s,v) => s + v.qtd * (v.precoVenda - (v.pm||0)), 0);
+  const isento = totalVendas <= 20000;
+  return { totalVendas, lucro, isento, ir: isento || lucro <= 0 ? 0 : lucro * 0.15, restante: 20000 - totalVendas };
+}
+
+function calcScore(pos) {
+  const setores = {};
+  pos.forEach(p => { setores[p.setor] = (setores[p.setor]||0) + p.peso; });
+  const maxSetor = Math.max(...Object.values(setores));
+  const concScore = Math.max(0, 100 - maxSetor * 1.2);
+  const divScore = pos.filter(p => p.tipo === "FII" || p.dy > 3).length / (pos.length||1) * 100;
+  return Math.round(concScore * 0.55 + divScore * 0.45);
+}
+
+function projetarDividendos(pos) {
+  const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  return meses.map(mes => ({
+    mes,
+    dividendos: Math.round(pos.reduce((s,p) => s + (p.valorAtual||0) * (p.dy||0) / 100 / 12, 0))
+  }));
+}
+
+// ─── Micro-componentes ────────────────────────────────────────────────────────
+function Badge({ val, suffix="%" }) {
+  if (val == null) return null;
+  const up = val >= 0;
+  return (
+    <span style={{display:"inline-flex",alignItems:"center",gap:3,
+      background:up?"#00e5a018":"#ff4d6d18",color:up?"#00e5a0":"#ff4d6d",
+      border:`1px solid ${up?"#00e5a030":"#ff4d6d30"}`,
+      borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700}}>
+      {up?"▲":"▼"} {fmt(Math.abs(val))}{suffix}
+    </span>
+  );
+}
+
+function Card({ children, style={}, accent=false }) {
+  return (
+    <div style={{background:"#0c0c22",border:`1px solid ${accent?"#7b61ff44":"#1e1e42"}`,
+      borderRadius:16,padding:"16px",...style}}>
+      {children}
+    </div>
+  );
+}
+
+function STitle({ children, color="#7b61ff" }) {
+  return <div style={{fontSize:11,color,fontWeight:700,letterSpacing:1.2,marginBottom:10}}>{children}</div>;
+}
+
+function Stat({ label, value, color, mono=false }) {
+  return (
+    <div style={{background:"#07071a",borderRadius:10,padding:"10px 12px"}}>
+      <div style={{fontSize:10,color:"#444470",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:14,fontWeight:700,color:color||"#e8e8ff",
+        fontFamily:mono?"'Space Mono',monospace":"inherit"}}>{value}</div>
+    </div>
+  );
+}
+
+const TTip = ({active,payload,label}) => {
+  if (!active||!payload?.length) return null;
+  return (
+    <div style={{background:"#12122e",border:"1px solid #2a2a50",borderRadius:10,padding:"10px 14px",fontSize:12}}>
+      {label && <div style={{color:"#888",marginBottom:4}}>{label}</div>}
+      {payload.map((p,i) => (
+        <div key={i} style={{color:p.color||p.fill||"#e8e8ff",fontWeight:600,marginBottom:2}}>
+          {p.name}: {typeof p.value==="number" ? p.value>=1000 ? fmtBRL(p.value) : `${fmt(p.value,1)}%` : p.value}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── Spinner de loading ───────────────────────────────────────────────────────
+function LoadingCard({ fase }) {
+  return (
+    <Card style={{textAlign:"center",padding:"40px 20px"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
+        <div style={{position:"relative",width:56,height:56}}>
+          <div className="spin" style={{width:56,height:56,borderRadius:"50%",
+            border:"3px solid #1e1e42",borderTopColor:"#7b61ff",position:"absolute"}}/>
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
+            fontSize:20}}>✦</div>
+        </div>
+        <div style={{fontSize:13,color:"#7777aa"}}>{fase}</div>
+        <div style={{fontSize:11,color:"#333360"}}>IA analisando o mercado...</div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Tab: Carteira ────────────────────────────────────────────────────────────
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave }) {
+  const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
+  const [pm,setPm]=useState(""); const [data,setData]=useState("");
+  const [pesoAlvo,setPesoAlvo]=useState({});
+
+  const add = () => {
+    const t = ticker.toUpperCase().trim();
+    if (!t || !qtd) return;
+    setHistorico(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:pm?Number(pm):null, data:data||new Date().toISOString().split("T")[0] }]);
+    setCarteira(prev => {
+      const idx = prev.findIndex(x => x.ticker === t);
+      if (idx >= 0) {
+        const u = [...prev];
+        const tot = u[idx].qtd + Number(qtd);
+        u[idx] = { ...u[idx], qtd: tot, pm: u[idx].pm && pm ? (u[idx].pm*u[idx].qtd + Number(pm)*Number(qtd)) / tot : pm ? Number(pm) : u[idx].pm };
+        return u;
+      }
+      return [...prev, { ticker:t, qtd:Number(qtd), pm:pm?Number(pm):null }];
+    });
+    setTicker(""); setQtd(""); setPm(""); setData("");
+    setTimeout(onSave, 200);
+  };
+
+  const alertasReb = dados?.posicoes?.filter(p => {
+    const a = pesoAlvo[p.ticker];
+    return a && Math.abs(p.peso - a) > 5;
+  }) || [];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle>REGISTRAR COMPRA</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <input placeholder="Ticker (PETR4)" value={ticker}
+            onChange={e => setTicker(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key==="Enter"&&add()}
+            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          <input type="number" placeholder="Quantidade" value={qtd} onChange={e=>setQtd(e.target.value)}
+            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          <input type="number" placeholder="Preço médio R$" value={pm} onChange={e=>setPm(e.target.value)}
+            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          <input type="date" value={data} onChange={e=>setData(e.target.value)}
+            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+        </div>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+          + Registrar Compra
+        </button>
+      </Card>
+
+      {alertasReb.length > 0 && (
+        <div style={{background:"#ffd60a0a",border:"1px solid #ffd60a25",borderRadius:12,padding:"12px 14px"}}>
+          <STitle color="#ffd60a">⚖️ REBALANCEAMENTO NECESSÁRIO</STitle>
+          {alertasReb.map(p => (
+            <div key={p.ticker} style={{fontSize:12,color:"#8888bb",marginBottom:3}}>
+              {p.ticker}: atual {fmt(p.peso,1)}% · alvo {pesoAlvo[p.ticker]}% · desvio {fmt(Math.abs(p.peso-pesoAlvo[p.ticker]),1)}%
+            </div>
+          ))}
+        </div>
+      )}
+
+      {carteira.length > 0 ? <>
+        <STitle>ATIVOS ({carteira.length})</STitle>
+        {carteira.map((a,i) => {
+          const pos = dados?.posicoes?.find(p => p.ticker === a.ticker);
+          return (
+            <Card key={a.ticker}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a40",display:"flex",
+                    alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,
+                    color:PALETTE[i%PALETTE.length]}}>{a.ticker.slice(0,4)}</div>
+                  <div>
+                    <div style={{fontWeight:700,color:"#eeeeff",fontSize:14}}>{a.ticker}</div>
+                    <div style={{fontSize:11,color:"#444470"}}>{a.qtd} cotas{a.pm?` · PM ${fmtBRL(a.pm)}`:""}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  {pos && (
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:700,color:"#fff",fontSize:13,fontFamily:"'Space Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
+                      {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
+                    </div>
+                  )}
+                  <button onClick={() => { setCarteira(p=>p.filter(x=>x.ticker!==a.ticker)); setTimeout(onSave,200); }}
+                    style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:7,padding:"5px 10px",color:"#ff4d6d",fontSize:12,cursor:"pointer"}}>✕</button>
+                </div>
+              </div>
+              {pos && (
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+                  {pos.dy>0 && <span style={{fontSize:10,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
+                  {pos.pl && <span style={{fontSize:10,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
+                  {pos.setor && <span style={{fontSize:10,background:"#ffffff08",color:"#666699",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
+                </div>
+              )}
+              <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:"#333360"}}>Peso alvo %:</span>
+                <input type="number" placeholder="%" value={pesoAlvo[a.ticker]||""} min={0} max={100}
+                  onChange={e => setPesoAlvo(p => ({...p,[a.ticker]:Number(e.target.value)}))}
+                  style={{width:58,background:"#07071a",border:"1px solid #1e1e42",borderRadius:7,padding:"4px 8px",fontSize:12,color:"#e8e8ff"}}/>
+                {pos && <span style={{fontSize:11,color:"#333360"}}>atual {fmt(pos.peso,1)}%</span>}
+              </div>
+            </Card>
+          );
+        })}
+      </> : (
+        <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #1e1e42"}}>
+          <div style={{fontSize:28,marginBottom:8}}>📋</div>
+          <div style={{color:"#444470",fontSize:13,marginBottom:6}}>Carteira vazia</div>
+          <div style={{color:"#333360",fontSize:12,lineHeight:1.7}}>
+            Adicione seus ativos acima para análise personalizada,<br/>
+            ou analise sem carteira para ver oportunidades de mercado.
+          </div>
+        </Card>
+      )}
+
+      {historico.length > 0 && (
+        <Card>
+          <STitle>HISTÓRICO DE COMPRAS</STitle>
+          {[...historico].reverse().slice(0,8).map((h,i) => (
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{h.data}</span></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#e8e8ff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#555580"}}>{fmtBRL(h.pm)} cada</div>}</div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Gráficos ────────────────────────────────────────────────────────────
+function TabGraficos({ dados }) {
+  const [g, setG] = useState("pizza");
+  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"#333360",fontSize:13}}>Rode a análise primeiro ↑</div>;
+
+  const pos = dados.posicoes || [];
+  const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
+  const setoresMap = {};
+  pos.forEach((p,i) => { const s=p.setor||"Outros"; if(!setoresMap[s]) setoresMap[s]={name:s,value:0,fill:PALETTE[i%PALETTE.length]}; setoresMap[s].value+=p.peso; });
+  const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"#00e5a0":"#ff4d6d"})).sort((a,b)=>b.retorno-a.retorno);
+  const canal = pos.map(p => ({ ticker:p.ticker, posicao:p.canal52??50 }));
+  const divs = pos.length > 0 ? projetarDividendos(pos) : [];
+  const radar = [
+    {m:"Diversif.",v:Math.min(100,pos.length*15)},
+    {m:"Dividendos",v:Math.min(100,pos.filter(p=>p.dy>4).length/Math.max(1,pos.length)*100)},
+    {m:"Valor",v:Math.min(100,100-pos.reduce((s,p)=>s+(p.canal52||50),0)/Math.max(1,pos.length))},
+    {m:"Liquidez",v:Math.min(100,pos.filter(p=>p.tipo==="Ação").length/Math.max(1,pos.length)*100)},
+    {m:"Renda",v:Math.min(100,pos.filter(p=>p.tipo==="FII").length/Math.max(1,pos.length)*100)},
+  ];
+
+  const TABS_G = [
+    {k:"pizza",l:"Alocação"},
+    {k:"setores",l:"Setores"},
+    {k:"canal",l:"Canal 52s"},
+    ...(perf.length>0?[{k:"perf",l:"Performance"}]:[]),
+    ...(divs.length>0?[{k:"div",l:"Dividendos"}]:[]),
+    {k:"radar",l:"Radar"},
+  ];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {TABS_G.map(t => (
+          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"7px 12px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",background:g===t.k?"#7b61ff":"#0c0c22",border:`1px solid ${g===t.k?"#7b61ff":"#1e1e42"}`,color:g===t.k?"#fff":"#555580"}}>{t.l}</button>
+        ))}
+      </div>
+
+      <Card>
+        {g==="pizza" && <>
+          <STitle>ALOCAÇÃO POR ATIVO</STitle>
+          {pizza.length > 0 ? <>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart><Pie data={pizza} cx="50%" cy="50%" innerRadius={48} outerRadius={82} dataKey="value" paddingAngle={2}>
+                {pizza.map((e,i)=><Cell key={i} fill={e.fill}/>)}
+              </Pie><Tooltip formatter={v=>[`${fmt(v,1)}%`,"Peso"]}/></PieChart>
+            </ResponsiveContainer>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"5px 12px",marginTop:8,justifyContent:"center"}}>
+              {pizza.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:e.fill}}/><span style={{fontSize:10,color:"#888"}}>{e.name} {fmt(e.value,1)}%</span></div>)}
+            </div>
+          </> : <div style={{textAlign:"center",color:"#333360",padding:"32px 0",fontSize:13}}>Sem ativos na carteira</div>}
+        </>}
+
+        {g==="setores" && <>
+          <STitle>CONCENTRAÇÃO SETORIAL</STitle>
+          <ResponsiveContainer width="100%" height={210}>
+            <PieChart><Pie data={Object.values(setoresMap)} cx="50%" cy="50%" outerRadius={82} dataKey="value" paddingAngle={3} label={({name,value})=>`${name} ${fmt(value,0)}%`} labelLine={false}>
+              {Object.values(setoresMap).map((e,i)=><Cell key={i} fill={e.fill}/>)}
+            </Pie><Tooltip formatter={v=>[`${fmt(v,1)}%`]}/></PieChart>
+          </ResponsiveContainer>
+        </>}
+
+        {g==="canal" && <>
+          <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (estimado pela IA)</STitle>
+          <div style={{fontSize:10,color:"#333360",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
+          {canal.length > 0 ? <>
+            <ResponsiveContainer width="100%" height={Math.max(130,canal.length*36)}>
+              <BarChart data={canal} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" horizontal={false}/>
+                <XAxis type="number" domain={[0,100]} tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+                <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
+                <Tooltip formatter={v=>[`${fmt(v,0)}%`,"Canal"]}/>
+                <Bar dataKey="posicao" radius={[0,6,6,0]}>
+                  {canal.map((e,i)=><Cell key={i} fill={e.posicao<=30?"#00e5a0":e.posicao<=70?"#ffd60a":"#ff4d6d"}/>)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
+              {[{c:"#00e5a0",l:"Oportunidade"},{c:"#ffd60a",l:"Neutro"},{c:"#ff4d6d",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"#555580"}}>{x.l}</span></div>)}
+            </div>
+          </> : <div style={{textAlign:"center",color:"#333360",padding:"24px 0",fontSize:13}}>Sem dados</div>}
+        </>}
+
+        {g==="perf" && perf.length > 0 && <>
+          <STitle>PERFORMANCE vs PREÇO MÉDIO</STitle>
+          <ResponsiveContainer width="100%" height={Math.max(130,perf.length*38)}>
+            <BarChart data={perf} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" horizontal={false}/>
+              <XAxis type="number" tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v>0?"+":""}${fmt(v,1)}%`}/>
+              <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
+              <Tooltip formatter={v=>[`${v>=0?"+":""}${fmt(v,1)}%`,"Retorno"]}/>
+              <Bar dataKey="retorno" radius={[0,6,6,0]}>{perf.map((e,i)=><Cell key={i} fill={e.fill}/>)}</Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </>}
+
+        {g==="div" && divs.length > 0 && <>
+          <STitle>PROJEÇÃO DE DIVIDENDOS (12 MESES)</STitle>
+          <ResponsiveContainer width="100%" height={190}>
+            <AreaChart data={divs} margin={{left:0,right:0,top:5,bottom:5}}>
+              <defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/>
+              </linearGradient></defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
+              <XAxis dataKey="mes" tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#555580",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
+              <Tooltip content={<TTip/>}/>
+              <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="#ffd60a" strokeWidth={2} fill="url(#gd)"/>
+            </AreaChart>
+          </ResponsiveContainer>
+          <div style={{textAlign:"center",marginTop:8,fontFamily:"'Space Mono',monospace",fontSize:14,fontWeight:700,color:"#ffd60a"}}>
+            Estimativa anual: {fmtBRL(divs.reduce((s,d)=>s+d.dividendos,0))}
+          </div>
+        </>}
+
+        {g==="radar" && <>
+          <STitle>RADAR DA CARTEIRA</STitle>
+          <ResponsiveContainer width="100%" height={210}>
+            <RadarChart data={radar} cx="50%" cy="50%" outerRadius={75}>
+              <PolarGrid stroke="#1e1e42"/>
+              <PolarAngleAxis dataKey="m" tick={{fill:"#888",fontSize:11}}/>
+              <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:"#333360",fontSize:9}}/>
+              <Radar name="Carteira" dataKey="v" stroke="#7b61ff" fill="#7b61ff" fillOpacity={0.3}/>
+            </RadarChart>
+          </ResponsiveContainer>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
+            {radar.map(r => <Stat key={r.m} label={r.m} value={`${fmt(r.v,0)}%`} color="#7b61ff"/>)}
+          </div>
+        </>}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Tab: Primeiro Milhão ─────────────────────────────────────────────────────
+function TabMeta({ dados }) {
+  const [meta,setMeta]=useState("1000000"); const [aporteMensal,setAporteMensal]=useState("1000");
+  const [taxaAnual,setTaxaAnual]=useState("12"); const [resultado,setResultado]=useState(null);
+  const pv = dados?.totalCarteira || 0;
+
+  const calcular = () => {
+    const M=Number(meta)||1e6; const pmt=Number(aporteMensal)||0; const taxa=Number(taxaAnual)||12;
+    let meses = 0;
+    while (meses < 1200) { meses++; if (juroCompostos(pv,pmt,taxa,meses) >= M) break; }
+    const anos = meses/12;
+    const totalAportado = pv + pmt*meses;
+    const projecao = gerarProjecao(pv, pmt, taxa, Math.ceil(anos)+2);
+    setResultado({ meses, anos, totalAportado, totalJuros:M-totalAportado, projecao, divMensal:M*(taxa/100/12), meta:M });
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card accent>
+        <STitle color="#ffd60a">🎯 MODO PRIMEIRO MILHÃO</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Meta patrimonial (R$)</div>
+            <input type="number" value={meta} onChange={e=>setMeta(e.target.value)}
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
+            <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Taxa anual (%)</div>
+            <input type="number" value={taxaAnual} onChange={e=>setTaxaAnual(e.target.value)}
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+          </div>
+        </div>
+        {pv > 0 && <div style={{fontSize:12,color:"#555580",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
+        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+          ✦ Calcular Minha Meta
+        </button>
+      </Card>
+
+      {resultado && <>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Card style={{textAlign:"center",padding:"18px 10px"}}>
+            <div style={{fontSize:32,fontWeight:900,color:"#ffd60a",fontFamily:"'Space Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
+            <div style={{fontSize:12,color:"#ffd60a",fontWeight:700}}>anos</div>
+            <div style={{fontSize:11,color:"#444470",marginTop:2}}>{resultado.meses} meses</div>
+          </Card>
+          <Card style={{textAlign:"center",padding:"18px 10px"}}>
+            <div style={{fontSize:20,fontWeight:900,color:"#00e5a0",fontFamily:"'Space Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
+            <div style={{fontSize:11,color:"#00e5a0",fontWeight:700}}>renda mensal potencial</div>
+            <div style={{fontSize:10,color:"#444470",marginTop:2}}>ao atingir a meta</div>
+          </Card>
+          <Stat label="Total aportado" value={fmtBRL(resultado.totalAportado)} mono/>
+          <Stat label="Ganho com juros" value={fmtBRL(Math.max(0,resultado.totalJuros))} color="#00e5a0" mono/>
+        </div>
+        <Card>
+          <STitle>PROJEÇÃO PATRIMONIAL</STitle>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={resultado.projecao} margin={{left:0,right:0,top:5,bottom:5}}>
+              <defs>
+                <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/><stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/></linearGradient>
+                <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#444470" stopOpacity={0.2}/><stop offset="95%" stopColor="#444470" stopOpacity={0}/></linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
+              <XAxis dataKey="ano" tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <Tooltip content={<TTip/>}/>
+              <Area type="monotone" dataKey="Sem juros" stroke="#333360" strokeWidth={1} fill="url(#gs)" strokeDasharray="4 2"/>
+              <Area type="monotone" dataKey="Com juros" stroke="#ffd60a" strokeWidth={2} fill="url(#gm)"/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      </>}
+    </div>
+  );
+}
+
+// ─── Tab: Cenários ────────────────────────────────────────────────────────────
+function TabCenarios({ dados }) {
+  const [aporteMensal,setAporteMensal]=useState("1000"); const [anos,setAnos]=useState("10");
+  const [resultado,setResultado]=useState(null);
+  const pv = dados?.totalCarteira || 0;
+
+  const simular = () => {
+    const { pts, cenarios } = simularCenarios(pv, Number(aporteMensal)||0, Number(anos)||10);
+    setResultado({ pts, cenarios, anos:Number(anos) });
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle color="#00b4d8">📊 SIMULADOR DE CENÁRIOS</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <div>
+            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Aporte mensal (R$)</div>
+            <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#444470",marginBottom:5}}>Período</div>
+            <select value={anos} onChange={e=>setAnos(e.target.value)}
+              style={{width:"100%",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",cursor:"pointer"}}>
+              {[5,10,15,20,25,30].map(a => <option key={a} value={a}>{a} anos</option>)}
+            </select>
+          </div>
+        </div>
+        {pv > 0 && <div style={{fontSize:12,color:"#555580",marginBottom:10}}>Ponto de partida: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
+        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+          ✦ Simular Cenários
+        </button>
+      </Card>
+
+      {resultado && <>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {resultado.cenarios.map(c => {
+            const final = resultado.pts[resultado.pts.length-1]?.[c.name] || 0;
+            return (
+              <Card key={c.name}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div><div style={{fontSize:12,color:"#888",marginBottom:2}}>{c.name}</div><div style={{fontFamily:"'Space Mono',monospace",fontSize:18,fontWeight:700,color:c.color}}>{fmtK(final)}</div></div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#444470"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+        <Card>
+          <STitle>COMPARATIVO DE CENÁRIOS</STitle>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={resultado.pts} margin={{left:0,right:0,top:5,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e"/>
+              <XAxis dataKey="ano" tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#555580",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <Tooltip content={<TTip/>}/>
+              <Legend wrapperStyle={{fontSize:11,color:"#888"}}/>
+              {resultado.cenarios.map(c => <Line key={c.name} type="monotone" dataKey={c.name} stroke={c.color} strokeWidth={2} dot={false}/>)}
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </>}
+    </div>
+  );
+}
+
+// ─── Tab: Watchlist ───────────────────────────────────────────────────────────
+function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
+  const [ticker,setTicker]=useState(""); const [alvo,setAlvo]=useState(""); const [nota,setNota]=useState("");
+
+  const add = () => {
+    const t = ticker.toUpperCase().trim();
+    if (!t || !alvo) return;
+    setWatchlist(prev => [...prev.filter(x=>x.ticker!==t), { ticker:t, alvo:Number(alvo), nota, adicionado:new Date().toLocaleDateString("pt-BR") }]);
+    setTicker(""); setAlvo(""); setNota("");
+    setTimeout(onSave, 200);
+  };
+
+  const enriched = watchlist.map(w => {
+    const pos = dados?.posicoes?.find(p => p.ticker === w.ticker);
+    const preco = pos?.preco || w.precoIA;
+    const diff = preco && w.alvo ? (w.alvo - preco) / preco * 100 : null;
+    return { ...w, precoAtual:preco, diff, atingiu:preco && preco <= w.alvo };
+  });
+
+  const atingiram = enriched.filter(w => w.atingiu);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle color="#e040fb">👁️ WATCHLIST</STitle>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
+            style={{gridColumn:"1/-1",background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          <input type="number" placeholder="Preço alvo R$" value={alvo} onChange={e=>setAlvo(e.target.value)}
+            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          <input placeholder="Nota (opcional)" value={nota} onChange={e=>setNota(e.target.value)}
+            style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+        </div>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+          + Adicionar à Watchlist
+        </button>
+      </Card>
+
+      {atingiram.length > 0 && (
+        <div style={{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:12,padding:"14px 16px"}}>
+          <STitle color="#00e5a0">🎯 PREÇO ALVO ATINGIDO!</STitle>
+          {atingiram.map(w => (
+            <div key={w.ticker} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <span style={{fontWeight:700,color:"#00e5a0",fontSize:14}}>{w.ticker}</span>
+              <span style={{fontSize:13,color:"#e8e8ff"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {enriched.length > 0 ? (
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {enriched.map(w => (
+            <Card key={w.ticker}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#e040fb"}}>{w.ticker.slice(0,4)}</div>
+                  <div><div style={{fontWeight:700,color:"#eeeeff",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"#444470"}}>{w.nota}</div>}</div>
+                </div>
+                <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
+                  style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:7,padding:"5px 10px",color:"#ff4d6d",fontSize:12,cursor:"pointer"}}>✕</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"#00e5a0":"#e8e8ff"} mono/>
+                <Stat label="Preço alvo" value={fmtBRL(w.alvo)} color="#e040fb" mono/>
+                <Stat label="Distância" value={w.diff!=null?`${w.diff>0?"↓":"↑"} ${fmt(Math.abs(w.diff),1)}%`:"–"} color={w.diff!=null?(w.diff>0?"#00e5a0":"#ff4d6d"):"#888"}/>
+              </div>
+              {w.diff!=null && (
+                <div style={{marginTop:10,background:"#07071a",borderRadius:8,height:6,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${Math.min(100,Math.max(0,100-w.diff))}%`,background:w.atingiu?"#00e5a0":"#e040fb",borderRadius:8,transition:"width 1s ease"}}/>
+                </div>
+              )}
+              <div style={{fontSize:10,color:"#333360",marginTop:4}}>Adicionado em {w.adicionado}</div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div style={{textAlign:"center",padding:"32px 0",color:"#333360",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: IR ──────────────────────────────────────────────────────────────────
+function TabIR({ dados }) {
+  const [vendas,setVendas]=useState([]); const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState(""); const [precoV,setPrecoV]=useState("");
+
+  const addVenda = () => {
+    const t = ticker.toUpperCase().trim();
+    if (!t || !qtd || !precoV) return;
+    const pos = dados?.posicoes?.find(p => p.ticker === t);
+    setVendas(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:pos?.pm||0, precoVenda:Number(precoV) }]);
+    setTicker(""); setQtd(""); setPrecoV("");
+  };
+
+  const ir = calcIR(vendas);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle color="#ffd60a">💸 CALCULADORA DE IR — RENDA VARIÁVEL</STitle>
+        <div style={{fontSize:12,color:"#555580",lineHeight:1.7,marginBottom:12}}>
+          Ações têm isenção de IR para vendas até <b style={{color:"#ffd60a"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+          {[{p:"Ticker",v:ticker,s:setTicker,up:true},{p:"Qtd",v:qtd,s:setQtd,t:"number"},{p:"Preço venda R$",v:precoV,s:setPrecoV,t:"number"}].map((f,i) => (
+            <input key={i} type={f.t||"text"} placeholder={f.p} value={f.v}
+              onChange={e=>f.s(f.up?e.target.value.toUpperCase():e.target.value)}
+              style={{background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"10px 10px",fontSize:13,color:"#e8e8ff",width:"100%"}}/>
+          ))}
+        </div>
+        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+          + Simular Venda
+        </button>
+      </Card>
+
+      {vendas.length > 0 && <>
+        <Card>
+          <STitle>VENDAS SIMULADAS</STitle>
+          {vendas.map((v,i) => (
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a3a",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"#ffd60a"}}>{v.ticker}</span><span style={{fontSize:11,color:"#444470",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
+            </div>
+          ))}
+          <button onClick={()=>setVendas([])} style={{fontSize:11,color:"#ff4d6d",background:"none",border:"none",cursor:"pointer",padding:0}}>Limpar vendas</button>
+        </Card>
+
+        <div style={{background:ir.isento?"#00e5a010":"#ff4d6d10",border:`1px solid ${ir.isento?"#00e5a030":"#ff4d6d30"}`,borderRadius:16,padding:"18px 16px"}}>
+          <STitle color={ir.isento?"#00e5a0":"#ff4d6d"}>{ir.isento?"✅ ISENTO DE IR":"⚠️ IR DEVIDO ESTE MÊS"}</STitle>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Stat label="Total de vendas" value={fmtBRL(ir.totalVendas)} mono/>
+            <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"#00e5a0":"#ff4d6d"} mono/>
+            <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"#ff4d6d":"#00e5a0"} mono/>
+            <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"#ffd60a":"#ff4d6d"} mono/>
+          </div>
+          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"#ff6b85",lineHeight:1.6}}>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
+        </div>
+      </>}
+    </div>
+  );
+}
+
+// ─── Tab: Análise IA ──────────────────────────────────────────────────────────
+function TabAnalise({ dados, aporte, perfil, loading, fase }) {
+  if (loading) return <LoadingCard fase={fase}/>;
+  if (!dados?.analise) return (
+    <div style={{textAlign:"center",padding:"48px 0",color:"#333360",fontSize:13}}>
+      Configure o aporte e clique em <b style={{color:"#7b61ff"}}>Analisar</b> ↑
+    </div>
+  );
+
+  const a = dados.analise;
+  const pos = dados.posicoes || [];
+  const temCarteira = pos.length > 0;
+  const score = temCarteira ? calcScore(pos) : null;
+  const setores = {};
+  pos.forEach(p => { setores[p.setor] = (setores[p.setor]||0) + 1; });
+  const correlacoes = Object.entries(setores).filter(([,n])=>n>1).map(([s,n])=>({setor:s,n}));
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* Badge IA */}
+      <div style={{background:"#7b61ff12",border:"1px solid #7b61ff30",borderRadius:10,padding:"10px 14px",display:"flex",gap:8,alignItems:"center"}}>
+        <span style={{fontSize:16}}>🤖</span>
+        <div style={{fontSize:11,color:"#7777aa",lineHeight:1.6}}>
+          Análise gerada pelo Gemini 2.5 Pro com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
+        </div>
+      </div>
+
+      {/* Score */}
+      {score != null && (
+        <Card accent>
+          <div style={{display:"flex",gap:14,alignItems:"center"}}>
+            <div style={{textAlign:"center",minWidth:70}}>
+              <div style={{fontSize:40,fontWeight:900,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",fontFamily:"'Space Mono',monospace",lineHeight:1}}>{score}</div>
+              <div style={{fontSize:10,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
+              <div style={{fontSize:9,color:"#333360"}}>Score</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:"#555580",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
+              {correlacoes.map((c,i) => <div key={i} style={{fontSize:12,color:"#ffd60a",marginBottom:3}}>⚠️ {c.n} ativos em {c.setor} — alta correlação</div>)}
+              {!correlacoes.length && <div style={{fontSize:12,color:"#00e5a0"}}>✅ Boa diversificação setorial</div>}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Diagnóstico */}
+      <Card>
+        <STitle>{temCarteira?"DIAGNÓSTICO DA CARTEIRA":"CONTEXTO DO MERCADO"}</STitle>
+        <p style={{fontSize:13,color:"#8888bb",lineHeight:1.75}}>{a.diagnostico}</p>
+      </Card>
+
+      {/* Alertas */}
+      {a.alertas?.map((al,i) => (
+        <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
+          <span style={{fontSize:18}}>{al.tipo==="perigo"?"🚨":al.tipo==="atencao"?"⚠️":"✅"}</span>
+          <div>
+            <div style={{fontWeight:700,fontSize:13,color:"#e8e8ff",marginBottom:4}}>{al.titulo}</div>
+            <div style={{fontSize:12,color:"#8888bb",lineHeight:1.6}}>{al.descricao}</div>
+          </div>
+        </div>
+      ))}
+
+      {/* Recomendações */}
+      {a.recomendacoes?.length > 0 && <>
+        <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
+        {a.recomendacoes.map((r,i) => (
+          <Card key={i} style={{borderColor:r.nova?"#00e5a030":"#1e1e42"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"#00e5a018":"#1a1a40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"#00e5a0":"#7b61ff"}}>{r.ticker.slice(0,4)}</div>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontWeight:800,fontSize:15,color:"#eeeeff"}}>{r.ticker}</span>
+                    {r.nova && <span style={{fontSize:9,background:"#00e5a018",color:"#00e5a0",border:"1px solid #00e5a028",borderRadius:10,padding:"2px 6px",fontWeight:700}}>NOVO</span>}
+                  </div>
+                  <div style={{fontSize:11,color:"#444470"}}>{r.acao} · {r.setor}</div>
+                </div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontWeight:700,fontSize:16,color:"#7b61ff"}}>{r.alocacao}%</div>
+                <div style={{fontSize:12,color:"#444470"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
+              </div>
+            </div>
+
+            {/* Indicadores estimados */}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#9999cc",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"🟢 ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
+              {r.dy && <span style={{fontSize:11,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
+              {r.pl && <span style={{fontSize:11,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
+              {r.score && <span style={{fontSize:11,background:"#00e5a012",color:"#00e5a0",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
+              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"#00e5a012":r.canal52<=70?"#ffd60a12":"#ff4d6d12",color:r.canal52<=30?"#00e5a0":r.canal52<=70?"#ffd60a":"#ff4d6d",borderRadius:10,padding:"3px 8px"}}>Canal {r.canal52}%</span>}
+            </div>
+
+            <div style={{fontSize:12,color:"#7777aa",lineHeight:1.65,background:"#07071a",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
+
+            {r.unidades && (
+              <div style={{marginTop:8,fontSize:11,color:"#555580"}}>
+                ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
+              </div>
+            )}
+          </Card>
+        ))}
+      </>}
+
+      {/* Vender */}
+      {a.vender?.length > 0 && <>
+        <STitle color="#ff4d6d">⚠️ CONSIDERE REVISAR / VENDER</STitle>
+        {a.vender.map((v,i) => (
+          <Card key={i} style={{borderColor:"#ff4d6d20"}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#ff6b85",marginBottom:4}}>{v.ticker}</div>
+            <div style={{fontSize:12,color:"#7777aa",lineHeight:1.6}}>{v.motivo}</div>
+          </Card>
+        ))}
+      </>}
+
+      {a.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a55",lineHeight:1.6}}>⚠️ {a.aviso}</div>}
+    </div>
+  );
+}
+
+// ─── App Principal ────────────────────────────────────────────────────────────
+export default function App() {
+  const [tab, setTab] = useState("carteira");
+  const [carteira, setCarteira] = useState([]);
+  const [historico, setHistorico] = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
+  const [aporte, setAporte] = useState("");
+  const [foco, setFoco] = useState("misto");
+  const [perfil, setPerfil] = useState("moderado");
+  const [loading, setLoading] = useState(false);
+  const [fase, setFase] = useState("");
+  const [dados, setDados] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  useEffect(() => {
+    store.load().then(d => {
+      if (!d) return;
+      if (d.carteira) setCarteira(d.carteira);
+      if (d.historico) setHistorico(d.historico);
+      if (d.watchlist) setWatchlist(d.watchlist);
+    });
+  }, []);
+
+  const salvar = useCallback(async () => {
+    const ok = await store.save({ carteira, historico, watchlist });
+    setSavedMsg(ok ? "✅ Salvo" : "⚠️ Erro");
+    setTimeout(() => setSavedMsg(""), 2000);
+  }, [carteira, historico, watchlist]);
+
+  const aporteNum = () => parseFloat((aporte||"").replace(/[R$\s.]/g,"").replace(",",".")) || 0;
+  const handleAporte = e => {
+    const raw = e.target.value.replace(/\D/g,"");
+    setAporte(raw ? (parseInt(raw)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "");
+  };
+
+  const analisar = useCallback(async () => {
+    const v = aporteNum();
+    if (v < 50) { setErro("Informe o valor do aporte (mínimo R$ 50)."); return; }
+    setErro(null); setLoading(true); setDados(null); setTab("analise");
+
+    try {
+      const temCarteira = carteira.length > 0;
+      const perfilDesc = {
+        conservador: "conservador — prioriza dividendos, baixo risco, setores defensivos (energia, bancos sólidos, FIIs de papel)",
+        moderado: "moderado — equilíbrio entre renda e crescimento",
+        arrojado: "arrojado — aceita volatilidade, foca em crescimento de capital"
+      }[perfil];
+      const focoDesc = { acoes:"ações da B3", fiis:"fundos imobiliários (FIIs)", misto:"mix de ações e FIIs" }[foco];
+
+      setFase("🔍 Gemini buscando cotações no Google Finance...");
+
+      const carteiraInfo = temCarteira
+        ? `\nCARTEIRA ATUAL DO INVESTIDOR:\n${carteira.map(a=>`- ${a.ticker}: ${a.qtd} cotas${a.pm?`, PM R$${a.pm}`:""}`).join("\n")}`
+        : "";
+
+      // Tickers para buscar cotações
+      const focoTickers = {
+        acoes: "PETR4, VALE3, ITUB4, BBDC4, WEGE3, BBAS3, SUZB3, RADL3, EQTL3, EGIE3, TAEE11, ABEV3, RENT3",
+        fiis: "MXRF11, HGLG11, XPML11, KNRI11, BTLG11, VISC11, PVBI11, RBRF11, IRDM11, BCFF11, CPTS11",
+        misto: "PETR4, VALE3, ITUB4, BBAS3, TAEE11, EGIE3, MXRF11, HGLG11, XPML11, KNRI11, BTLG11"
+      }[foco];
+
+      const tickersCarteira = carteira.map(a => a.ticker).join(", ");
+      const todosOsTickers = [...new Set([
+        ...(tickersCarteira ? tickersCarteira.split(", ") : []),
+        ...focoTickers.split(", ")
+      ])].join(", ");
+
+      const prompt = `Você é um analista financeiro sênior do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+
+PASSO 1 — USE web_search para buscar cotações reais agora:
+Pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(0,6).join(" ")}"
+Depois pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(6,12).join(" ")}"
+${temCarteira && tickersCarteira ? `Também pesquise: "cotações hoje ${tickersCarteira}"` : ""}
+
+PASSO 2 — Com os preços REAIS encontrados, faça análise completa:
+${temCarteira
+  ? `Analise a carteira abaixo e recomende como alocar R$ ${v.toFixed(2)} para perfil ${perfilDesc}, foco em ${focoDesc}.${carteiraInfo}`
+  : `Recomende as melhores oportunidades de ${focoDesc} para R$ ${v.toFixed(2)}, perfil ${perfilDesc}.`
+}
+
+PASSO 3 — Retorne APENAS este JSON (sem markdown, sem texto antes ou depois):
+{
+  "diagnostico": "2-3 frases com contexto real do mercado hoje e justificativa das escolhas",
+  "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
+  "recomendacoes": [
+    {
+      "ticker":"PETR4",
+      "nome":"Petrobras PN",
+      "tipo":"Ação",
+      "setor":"Petróleo",
+      "acao":"Comprar",
+      "nova":${!temCarteira},
+      "alocacao":30,
+      "precoReal":48.50,
+      "precoEstimado":48.50,
+      "dy":12.5,
+      "pl":4.2,
+      "score":82,
+      "canal52":35,
+      "fontePreco":"Google Finance",
+      "justificativa":"Análise citando o preço real encontrado, DY atual, P/L, contexto do dia"
+    }
+  ],
+  "vender": ${temCarteira ? `[{"ticker":"XXXX3","motivo":"motivo com dados reais"}]` : "[]"},
+  "aviso": "Dados buscados em tempo real via web search. Confirme na sua corretora antes de operar."
+}
+
+Regras OBRIGATÓRIAS:
+- SEMPRE use web_search antes de responder para ter preços reais do dia
+- Soma de alocacao = 100
+- precoReal = preço encontrado na busca (não invente, use o que encontrou)
+- 3 a 5 recomendações
+- Retorne SOMENTE o JSON final`;
+
+      setFase("🧠 Gemini 2.5 Pro analisando...");
+      const analise = await chamarIAComSearch(prompt, 3000);
+
+      // Enriquecer recomendações com unidades calculadas
+      const recsEnriquecidas = (analise.recomendacoes || []).map(r => ({
+        ...r,
+        unidades: r.precoEstimado ? Math.floor(v * (r.alocacao/100) / r.precoEstimado) : null
+      }));
+
+      // Montar posições da carteira com dados da IA
+      let posicoes = [];
+      if (temCarteira) {
+        setFase("📊 Calculando posições...");
+        const tickersCarteira = carteira.map(a => a.ticker).join(",");
+
+        const promptPosicoes = `Use web_search para buscar as cotações atuais de hoje na B3 para: ${tickersCarteira}
+Pesquise "cotações B3 hoje ${tickersCarteira}" e retorne os preços reais encontrados.
+Retorne APENAS JSON (sem markdown):
+{"ativos":[{"ticker":"PETR4","preco":48.50,"dy":12.5,"pl":4.2,"setor":"Petróleo","tipo":"Ação","canal52":35}]}`;
+
+        try {
+          setFase("📈 Buscando cotações reais da carteira...");
+          const dadosAtivos = await chamarIAComSearch(promptPosicoes, 1000);
+          const mapa = {};
+          (dadosAtivos.ativos || []).forEach(a => { mapa[a.ticker] = a; });
+
+          posicoes = carteira.map(a => {
+            const info = mapa[a.ticker] || {};
+            const preco = info.preco || a.pm || 0;
+            const valorAtual = preco * a.qtd;
+            return {
+              ticker: a.ticker, qtd: a.qtd, pm: a.pm, preco,
+              valorAtual, dy: info.dy || 0, pl: info.pl || null,
+              setor: info.setor || "–", tipo: info.tipo || "Ação",
+              canal52: info.canal52 || null, historico: [],
+            };
+          });
+        } catch(_) {
+          posicoes = carteira.map(a => ({
+            ticker: a.ticker, qtd: a.qtd, pm: a.pm,
+            preco: a.pm || 0, valorAtual: (a.pm||0) * a.qtd,
+            dy: 0, setor: "–", tipo: "Ação", canal52: null,
+          }));
+        }
+      }
+
+      const totalCarteira = posicoes.reduce((s,p) => s + p.valorAtual, 0);
+      const posicoesComPeso = posicoes.map(p => ({
+        ...p, peso: totalCarteira > 0 ? (p.valorAtual/totalCarteira)*100 : 0
+      }));
+
+      // Atualizar watchlist com preços estimados da IA
+      if (watchlist.length > 0) {
+        const wTickers = watchlist.map(w => w.ticker).join(",");
+        try {
+          const promptWatch = `Use web_search para buscar cotações reais de hoje na B3 para: ${wTickers}
+Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
+          const wData = await chamarIAComSearch(promptWatch, 600);
+          const wMapa = {};
+          (wData.ativos||[]).forEach(a => { wMapa[a.ticker] = a.preco; });
+          setWatchlist(prev => prev.map(w => ({ ...w, precoIA: wMapa[w.ticker] || w.precoIA })));
+        } catch(_) {}
+      }
+
+      setFase("✅ Análise concluída!");
+      await sleep(400);
+
+      setDados({
+        posicoes: posicoesComPeso,
+        totalCarteira,
+        analise: { ...analise, recomendacoes: recsEnriquecidas },
+        ts: new Date()
+      });
+
+    } catch(e) {
+      console.error("Erro análise:", e);
+      setErro(`Erro: ${e.message || "Tente novamente."}`);
+      setTab("carteira");
+    } finally {
+      setLoading(false);
+      setFase("");
+    }
+  }, [carteira, watchlist, aporte, foco, perfil]);
+
+  const TABS = [
+    {k:"carteira",l:"💼",label:"Carteira"},
+    {k:"graficos",l:"📊",label:"Gráficos"},
+    {k:"analise",l:"🧠",label:"Análise IA"},
+    {k:"meta",l:"🎯",label:"1º Milhão"},
+    {k:"cenarios",l:"📈",label:"Cenários"},
+    {k:"watchlist",l:"👁️",label:"Watchlist"},
+    {k:"ir",l:"💸",label:"IR"},
+  ];
+
+  return (
+    <div style={{minHeight:"100vh",background:"#07071a",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e8e8ff",paddingBottom:100}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e1e42;border-radius:2px}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+        .anim{animation:fadeUp .4s ease both}
+        .spin{animation:spin .9s linear infinite}
+        .blink{animation:blink 2s ease infinite}
+        input,select,button{outline:none;font-family:inherit}
+        input:focus,select:focus{border-color:#7b61ff!important}
+      `}</style>
+
+      {/* HERO */}
+      <div style={{padding:"26px 20px 0",textAlign:"center"}} className="anim">
+        <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#7b61ff12",border:"1px solid #7b61ff25",borderRadius:30,padding:"4px 14px",marginBottom:10}}>
+          <span style={{fontSize:14}}>🤖</span>
+          <span style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:2}}>GEMINI 2.5 PRO + GOOGLE SEARCH · B3</span>
+        </div>
+        <h1 style={{fontSize:"clamp(20px,5vw,32px)",fontWeight:900,lineHeight:1.1,marginBottom:4}}>
+          <span style={{background:"linear-gradient(135deg,#7b61ff,#00e5a0)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>InvestIA</span>
+          {" "}<span style={{color:"#e8e8ff"}}>Advisor Pro</span>
+        </h1>
+        {dados?.totalCarteira > 0 && (
+          <div style={{fontFamily:"'Space Mono',monospace",fontSize:16,fontWeight:700,color:"#00e5a0",marginTop:6}}>
+            {fmtBRL(dados.totalCarteira)} <span style={{fontSize:11,color:"#333360",fontWeight:400}}>em carteira (estimado)</span>
+          </div>
+        )}
+        {savedMsg && <div style={{fontSize:11,color:"#00e5a0",marginTop:4}}>{savedMsg}</div>}
+      </div>
+
+      {/* PAINEL */}
+      <div style={{maxWidth:560,margin:"14px auto 0",padding:"0 16px"}} className="anim">
+        <div style={{background:"#0c0c22",border:"1px solid #1e1e42",borderRadius:16,padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",gap:8}}>
+            <input type="text" placeholder="💰 Valor do aporte (R$)" value={aporte} onChange={handleAporte}
+              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 12px",fontSize:14,color:"#e8e8ff",fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+            <button onClick={salvar} style={{background:"#00e5a018",border:"1px solid #00e5a030",borderRadius:9,padding:"10px 14px",color:"#00e5a0",fontSize:13,cursor:"pointer",fontWeight:700}}>💾</button>
+          </div>
+
+          <div style={{display:"flex",gap:8}}>
+            <select value={perfil} onChange={e=>setPerfil(e.target.value)}
+              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:12,color:"#e8e8ff",cursor:"pointer"}}>
+              <option value="conservador">🛡 Conservador</option>
+              <option value="moderado">⚖ Moderado</option>
+              <option value="arrojado">🚀 Arrojado</option>
+            </select>
+            <select value={foco} onChange={e=>setFoco(e.target.value)}
+              style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:9,padding:"11px 10px",fontSize:12,color:"#e8e8ff",cursor:"pointer"}}>
+              <option value="acoes">📈 Ações</option>
+              <option value="fiis">🏢 FIIs</option>
+              <option value="misto">⚡ Misto</option>
+            </select>
+          </div>
+
+          <div style={{display:"flex",gap:6}}>
+            {[500,1000,2000,5000].map(vv => (
+              <button key={vv} onClick={()=>setAporte(vv.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}))}
+                style={{flex:1,background:"#07071a",border:"1px solid #1e1e42",borderRadius:8,padding:"7px 0",fontSize:11,color:"#555580",cursor:"pointer",fontFamily:"'Space Mono'"}}>
+                {fmtK(vv)}
+              </button>
+            ))}
+          </div>
+
+          {erro && <div style={{background:"#ff4d6d10",border:"1px solid #ff4d6d28",borderRadius:9,padding:"10px 12px",color:"#ff6b85",fontSize:12}}>⚠️ {erro}</div>}
+
+          <button onClick={analisar} disabled={loading}
+            style={{background:loading?"#10102a":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontWeight:800,fontSize:14,cursor:loading?"not-allowed":"pointer",boxShadow:loading?"none":"0 6px 24px #7b61ff30"}}>
+            {loading
+              ? <span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                  <span className="spin" style={{width:15,height:15,borderRadius:"50%",border:"2.5px solid #7b61ff33",borderTopColor:"#7b61ff",display:"inline-block"}}/>
+                  <span style={{fontSize:12,color:"#555580"}}>{fase}</span>
+                </span>
+              : `✦ Analisar com Gemini${carteira.length>0?` (${carteira.length} ativo${carteira.length>1?"s":""})`:" · mercado"}`}
+          </button>
+
+          {!loading && <div style={{textAlign:"center",fontSize:11,color:"#333360"}}>
+            Gemini 2.5 Pro + Google Search · cotações reais · grátis
+          </div>}
+        </div>
+      </div>
+
+      {/* TABS */}
+      <div style={{maxWidth:560,margin:"14px auto 0",padding:"0 16px"}}>
+        <div style={{display:"flex",gap:0,background:"#0c0c22",border:"1px solid #1e1e42",borderRadius:12,padding:4,marginBottom:14}}>
+          {TABS.map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} title={t.label}
+              style={{flex:1,padding:"10px 4px",borderRadius:9,fontSize:16,cursor:"pointer",
+                background:tab===t.k?"#7b61ff":"transparent",color:tab===t.k?"#fff":"#444470",
+                border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+              <span>{t.l}</span>
+              {tab===t.k && <span style={{fontSize:8,color:"#e8e8ff",fontWeight:700}}>{t.label}</span>}
+            </button>
+          ))}
+        </div>
+
+        {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar}/>}
+        {tab==="graficos" && <TabGraficos dados={dados}/>}
+        {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
+        {tab==="meta" && <TabMeta dados={dados}/>}
+        {tab==="cenarios" && <TabCenarios dados={dados}/>}
+        {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar}/>}
+        {tab==="ir" && <TabIR dados={dados}/>}
+      </div>
+
+      <div style={{marginTop:20,textAlign:"center",fontSize:11,color:"#1a1a3a"}}>
+        Powered by <span style={{color:"#7b61ff"}}>Gemini 2.5 Pro</span> + Google Search · confirme preços na corretora
+      </div>
+    </div>
+  );
+}
