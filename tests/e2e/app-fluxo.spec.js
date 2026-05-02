@@ -55,9 +55,9 @@ test.describe('Fluxo principal autenticado', () => {
     await page.getByRole('button', { name: 'Cenários', exact: true }).click();
     await expect(page.getByText(/SIMULADOR DE CENÁRIOS/i)).toBeVisible();
 
-    // Volta para Carteira
+    // Volta para Carteira - usa exact:true para pegar APENAS o título da seção
     await page.getByRole('button', { name: 'Carteira', exact: true }).click();
-    await expect(page.getByText(/REGISTRAR COMPRA/i)).toBeVisible();
+    await expect(page.getByText('REGISTRAR COMPRA', { exact: true })).toBeVisible();
   });
 
   test('formulário de registrar compra está acessível', async ({ page }) => {
