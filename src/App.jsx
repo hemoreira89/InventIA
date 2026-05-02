@@ -10,8 +10,14 @@ import {
   Sparkles, Save, FileDown, Plus, X, Trash2, Calendar, AlertTriangle,
   CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
-  Building2, Landmark, Factory
+  Building2, Landmark, Factory, LogOut, User
 } from "lucide-react";
+import {
+  carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
+  registrarCompra, carregarCompras,
+  carregarWatchlist, salvarWatchlist, removerWatchlist,
+  salvarAnalise, carregarAnalises
+} from "./supabase";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -23,7 +29,7 @@ const fmt = (n, d=2) => n != null && !isNaN(n) ? Number(n).toFixed(d) : "–";
 const fmtBRL = n => n != null && !isNaN(n) ? Number(n).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}) : "–";
 const fmtK = n => n >= 1e6 ? `R$${(n/1e6).toFixed(1)}M` : n >= 1000 ? `R$${(n/1000).toFixed(0)}k` : fmtBRL(n);
 
-// ─── Storage — localStorage para PWA ─────────────────────────────────────────
+// ─── Storage — agora usamos Supabase, mantemos localStorage como cache ──────
 const store = {
   save: async d => { try { localStorage.setItem(SK, JSON.stringify(d)); return true; } catch(_) { return false; } },
   load: async () => { try { const r = localStorage.getItem(SK); return r ? JSON.parse(r) : null; } catch(_) { return null; } }
@@ -214,27 +220,64 @@ function LoadingCard({ fase }) {
 }
 
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
-function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave }) {
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
+  const [salvando,setSalvando]=useState(false);
 
-  const add = () => {
+  const add = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !qtd) return;
-    setHistorico(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:pm?Number(pm):null, data:data||new Date().toISOString().split("T")[0] }]);
-    setCarteira(prev => {
-      const idx = prev.findIndex(x => x.ticker === t);
-      if (idx >= 0) {
-        const u = [...prev];
-        const tot = u[idx].qtd + Number(qtd);
-        u[idx] = { ...u[idx], qtd: tot, pm: u[idx].pm && pm ? (u[idx].pm*u[idx].qtd + Number(pm)*Number(qtd)) / tot : pm ? Number(pm) : u[idx].pm };
-        return u;
-      }
-      return [...prev, { ticker:t, qtd:Number(qtd), pm:pm?Number(pm):null }];
-    });
-    setTicker(""); setQtd(""); setPm(""); setData("");
-    setTimeout(onSave, 200);
+    if (!t || !qtd || !carteiraId || !userId) return;
+    setSalvando(true);
+    try {
+      const dataCompra = data || new Date().toISOString().split("T")[0];
+      const precoCompra = pm ? Number(pm) : 0;
+
+      // Salva compra no banco (já atualiza/cria o ativo automaticamente)
+      await registrarCompra(userId, carteiraId, {
+        ticker: t,
+        qtd: Number(qtd),
+        preco: precoCompra,
+        data: dataCompra
+      });
+
+      // Atualiza estados locais
+      setHistorico(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:precoCompra, data:dataCompra }]);
+      setCarteira(prev => {
+        const idx = prev.findIndex(x => x.ticker === t);
+        if (idx >= 0) {
+          const u = [...prev];
+          const tot = u[idx].qtd + Number(qtd);
+          u[idx] = { ...u[idx], qtd: tot, pm: u[idx].pm && pm ? (u[idx].pm*u[idx].qtd + Number(pm)*Number(qtd)) / tot : pm ? Number(pm) : u[idx].pm };
+          return u;
+        }
+        return [...prev, { ticker:t, qtd:Number(qtd), pm:pm?Number(pm):null }];
+      });
+
+      setTicker(""); setQtd(""); setPm(""); setData("");
+      onSave();
+    } catch (e) {
+      console.error("Erro ao registrar compra:", e);
+      alert("Erro ao salvar: " + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const removerAtivoCarteira = async (ativo) => {
+    if (!ativo.id) {
+      // Ativo só local
+      setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
+      return;
+    }
+    try {
+      await removerAtivo(ativo.id);
+      setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
+      onSave();
+    } catch (e) {
+      alert("Erro ao remover: " + e.message);
+    }
   };
 
   const alertasReb = dados?.posicoes?.filter(p => {
@@ -313,7 +356,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                       {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
                     </div>
                   )}
-                  <button onClick={() => { setCarteira(p=>p.filter(x=>x.ticker!==a.ticker)); setTimeout(onSave,200); }}
+                  <button onClick={() => removerAtivoCarteira(a)}
                     style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"6px 8px",color:"#ff4d6d",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
                 </div>
               </div>
@@ -633,15 +676,42 @@ function TabCenarios({ dados }) {
 }
 
 // ─── Tab: Watchlist ───────────────────────────────────────────────────────────
-function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
+function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
   const [ticker,setTicker]=useState(""); const [alvo,setAlvo]=useState(""); const [nota,setNota]=useState("");
+  const [salvando,setSalvando]=useState(false);
 
-  const add = () => {
+  const add = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !alvo) return;
-    setWatchlist(prev => [...prev.filter(x=>x.ticker!==t), { ticker:t, alvo:Number(alvo), nota, adicionado:new Date().toLocaleDateString("pt-BR") }]);
-    setTicker(""); setAlvo(""); setNota("");
-    setTimeout(onSave, 200);
+    if (!t || !alvo || !userId) return;
+    setSalvando(true);
+    try {
+      const novoItem = await salvarWatchlist(userId, {
+        ticker: t,
+        preco_alvo: Number(alvo),
+        nota
+      });
+      setWatchlist(prev => [...prev.filter(x=>x.ticker!==t), {
+        id: novoItem.id,
+        ticker: t,
+        alvo: Number(alvo),
+        nota,
+        adicionado: new Date().toLocaleDateString("pt-BR")
+      }]);
+      setTicker(""); setAlvo(""); setNota("");
+      onSave();
+    } catch (e) {
+      alert("Erro: " + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const remover = async (item) => {
+    if (item.id) {
+      try { await removerWatchlist(item.id); } catch(_) {}
+    }
+    setWatchlist(p => p.filter(x => x.ticker !== item.ticker));
+    onSave();
   };
 
   const enriched = watchlist.map(w => {
@@ -913,7 +983,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 }
 
 // ─── App Principal ────────────────────────────────────────────────────────────
-export default function App() {
+export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("carteira");
   const [carteira, setCarteira] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -926,21 +996,59 @@ export default function App() {
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState(null);
   const [savedMsg, setSavedMsg] = useState("");
+  const [carteiraId, setCarteiraId] = useState(null);
+  const [carregandoDados, setCarregandoDados] = useState(true);
 
+  const userId = session?.user?.id;
+  const userEmail = session?.user?.email;
+
+  // Carregar dados do Supabase
   useEffect(() => {
-    store.load().then(d => {
-      if (!d) return;
-      if (d.carteira) setCarteira(d.carteira);
-      if (d.historico) setHistorico(d.historico);
-      if (d.watchlist) setWatchlist(d.watchlist);
-    });
-  }, []);
+    if (!userId) return;
+    (async () => {
+      try {
+        // Pega carteira principal (criada automaticamente pelo trigger)
+        let cart = await carregarCarteiraPrincipal(userId);
+        if (cart) {
+          setCarteiraId(cart.id);
+          const ativos = await carregarAtivos(cart.id);
+          setCarteira(ativos.map(a => ({
+            id: a.id,
+            ticker: a.ticker,
+            qtd: Number(a.qtd),
+            pm: a.pm ? Number(a.pm) : null,
+            peso_alvo: a.peso_alvo ? Number(a.peso_alvo) : null
+          })));
+
+          const compras = await carregarCompras(userId);
+          setHistorico(compras.map(c => ({
+            ticker: c.ticker,
+            qtd: Number(c.qtd),
+            pm: Number(c.preco),
+            data: c.data
+          })));
+        }
+
+        const wl = await carregarWatchlist(userId);
+        setWatchlist(wl.map(w => ({
+          id: w.id,
+          ticker: w.ticker,
+          alvo: w.preco_alvo ? Number(w.preco_alvo) : null,
+          nota: w.nota || "",
+          adicionado: new Date(w.created_at).toLocaleDateString("pt-BR")
+        })));
+      } catch (e) {
+        console.error("Erro ao carregar dados:", e);
+      } finally {
+        setCarregandoDados(false);
+      }
+    })();
+  }, [userId]);
 
   const salvar = useCallback(async () => {
-    const ok = await store.save({ carteira, historico, watchlist });
-    setSavedMsg(ok ? "✅ Salvo" : "⚠️ Erro");
+    setSavedMsg("Salvo automaticamente ✓");
     setTimeout(() => setSavedMsg(""), 2000);
-  }, [carteira, historico, watchlist]);
+  }, []);
 
   const aporteNum = () => parseFloat((aporte||"").replace(/[R$\s.]/g,"").replace(",",".")) || 0;
   const handleAporte = e => {
@@ -1095,12 +1203,27 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       setFase("✅ Análise concluída!");
       await sleep(400);
 
-      setDados({
+      const dadosFinais = {
         posicoes: posicoesComPeso,
         totalCarteira,
         analise: { ...analise, recomendacoes: recsEnriquecidas },
         ts: new Date()
-      });
+      };
+      setDados(dadosFinais);
+
+      // Salva análise no histórico (Supabase)
+      if (userId) {
+        try {
+          await salvarAnalise(userId, {
+            tipo: temCarteira ? "carteira" : "mercado",
+            aporte: v,
+            perfil,
+            foco,
+            resultado: { ...analise, recomendacoes: recsEnriquecidas },
+            tickers_analisados: todosOsTickers.split(", ")
+          });
+        } catch(e) { console.warn("Erro ao salvar análise:", e); }
+      }
 
     } catch(e) {
       console.error("Erro análise:", e);
@@ -1195,10 +1318,22 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"#00e5a0"}}/>
               <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
             </div>
-            <button onClick={salvar} style={{
+            {savedMsg && (
+              <span style={{fontSize:11,color:"#00e5a0",fontWeight:600}}>{savedMsg}</span>
+            )}
+            <div style={{
+              display:"flex",alignItems:"center",gap:8,
               background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
-              padding:"7px 12px",color:"#c5c5d0",fontSize:11,cursor:"pointer",fontWeight:600
-            }}><><Save size={14} strokeWidth={2.2} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>{savedMsg||"Salvar"}</></button>
+              padding:"7px 12px"
+            }}>
+              <User size={13} color="#7b61ff"/>
+              <span style={{fontSize:11,color:"#c5c5d0",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
+            </div>
+            <button onClick={onLogout} title="Sair" style={{
+              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
+              padding:"8px 10px",color:"#ff6b85",cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center"
+            }}><LogOut size={14}/></button>
           </div>
         </div>
 
@@ -1304,12 +1439,12 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* ÁREA DE CONTEÚDO - Tab atual */}
         <div className="anim">
-          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar}/>}
+          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId}/>}
           {tab==="graficos" && <TabGraficos dados={dados}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}
           {tab==="cenarios" && <TabCenarios dados={dados}/>}
-          {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar}/>}
+          {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId}/>}
           {tab==="ir" && <TabIR dados={dados}/>}
         </div>
 
