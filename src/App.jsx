@@ -1162,7 +1162,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
             <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.65,background:"#000000",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
 
-            {r.unidades && (
+            {r.unidades > 0 && (
               <div style={{marginTop:8,fontSize:11,color:"#9090a0"}}>
                 ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
               </div>
