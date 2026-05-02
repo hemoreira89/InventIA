@@ -34,13 +34,13 @@ test.describe('Fluxo principal autenticado', () => {
     await expect(page.getByText('WATCHLIST', { exact: true })).toBeVisible();
   });
 
-  test('todas as 13 tabs estão visíveis', async ({ page }) => {
+  test('todas as 14 tabs estão visíveis', async ({ page }) => {
     // Lista exata dos labels das tabs
     const tabs = [
       'Carteira', 'Patrimônio', 'Gráficos', 'Análise IA',
       'Analisar Ticker', 'Comparador', 'Oportunidades',
-      'Histórico', 'Proventos', 'Watchlist', '1º Milhão',
-      'Cenários', 'IR'
+      'Histórico', 'Proventos', 'Watchlist', 'Universo', 'IR',
+      '1º Milhão', 'Cenários'
     ];
 
     for (const tab of tabs) {

@@ -319,3 +319,51 @@ export function setCachedPrice(ticker, dados) {
 export function clearPriceCache() {
   try { localStorage.removeItem(CACHE_PRECO); } catch {}
 }
+
+// ─── Universo de Investimento (tickers selecionados pelo usuário) ───────────
+
+export async function carregarUniverso(userId) {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from('universo_usuario')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('Erro ao carregar universo:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function salvarUniverso(userId, tickers) {
+  if (!userId) return null;
+  // Upsert: insere se não existe, atualiza se já existe
+  const { data, error } = await supabase
+    .from('universo_usuario')
+    .upsert({
+      user_id: userId,
+      tickers: Array.from(new Set(tickers)).filter(Boolean),
+      customizado: true
+    }, { onConflict: 'user_id' })
+    .select()
+    .single();
+  if (error) {
+    console.error('Erro ao salvar universo:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function resetarUniverso(userId) {
+  if (!userId) return null;
+  const { error } = await supabase
+    .from('universo_usuario')
+    .delete()
+    .eq('user_id', userId);
+  if (error) {
+    console.error('Erro ao resetar universo:', error);
+    throw error;
+  }
+  return true;
+}

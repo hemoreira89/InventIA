@@ -12,7 +12,7 @@ import {
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award
+  RefreshCw, FileUp, TrendingDown, Award, Globe
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
@@ -38,6 +38,9 @@ import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
+import TabUniverso from "./components/TabUniverso";
+import { carregarUniverso } from "./supabase";
+import { getDefaultUniverso } from "./lib/catalogoB3";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -2116,7 +2119,7 @@ function TabPatrimonio({ userId, dados }) {
 }
 
 // ─── Tab: Oportunidades (scan da B3 com IA) ───────────────────────────────────
-function TabOportunidades({ chamarIAComSearch }) {
+function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
   const [filtros, setFiltros] = useState({
     tipo: "acoes_subprecificadas",
     perfil: "moderado",
@@ -2162,11 +2165,16 @@ function TabOportunidades({ chamarIAComSearch }) {
       const cfg = TIPOS[filtros.tipo];
       const setorTxt = filtros.setor !== "qualquer" ? `Foque em empresas do setor ${filtros.setor}.` : "";
 
+      // Restringe busca ao universo do usuário (se definido)
+      const universoTxt = universoTickers.length > 0
+        ? `\nIMPORTANTE: Considere APENAS estes tickers: ${universoTickers.slice(0, 50).join(", ")}.`
+        : "";
+
       const prompt = `Você é analista da B3 com acesso a dados em tempo real. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
 
 OBJETIVO: ${cfg.titulo} — ${cfg.descricao}
 PERFIL DO INVESTIDOR: ${filtros.perfil}
-${setorTxt}
+${setorTxt}${universoTxt}
 
 PASSO 1 — Use Google Search para escanear o mercado:
 - "melhores ${filtros.tipo.replace(/_/g," ")} B3 ${new Date().getFullYear()}"
@@ -2515,17 +2523,18 @@ export default function App({ session, onLogout }) {
         ? `\nCARTEIRA ATUAL DO INVESTIDOR:\n${carteira.map(a=>`- ${a.ticker}: ${a.qtd} cotas${a.pm?`, PM R$${a.pm}`:""}`).join("\n")}`
         : "";
 
-      // Tickers para buscar cotações
-      const focoTickers = {
-        acoes: "PETR4, VALE3, ITUB4, BBDC4, WEGE3, BBAS3, SUZB3, RADL3, EQTL3, EGIE3, TAEE11, ABEV3, RENT3",
-        fiis: "MXRF11, HGLG11, XPML11, KNRI11, BTLG11, VISC11, PVBI11, RBRF11, IRDM11, BCFF11, CPTS11",
-        misto: "PETR4, VALE3, ITUB4, BBAS3, TAEE11, EGIE3, MXRF11, HGLG11, XPML11, KNRI11, BTLG11"
-      }[foco];
+      // Tickers a serem analisados: universo do usuário (ou padrão)
+      // Filtra por foco (FII só vê 11, ações só não-11, misto vê tudo)
+      const universoFiltrado = universoTickers.filter(t => {
+        if (foco === "fiis") return /11$/.test(t);
+        if (foco === "acoes") return !/11$/.test(t);
+        return true;
+      });
 
       const tickersCarteira = carteira.map(a => a.ticker).join(", ");
       const todosOsTickers = [...new Set([
         ...(tickersCarteira ? tickersCarteira.split(", ") : []),
-        ...focoTickers.split(", ")
+        ...universoFiltrado
       ])].join(", ");
 
       const prompt = `Você é um analista financeiro sênior do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
@@ -2689,6 +2698,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
     {k:"historico",icon:History,label:"Histórico",cor:"#ffd60a",grupo:"control"},
     {k:"proventos",icon:Coins,label:"Proventos",cor:"#ffd60a",grupo:"control"},
     {k:"watchlist",icon:Eye,label:"Watchlist",cor:"#ffd60a",grupo:"control"},
+    {k:"universo",icon:Globe,label:"Universo",cor:"#ffd60a",grupo:"control"},
     {k:"ir",icon:Receipt,label:"IR",cor:"#ffd60a",grupo:"control"},
     {k:"meta",icon:Target,label:"1º Milhão",cor:"#00b4d8",grupo:"planning"},
     {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"#00b4d8",grupo:"planning"},
@@ -2710,6 +2720,17 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       }
     }).catch(() => {});
   }, [userId, dados?.totalCarteira]);
+
+  // Universo de investimento do usuário (tickers que a IA vai considerar)
+  const [universoTickers, setUniversoTickers] = useState(getDefaultUniverso());
+  useEffect(() => {
+    if (!userId) return;
+    carregarUniverso(userId).then(u => {
+      if (u?.tickers?.length > 0) {
+        setUniversoTickers(u.tickers);
+      }
+    }).catch(() => {});
+  }, [userId]);
 
   // Relógio em tempo real
   const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -2975,13 +2996,14 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
-          {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch}/>}
+          {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch} universoTickers={universoTickers}/>}
           {tab==="patrimonio" && <TabPatrimonio userId={userId} dados={dados}/>}
           {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}
           {tab==="cenarios" && <TabCenarios dados={dados}/>}
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
+          {tab==="universo" && <TabUniverso userId={userId}/>}
           {tab==="ir" && <TabIR dados={dados}/>}
         </div>
 
