@@ -55,22 +55,48 @@ const store = {
 // ─── IA Principal — via Vercel API proxy (chave segura no servidor) ──────────
 const API_URL = "/api/analyze";
 
-async function chamarIAComSearch(prompt) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, useSearch: true, model: "pro" })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 504) {
+async function chamarIAComSearch(prompt, autoRetry = true) {
+  const tentar = async () => {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, useSearch: true, model: "pro" })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 504 || res.status === 502) {
+        const e = new Error("TIMEOUT");
+        e.isTimeout = true;
+        throw e;
+      }
+      throw new Error(err.error || `Erro ${res.status} na API`);
+    }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return extrairJSON(data.text);
+  };
+
+  try {
+    return await tentar();
+  } catch (e) {
+    // Retry automático em timeout (1 vez)
+    if (e.isTimeout && autoRetry) {
+      console.log("Timeout - tentando novamente automaticamente...");
+      await sleep(1500);
+      try {
+        return await tentar();
+      } catch (e2) {
+        if (e2.isTimeout) {
+          throw new Error("A análise está sobrecarregada no momento. Aguarde 30 segundos e tente novamente.");
+        }
+        throw e2;
+      }
+    }
+    if (e.isTimeout) {
       throw new Error("A análise demorou muito (timeout). Tente novamente — geralmente funciona na 2ª tentativa.");
     }
-    throw new Error(err.error || `Erro ${res.status} na API`);
+    throw e;
   }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return extrairJSON(data.text);
 }
 
 async function chamarIA(prompt) {
@@ -2504,20 +2530,19 @@ export default function App({ session, onLogout }) {
 
       const prompt = `Você é um analista financeiro sênior do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
 
-PASSO 1 — USE web_search para buscar cotações reais agora:
-Pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(0,6).join(" ")}"
-Depois pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(6,12).join(" ")}"
-${temCarteira && tickersCarteira ? `Também pesquise: "cotações hoje ${tickersCarteira}"` : ""}
+PASSO 1 — Use web_search APENAS UMA VEZ para buscar cotações reais:
+Pesquise: "cotações B3 hoje ${todosOsTickers.split(", ").slice(0,8).join(" ")}"
 
-PASSO 2 — Com os preços REAIS encontrados, faça análise completa:
+PASSO 2 — Análise:
 ${temCarteira
-  ? `Analise a carteira abaixo e recomende como alocar R$ ${v.toFixed(2)} para perfil ${perfilDesc}, foco em ${focoDesc}.${carteiraInfo}`
+  ? `Carteira do investidor: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
+Recomende como alocar R$ ${v.toFixed(2)} (perfil ${perfilDesc}, foco ${focoDesc}). Considere reforçar posições existentes ou diversificar.`
   : `Recomende as melhores oportunidades de ${focoDesc} para R$ ${v.toFixed(2)}, perfil ${perfilDesc}.`
 }
 
-PASSO 3 — Retorne APENAS este JSON (sem markdown, sem texto antes ou depois):
+PASSO 3 — Retorne APENAS este JSON (sem markdown):
 {
-  "diagnostico": "2-3 frases com contexto real do mercado hoje e justificativa das escolhas",
+  "diagnostico": "2-3 frases com contexto real do mercado hoje",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
     {
@@ -2535,22 +2560,20 @@ PASSO 3 — Retorne APENAS este JSON (sem markdown, sem texto antes ou depois):
       "score":82,
       "canal52":35,
       "fontePreco":"Google Finance",
-      "justificativa":"Análise citando o preço real encontrado, DY atual, P/L, contexto do dia"
+      "justificativa":"Análise citando o preço real encontrado e contexto"
     }
   ],
-  "vender": ${temCarteira ? `[{"ticker":"XXXX3","motivo":"motivo com dados reais"}]` : "[]"},
-  "aviso": "Dados buscados em tempo real via web search. Confirme na sua corretora antes de operar."
+  "vender": ${temCarteira ? `[{"ticker":"XXXX3","motivo":"motivo"}]` : "[]"},
+  "aviso": "Dados em tempo real. Confirme na sua corretora."
 }
 
 Regras OBRIGATÓRIAS:
-- SEMPRE use web_search antes de responder para ter preços reais do dia
+- 3 a 5 recomendações (não mais)
 - Soma de alocacao = 100
-- precoReal = preço encontrado na busca (não invente, use o que encontrou)
-- 3 a 5 recomendações
 - Retorne SOMENTE o JSON final`;
 
       setFase("🧠 Gemini 2.5 Pro analisando...");
-      const analise = await chamarIAComSearch(prompt, 3000);
+      const analise = await chamarIAComSearch(prompt);
 
       // Enriquecer recomendações com unidades calculadas
       const recsEnriquecidas = (analise.recomendacoes || []).map(r => ({
