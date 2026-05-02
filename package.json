@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:smoke": "node tests/smoke/smoke.js",
-    "test:all": "npm run test && npm run test:smoke"
+    "test:all": "npm run test && npm run test:smoke",
+    "seed": "node scripts/seed-test-user.js"
   },
   "dependencies": {
     "react": "^18.3.1",

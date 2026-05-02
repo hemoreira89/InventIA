@@ -1,0 +1,35 @@
+name: Seed Test User
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: 'O que fazer com o usuário de teste'
+        required: true
+        default: 'popular'
+        type: choice
+        options:
+          - popular
+          - limpar
+
+jobs:
+  seed:
+    name: Popular usuário de teste
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar seed
+        run: npm run seed
+        env:
+          E2E_USER: ${{ secrets.E2E_USER }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
