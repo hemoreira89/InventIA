@@ -5,7 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://bjghaqtyijvlnwlesrst.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_yI9Zs2TaR4-Q7Fb1PAvQ8A_BGDsDhAV';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE';
 const EMAIL = process.env.E2E_USER || 'e2e-test@inventia.app';
 const PASSWORD = process.env.E2E_PASSWORD || 'TesteE2E_2026!';
 

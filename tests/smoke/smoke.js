@@ -91,7 +91,7 @@ async function main() {
     // /auth/v1/settings é público e não exige autenticação
     const res = await fetchTimeout(`${SUPABASE_URL}/auth/v1/settings`, {
       headers: {
-        'apikey': 'sb_publishable_yI9Zs2TaR4-Q7Fb1PAvQ8A_BGDsDhAV'
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE'
       }
     });
     if (!res.ok) throw new Error(`Supabase status ${res.status}`);
@@ -104,7 +104,7 @@ async function main() {
     const res = await fetchTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: {
-        'apikey': 'sb_publishable_yI9Zs2TaR4-Q7Fb1PAvQ8A_BGDsDhAV',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ email: 'naoexiste@inventia.test', password: 'invalido123' })
