@@ -5,6 +5,13 @@ import {
   BarChart, Bar, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, LineChart, Line, Legend
 } from "recharts";
+import {
+  Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
+  Sparkles, Save, FileDown, Plus, X, Trash2, Calendar, AlertTriangle,
+  CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
+  Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
+  Building2, Landmark, Factory
+} from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -197,8 +204,7 @@ function LoadingCard({ fase }) {
         <div style={{position:"relative",width:56,height:56}}>
           <div className="spin" style={{width:56,height:56,borderRadius:"50%",
             border:"3px solid #252535",borderTopColor:"#7b61ff",position:"absolute"}}/>
-          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
-            fontSize:20}}>✦</div>
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}><Sparkles size={18} color="#7b61ff" strokeWidth={2.5}/></div>
         </div>
         <div style={{fontSize:13,color:"#a8a8b8"}}>{fase}</div>
         <div style={{fontSize:11,color:"#5a5a6a"}}>IA analisando o mercado...</div>
@@ -254,13 +260,13 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
             style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
         </div>
         <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-          + Registrar Compra
+          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Registrar Compra</>
         </button>
       </Card>
 
       {alertasReb.length > 0 && (
         <div style={{background:"#ffd60a0a",border:"1px solid #ffd60a25",borderRadius:12,padding:"12px 14px"}}>
-          <STitle color="#ffd60a">⚖️ REBALANCEAMENTO NECESSÁRIO</STitle>
+          <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertTriangle size={12} strokeWidth={2.5}/>REBALANCEAMENTO NECESSÁRIO</span></STitle>
           {alertasReb.map(p => (
             <div key={p.ticker} style={{fontSize:12,color:"#a8a8b8",marginBottom:3}}>
               {p.ticker}: atual {fmt(p.peso,1)}% · alvo {pesoAlvo[p.ticker]}% · desvio {fmt(Math.abs(p.peso-pesoAlvo[p.ticker]),1)}%
@@ -308,7 +314,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                     </div>
                   )}
                   <button onClick={() => { setCarteira(p=>p.filter(x=>x.ticker!==a.ticker)); setTimeout(onSave,200); }}
-                    style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:7,padding:"5px 10px",color:"#ff4d6d",fontSize:12,cursor:"pointer"}}>✕</button>
+                    style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"6px 8px",color:"#ff4d6d",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
                 </div>
               </div>
               {pos && (
@@ -331,7 +337,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         </div>
       </> : (
         <Card style={{textAlign:"center",padding:"28px 16px",border:"1px dashed #252535"}}>
-          <div style={{fontSize:28,marginBottom:8}}>📋</div>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Briefcase size={32} color="#444" strokeWidth={1.5}/></div>
           <div style={{color:"#6a6a7a",fontSize:13,marginBottom:6}}>Carteira vazia</div>
           <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.7}}>
             Adicione seus ativos acima para análise personalizada,<br/>
@@ -498,7 +504,7 @@ function TabMeta({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
       <Card accent style={{position:"sticky",top:120}}>
-        <STitle color="#ffd60a">🎯 MODO PRIMEIRO MILHÃO</STitle>
+        <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Meta patrimonial (R$)</div>
@@ -518,7 +524,7 @@ function TabMeta({ dados }) {
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
         <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer"}}>
-          ✦ Calcular Minha Meta
+          <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Calcular Minha Meta</>
         </button>
       </Card>
 
@@ -573,7 +579,7 @@ function TabCenarios({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
-        <STitle color="#00b4d8">📊 SIMULADOR DE CENÁRIOS</STitle>
+        <STitle color="#00b4d8"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div>
             <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Aporte mensal (R$)</div>
@@ -590,7 +596,7 @@ function TabCenarios({ dados }) {
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Ponto de partida: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
         <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#ffffff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
-          ✦ Simular Cenários
+          <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Cenários</>
         </button>
       </Card>
 
@@ -650,7 +656,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
-        <STitle color="#e040fb">👁️ WATCHLIST</STitle>
+        <STitle color="#e040fb"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
             style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
@@ -660,14 +666,14 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
             style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
         </div>
         <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-          + Adicionar à Watchlist
+          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Adicionar à Watchlist</>
         </button>
       </Card>
 
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {atingiram.length > 0 && (
         <div style={{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:12,padding:"14px 16px"}}>
-          <STitle color="#00e5a0">🎯 PREÇO ALVO ATINGIDO!</STitle>
+          <STitle color="#00e5a0"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PREÇO ALVO ATINGIDO</span></STitle>
           {atingiram.map(w => (
             <div key={w.ticker} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
               <span style={{fontWeight:700,color:"#00e5a0",fontSize:14}}>{w.ticker}</span>
@@ -687,7 +693,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave }) {
                   <div><div style={{fontWeight:700,color:"#ffffff",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"#6a6a7a"}}>{w.nota}</div>}</div>
                 </div>
                 <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
-                  style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:7,padding:"5px 10px",color:"#ff4d6d",fontSize:12,cursor:"pointer"}}>✕</button>
+                  style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"6px 8px",color:"#ff4d6d",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"#00e5a0":"#ffffff"} mono/>
@@ -728,7 +734,7 @@ function TabIR({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
-        <STitle color="#ffd60a">💸 CALCULADORA DE IR — RENDA VARIÁVEL</STitle>
+        <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
         <div style={{fontSize:12,color:"#9090a0",lineHeight:1.7,marginBottom:12}}>
           Ações têm isenção de IR para vendas até <b style={{color:"#ffd60a"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
         </div>
@@ -740,7 +746,7 @@ function TabIR({ dados }) {
           ))}
         </div>
         <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-          + Simular Venda
+          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
         </button>
       </Card>
 
@@ -754,18 +760,18 @@ function TabIR({ dados }) {
               <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
             </div>
           ))}
-          <button onClick={()=>setVendas([])} style={{fontSize:11,color:"#ff4d6d",background:"none",border:"none",cursor:"pointer",padding:0}}>Limpar vendas</button>
+          <button onClick={()=>setVendas([])} style={{fontSize:11,color:"#ff4d6d",background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginTop:4}}><Trash2 size={11}/>Limpar vendas</button>
         </Card>
 
         <div style={{background:ir.isento?"#00e5a010":"#ff4d6d10",border:`1px solid ${ir.isento?"#00e5a030":"#ff4d6d30"}`,borderRadius:16,padding:"18px 16px"}}>
-          <STitle color={ir.isento?"#00e5a0":"#ff4d6d"}>{ir.isento?"✅ ISENTO DE IR":"⚠️ IR DEVIDO ESTE MÊS"}</STitle>
+          <STitle color={ir.isento?"#00e5a0":"#ff4d6d"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.isento?<><CheckCircle2 size={12} strokeWidth={2.5}/>ISENTO DE IR</>:<><AlertTriangle size={12} strokeWidth={2.5}/>IR DEVIDO ESTE MÊS</>}</span></STitle>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Stat label="Total de vendas" value={fmtBRL(ir.totalVendas)} mono/>
             <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"#00e5a0":"#ff4d6d"} mono/>
             <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"#ff4d6d":"#00e5a0"} mono/>
             <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"#ffd60a":"#ff4d6d"} mono/>
           </div>
-          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"#ff6b85",lineHeight:1.6}}>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
+          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"#ff6b85",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
         </div>
       </>}
       </div>
@@ -778,7 +784,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   if (loading) return <LoadingCard fase={fase}/>;
   if (!dados?.analise) return (
     <div style={{textAlign:"center",padding:"48px 0",color:"#5a5a6a",fontSize:13}}>
-      Configure o aporte e clique em <b style={{color:"#7b61ff"}}>Analisar</b> ↑
+      Configure o aporte e clique em <b style={{color:"#7b61ff"}}>Analisar</b>
     </div>
   );
 
@@ -793,10 +799,13 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {/* Badge IA */}
-      <div style={{background:"#7b61ff12",border:"1px solid #7b61ff30",borderRadius:10,padding:"10px 14px",display:"flex",gap:8,alignItems:"center"}}>
-        <span style={{fontSize:16}}>🤖</span>
-        <div style={{fontSize:11,color:"#a8a8b8",lineHeight:1.6}}>
-          Análise gerada pelo Gemini 2.5 Pro com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
+      <div style={{background:"#7b61ff10",border:"1px solid #7b61ff25",borderRadius:10,padding:"12px 16px",display:"flex",gap:12,alignItems:"center"}}>
+        <div style={{
+          width:32,height:32,borderRadius:8,background:"#7b61ff20",
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
+        }}><Sparkles size={16} color="#7b61ff" strokeWidth={2.5}/></div>
+        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>
+          Análise gerada pelo <b style={{color:"#fff"}}>Gemini 2.5 Pro</b> com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
         </div>
       </div>
 
@@ -827,8 +836,14 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
       {/* Alertas em grid */}
       {a.alertas?.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
       {a.alertas?.map((al,i) => (
-        <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
-          <span style={{fontSize:18}}>{al.tipo==="perigo"?"🚨":al.tipo==="atencao"?"⚠️":"✅"}</span>
+        <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
+          <div style={{flexShrink:0,marginTop:1}}>
+            {al.tipo==="perigo"
+              ? <AlertCircle size={18} color="#ff4d6d" strokeWidth={2.2}/>
+              : al.tipo==="atencao"
+                ? <AlertTriangle size={18} color="#ffd60a" strokeWidth={2.2}/>
+                : <CheckCircle2 size={18} color="#00e5a0" strokeWidth={2.2}/>}
+          </div>
           <div>
             <div style={{fontWeight:700,fontSize:13,color:"#ffffff",marginBottom:4}}>{al.titulo}</div>
             <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>{al.descricao}</div>
@@ -849,7 +864,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontWeight:800,fontSize:15,color:"#ffffff"}}>{r.ticker}</span>
-                    {r.nova && <span style={{fontSize:9,background:"#00e5a018",color:"#00e5a0",border:"1px solid #00e5a028",borderRadius:10,padding:"2px 6px",fontWeight:700}}>NOVO</span>}
+                    {r.nova && <span style={{fontSize:9,background:"#00e5a018",color:"#00e5a0",border:"1px solid #00e5a028",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}}>NOVO</span>}
                   </div>
                   <div style={{fontSize:11,color:"#6a6a7a"}}>{r.acao} · {r.setor}</div>
                 </div>
@@ -862,7 +877,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#a8a8b8",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"🟢 ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
+              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#a8a8b8",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
               {r.dy && <span style={{fontSize:11,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
               {r.pl && <span style={{fontSize:11,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
               {r.score && <span style={{fontSize:11,background:"#00e5a012",color:"#00e5a0",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
@@ -883,7 +898,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
       {/* Vender */}
       {a.vender?.length > 0 && <>
-        <STitle color="#ff4d6d">⚠️ CONSIDERE REVISAR / VENDER</STitle>
+        <STitle color="#ff4d6d"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertCircle size={12} strokeWidth={2.5}/>CONSIDERE REVISAR / VENDER</span></STitle>
         {a.vender.map((v,i) => (
           <Card key={i} style={{borderColor:"#ff4d6d20"}}>
             <div style={{fontWeight:700,fontSize:14,color:"#ff6b85",marginBottom:4}}>{v.ticker}</div>
@@ -892,7 +907,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         ))}
       </>}
 
-      {a.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a55",lineHeight:1.6}}>⚠️ {a.aviso}</div>}
+      {a.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{a.aviso}</div>}
     </div>
   );
 }
@@ -1098,13 +1113,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   }, [carteira, watchlist, aporte, foco, perfil]);
 
   const TABS = [
-    {k:"carteira",l:"💼",label:"Carteira"},
-    {k:"graficos",l:"📊",label:"Gráficos"},
-    {k:"analise",l:"🧠",label:"Análise IA"},
-    {k:"meta",l:"🎯",label:"1º Milhão"},
-    {k:"cenarios",l:"📈",label:"Cenários"},
-    {k:"watchlist",l:"👁️",label:"Watchlist"},
-    {k:"ir",l:"💸",label:"IR"},
+    {k:"carteira",icon:Briefcase,label:"Carteira"},
+    {k:"graficos",icon:BarChart3,label:"Gráficos"},
+    {k:"analise",icon:Brain,label:"Análise IA"},
+    {k:"meta",icon:Target,label:"1º Milhão"},
+    {k:"cenarios",icon:TrendingUp,label:"Cenários"},
+    {k:"watchlist",icon:Eye,label:"Watchlist"},
+    {k:"ir",icon:Receipt,label:"IR"},
   ];
 
   // Métricas para a barra superior
@@ -1156,8 +1171,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               width:36,height:36,borderRadius:8,
               background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
               display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:18,fontWeight:900,color:"#000000"
-            }}>✦</div>
+              color:"#000000"
+            }}><Sparkles size={20} strokeWidth={2.5}/></div>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3}}>
                 InvestIA <span style={{color:"#7b61ff"}}>Pro</span>
@@ -1183,7 +1198,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             <button onClick={salvar} style={{
               background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
               padding:"7px 12px",color:"#c5c5d0",fontSize:11,cursor:"pointer",fontWeight:600
-            }}>{savedMsg||"Salvar"}</button>
+            }}><><Save size={14} strokeWidth={2.2} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>{savedMsg||"Salvar"}</></button>
           </div>
         </div>
 
@@ -1237,9 +1252,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             <select value={perfil} onChange={e=>setPerfil(e.target.value)}
               style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
                 padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
-              <option value="conservador">🛡 Conservador</option>
-              <option value="moderado">⚖ Moderado</option>
-              <option value="arrojado">🚀 Arrojado</option>
+              <option value="conservador">Conservador</option>
+              <option value="moderado">Moderado</option>
+              <option value="arrojado">Arrojado</option>
             </select>
           </div>
 
@@ -1248,9 +1263,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             <select value={foco} onChange={e=>setFoco(e.target.value)}
               style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
                 padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
-              <option value="acoes">📈 Ações</option>
-              <option value="fiis">🏢 FIIs</option>
-              <option value="misto">⚡ Misto</option>
+              <option value="acoes">Ações</option>
+              <option value="fiis">FIIs</option>
+              <option value="misto">Misto</option>
             </select>
           </div>
 
@@ -1270,7 +1285,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
                     <span className="spin" style={{width:14,height:14,borderRadius:"50%",border:"2px solid #7b61ff44",borderTopColor:"#7b61ff",display:"inline-block"}}/>
                     <span style={{fontSize:12,color:"#c5c5d0"}}>{fase||"Analisando..."}</span>
                   </>
-                : <><span>✦</span> <span>Analisar{carteira.length>0?` carteira (${carteira.length})`:" mercado"}</span></>
+                : <><Sparkles size={16} strokeWidth={2.5}/> <span>Analisar{carteira.length>0?` carteira (${carteira.length})`:" mercado"}</span></>
               }
             </button>
           </div>
@@ -1279,8 +1294,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         {erro && (
           <div style={{
             background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,
-            padding:"10px 14px",color:"#ff6b85",fontSize:12,marginBottom:16
-          }}>⚠️ {erro}</div>
+            padding:"10px 14px",color:"#ff6b85",fontSize:12,marginBottom:16,
+            display:"flex",alignItems:"center",gap:8
+          }}><AlertCircle size={14} strokeWidth={2.2}/>{erro}</div>
         )}
 
         {/* ÁREA DE CONTEÚDO - Tab atual */}
