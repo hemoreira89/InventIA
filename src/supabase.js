@@ -189,6 +189,21 @@ export async function carregarAnalises(userId, limit = 20) {
   return data || [];
 }
 
+export async function removerAnalise(analiseId) {
+  const { error } = await supabase.from('analises').delete().eq('id', analiseId);
+  if (error) throw error;
+}
+
+export async function buscarAnalisePorId(analiseId) {
+  const { data, error } = await supabase
+    .from('analises')
+    .select('*')
+    .eq('id', analiseId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ─── Proventos ────────────────────────────────────────────────────────────────
 
 export async function registrarProvento(userId, { ticker, tipo, valor, data_pagamento, observacao }) {
@@ -245,4 +260,62 @@ export async function carregarVendas(userId) {
     .order('data', { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+// ─── Patrimônio (snapshots históricos) ────────────────────────────────────────
+
+export async function salvarSnapshotPatrimonio(userId, valor, posicoes) {
+  const hoje = new Date().toISOString().split("T")[0];
+  // Upsert por dia (último snapshot do dia ganha)
+  const { data, error } = await supabase
+    .from('patrimonio_snapshots')
+    .upsert({
+      user_id: userId,
+      data: hoje,
+      valor: valor,
+      posicoes_json: posicoes
+    }, { onConflict: 'user_id,data' })
+    .select();
+  if (error) throw error;
+  return data;
+}
+
+export async function carregarSnapshotsPatrimonio(userId, dias = 90) {
+  const dataInicio = new Date();
+  dataInicio.setDate(dataInicio.getDate() - dias);
+  const { data, error } = await supabase
+    .from('patrimonio_snapshots')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('data', dataInicio.toISOString().split("T")[0])
+    .order('data', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// ─── Cache de cotações (24h) ──────────────────────────────────────────────────
+
+const CACHE_PRECO = "precos_cache";
+const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 horas
+
+export function getCachedPrice(ticker) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_PRECO) || "{}");
+    const item = cache[ticker.toUpperCase()];
+    if (!item) return null;
+    if (Date.now() - item.ts > CACHE_TTL) return null;
+    return item;
+  } catch { return null; }
+}
+
+export function setCachedPrice(ticker, dados) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_PRECO) || "{}");
+    cache[ticker.toUpperCase()] = { ...dados, ts: Date.now() };
+    localStorage.setItem(CACHE_PRECO, JSON.stringify(cache));
+  } catch {}
+}
+
+export function clearPriceCache() {
+  try { localStorage.removeItem(CACHE_PRECO); } catch {}
 }

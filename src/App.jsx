@@ -11,15 +11,18 @@ import {
   CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
-  FileSearch, Bell, Download, Upload, ExternalLink, Clock
+  FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
+  RefreshCw, FileUp, TrendingDown, Award
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
   registrarCompra, carregarCompras,
   carregarWatchlist, salvarWatchlist, removerWatchlist,
-  salvarAnalise, carregarAnalises,
+  salvarAnalise, carregarAnalises, removerAnalise,
   registrarProvento, carregarProventos, removerProvento,
-  registrarVenda, carregarVendas
+  registrarVenda, carregarVendas,
+  salvarSnapshotPatrimonio, carregarSnapshotsPatrimonio,
+  getCachedPrice, setCachedPrice, clearPriceCache
 } from "./supabase";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -177,6 +180,90 @@ function Card({ children, style={}, accent=false, className="" }) {
   );
 }
 
+// ─── Toast System ─────────────────────────────────────────────────────────────
+let toastListeners = [];
+export function showToast(msg, tipo = "success") {
+  toastListeners.forEach(fn => fn({ id: Date.now() + Math.random(), msg, tipo }));
+}
+
+function ToastContainer() {
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    const handler = (toast) => {
+      setToasts(prev => [...prev, toast]);
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== toast.id));
+      }, 3500);
+    };
+    toastListeners.push(handler);
+    return () => { toastListeners = toastListeners.filter(h => h !== handler); };
+  }, []);
+
+  if (!toasts.length) return null;
+
+  return (
+    <div style={{
+      position:"fixed",bottom:24,right:24,zIndex:9999,
+      display:"flex",flexDirection:"column",gap:8,maxWidth:380
+    }}>
+      {toasts.map(t => {
+        const cor = t.tipo === "success" ? "#00e5a0" : t.tipo === "error" ? "#ff4d6d" : t.tipo === "warning" ? "#ffd60a" : "#7b61ff";
+        const Icon = t.tipo === "success" ? CheckCircle2 : t.tipo === "error" ? AlertCircle : t.tipo === "warning" ? AlertTriangle : Sparkles;
+        return (
+          <div key={t.id} className="anim" style={{
+            background:"#0a0a0f",border:`1px solid ${cor}50`,borderRadius:10,
+            padding:"12px 16px",display:"flex",alignItems:"center",gap:10,
+            boxShadow:`0 8px 24px ${cor}20, 0 0 0 1px #000`,
+            minWidth:240
+          }}>
+            <Icon size={18} color={cor} strokeWidth={2.2}/>
+            <span style={{fontSize:13,color:"#fff",fontWeight:500,flex:1}}>{t.msg}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Modal de Confirmação ─────────────────────────────────────────────────────
+function ConfirmModal({ open, titulo, mensagem, onConfirm, onCancel, perigoso = false }) {
+  if (!open) return null;
+  return (
+    <div onClick={onCancel} style={{
+      position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",
+      zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center",padding:20
+    }}>
+      <div onClick={e=>e.stopPropagation()} className="anim" style={{
+        background:"#0a0a0f",border:"1px solid #252535",borderRadius:12,
+        padding:24,maxWidth:420,width:"100%"
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+          <div style={{
+            width:40,height:40,borderRadius:10,
+            background:perigoso?"#ff4d6d20":"#7b61ff20",
+            display:"flex",alignItems:"center",justifyContent:"center"
+          }}>
+            {perigoso ? <AlertTriangle size={20} color="#ff4d6d"/> : <AlertCircle size={20} color="#7b61ff"/>}
+          </div>
+          <h3 style={{fontSize:16,fontWeight:700,color:"#fff",margin:0}}>{titulo}</h3>
+        </div>
+        <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6,marginBottom:20}}>{mensagem}</div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onCancel} style={{
+            background:"#1a1a25",border:"1px solid #252535",borderRadius:8,
+            padding:"10px 18px",color:"#c5c5d0",fontWeight:600,fontSize:13,cursor:"pointer"
+          }}>Cancelar</button>
+          <button onClick={onConfirm} style={{
+            background:perigoso?"#ff4d6d":"#7b61ff",border:"none",borderRadius:8,
+            padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"
+          }}>{perigoso?"Remover":"Confirmar"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function STitle({ children, color="#7b61ff" }) {
   return <div style={{fontSize:10,color,fontWeight:700,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>{children}</div>;
 }
@@ -223,7 +310,7 @@ function LoadingCard({ fase }) {
 }
 
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
-function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId }) {
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId, pedirConfirmacao }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
@@ -260,33 +347,119 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 
       setTicker(""); setQtd(""); setPm(""); setData("");
       onSave();
+      showToast(`Compra de ${t} registrada`, "success");
     } catch (e) {
       console.error("Erro ao registrar compra:", e);
-      alert("Erro ao salvar: " + e.message);
+      showToast("Erro ao salvar: " + e.message, "error");
     } finally {
       setSalvando(false);
     }
   };
 
-  const removerAtivoCarteira = async (ativo) => {
-    if (!ativo.id) {
-      // Ativo só local
-      setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
-      return;
-    }
-    try {
-      await removerAtivo(ativo.id);
-      setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
-      onSave();
-    } catch (e) {
-      alert("Erro ao remover: " + e.message);
-    }
+  const removerAtivoCarteira = (ativo) => {
+    pedirConfirmacao({
+      titulo: `Remover ${ativo.ticker}?`,
+      mensagem: `Tem certeza que deseja remover ${ativo.ticker} (${ativo.qtd} cotas) da sua carteira? Esta ação não pode ser desfeita.`,
+      perigoso: true,
+      onConfirm: async () => {
+        if (!ativo.id) {
+          setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
+          showToast(`${ativo.ticker} removido`, "success");
+          return;
+        }
+        try {
+          await removerAtivo(ativo.id);
+          setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
+          onSave();
+          showToast(`${ativo.ticker} removido com sucesso`, "success");
+        } catch (e) {
+          showToast("Erro ao remover: " + e.message, "error");
+        }
+      }
+    });
   };
 
   const alertasReb = dados?.posicoes?.filter(p => {
     const a = pesoAlvo[p.ticker];
     return a && Math.abs(p.peso - a) > 5;
   }) || [];
+
+  // Exportar carteira em CSV
+  const exportarCSV = () => {
+    const linhas = ["Ticker,Quantidade,Preço Médio,Peso Alvo (%)"];
+    carteira.forEach(a => {
+      linhas.push(`${a.ticker},${a.qtd},${a.pm || ""},${a.peso_alvo || ""}`);
+    });
+    const csv = linhas.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `inventia-carteira-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("Carteira exportada", "success");
+  };
+
+  // Importar carteira de CSV
+  const importarCSV = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !userId || !carteiraId) return;
+
+    const text = await file.text();
+    const linhas = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (linhas.length < 2) {
+      showToast("Arquivo CSV vazio ou inválido", "error");
+      return;
+    }
+
+    // Parser flexível - aceita ; ou ,
+    const sep = linhas[0].includes(";") ? ";" : ",";
+    const header = linhas[0].toLowerCase().split(sep).map(h => h.trim());
+
+    // Detecta colunas
+    const idxTicker = header.findIndex(h => h.includes("ticker") || h.includes("ativo") || h.includes("código") || h.includes("codigo"));
+    const idxQtd = header.findIndex(h => h.includes("quantidade") || h.includes("qtd") || h.includes("qtde"));
+    const idxPm = header.findIndex(h => h.includes("preço") || h.includes("preco") || h.includes("pm") || h.includes("médio") || h.includes("medio"));
+
+    if (idxTicker === -1 || idxQtd === -1) {
+      showToast("CSV precisa ter colunas Ticker e Quantidade", "error");
+      e.target.value = "";
+      return;
+    }
+
+    let importados = 0, erros = 0;
+    showToast(`Importando ${linhas.length - 1} ativos...`, "info");
+
+    for (let i = 1; i < linhas.length; i++) {
+      const cols = linhas[i].split(sep).map(c => c.trim().replace(/^"|"$/g, ""));
+      const ticker = cols[idxTicker]?.toUpperCase();
+      const qtd = Number(cols[idxQtd]?.replace(",", "."));
+      const pm = idxPm > -1 ? Number(cols[idxPm]?.replace(",", ".")) : null;
+
+      if (!ticker || !qtd || isNaN(qtd)) { erros++; continue; }
+
+      try {
+        await salvarAtivo(userId, carteiraId, { ticker, qtd, pm: pm || null });
+        importados++;
+      } catch (err) { erros++; console.error(err); }
+    }
+
+    // Recarregar carteira
+    try {
+      const ativos = await carregarAtivos(carteiraId);
+      setCarteira(ativos.map(a => ({
+        id: a.id,
+        ticker: a.ticker,
+        qtd: Number(a.qtd),
+        pm: a.pm ? Number(a.pm) : null,
+        peso_alvo: a.peso_alvo ? Number(a.peso_alvo) : null
+      })));
+    } catch (err) { console.error(err); }
+
+    showToast(`${importados} ativos importados${erros > 0 ? `, ${erros} erros` : ""}`, importados > 0 ? "success" : "error");
+    e.target.value = "";
+  };
 
   return (
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:16,alignItems:"start"}}>
@@ -336,7 +509,22 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
       {carteira.length > 0 ? <>
-        <STitle>ATIVOS ({carteira.length})</STitle>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <STitle>ATIVOS ({carteira.length})</STitle>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={exportarCSV} title="Exportar carteira em CSV" style={{
+              background:"#0a0a14",border:"1px solid #1a1a25",borderRadius:6,padding:"6px 10px",
+              color:"#9090a0",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
+            }}><Download size={12}/>Exportar</button>
+            <label style={{
+              background:"#0a0a14",border:"1px solid #1a1a25",borderRadius:6,padding:"6px 10px",
+              color:"#9090a0",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
+            }}>
+              <FileUp size={12}/>Importar
+              <input type="file" accept=".csv" onChange={importarCSV} style={{display:"none"}}/>
+            </label>
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
         {carteira.map((a,i) => {
           const pos = dados?.posicoes?.find(p => p.ticker === a.ticker);
@@ -679,7 +867,7 @@ function TabCenarios({ dados }) {
 }
 
 // ─── Tab: Watchlist ───────────────────────────────────────────────────────────
-function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
+function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirConfirmacao }) {
   const [ticker,setTicker]=useState(""); const [alvo,setAlvo]=useState(""); const [nota,setNota]=useState("");
   const [salvando,setSalvando]=useState(false);
 
@@ -702,19 +890,28 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
       }]);
       setTicker(""); setAlvo(""); setNota("");
       onSave();
+      showToast(`${t} adicionado à watchlist`, "success");
     } catch (e) {
-      alert("Erro: " + e.message);
+      showToast("Erro: " + e.message, "error");
     } finally {
       setSalvando(false);
     }
   };
 
-  const remover = async (item) => {
-    if (item.id) {
-      try { await removerWatchlist(item.id); } catch(_) {}
-    }
-    setWatchlist(p => p.filter(x => x.ticker !== item.ticker));
-    onSave();
+  const remover = (item) => {
+    pedirConfirmacao({
+      titulo: `Remover ${item.ticker} da watchlist?`,
+      mensagem: `Esta ação removerá ${item.ticker} da sua watchlist. Você pode adicionar novamente depois se quiser.`,
+      perigoso: true,
+      onConfirm: async () => {
+        if (item.id) {
+          try { await removerWatchlist(item.id); } catch(_) {}
+        }
+        setWatchlist(p => p.filter(x => x.ticker !== item.ticker));
+        onSave();
+        showToast(`${item.ticker} removido da watchlist`, "success");
+      }
+    });
   };
 
   const enriched = watchlist.map(w => {
@@ -1419,7 +1616,7 @@ PASSO 3 — Retorne APENAS este JSON:
 }
 
 // ─── Tab: Histórico de Análises ───────────────────────────────────────────────
-function TabHistorico({ userId }) {
+function TabHistorico({ userId, pedirConfirmacao }) {
   const [analises, setAnalises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandido, setExpandido] = useState(null);
@@ -1431,6 +1628,31 @@ function TabHistorico({ userId }) {
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
   }, [userId]);
+
+  const removerItem = (analise) => {
+    pedirConfirmacao({
+      titulo: "Remover análise?",
+      mensagem: `Remover esta análise de ${analise.tipo} do dia ${new Date(analise.created_at).toLocaleDateString("pt-BR")}? Esta ação não pode ser desfeita.`,
+      perigoso: true,
+      onConfirm: async () => {
+        try {
+          await removerAnalise(analise.id);
+          setAnalises(p => p.filter(x => x.id !== analise.id));
+          showToast("Análise removida", "success");
+        } catch (e) { showToast("Erro: " + e.message, "error"); }
+      }
+    });
+  };
+
+  const compartilhar = async (analise) => {
+    const url = `${window.location.origin}/?analise=${analise.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiado! Cole para compartilhar.", "success");
+    } catch {
+      prompt("Copie este link:", url);
+    }
+  };
 
   if (loading) return <Card style={{textAlign:"center",padding:"40px"}}><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"0 auto"}}/></Card>;
 
@@ -1481,7 +1703,7 @@ function TabHistorico({ userId }) {
                   </div>
                 )}
                 {a.resultado?.recomendacoes?.length > 0 && (
-                  <div>
+                  <div style={{marginBottom:14}}>
                     <div style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:1,marginBottom:8}}>RECOMENDAÇÕES</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
                       {a.resultado.recomendacoes.map((r,i) => (
@@ -1497,6 +1719,19 @@ function TabHistorico({ userId }) {
                     </div>
                   </div>
                 )}
+
+                <div style={{display:"flex",gap:8,paddingTop:12,borderTop:"1px solid #1a1a25"}}>
+                  <button onClick={(e)=>{e.stopPropagation(); compartilhar(a);}} style={{
+                    background:"#7b61ff15",border:"1px solid #7b61ff35",borderRadius:6,
+                    padding:"7px 12px",color:"#7b61ff",fontSize:11,fontWeight:600,cursor:"pointer",
+                    display:"flex",alignItems:"center",gap:6
+                  }}><ExternalLink size={12}/>Copiar link</button>
+                  <button onClick={(e)=>{e.stopPropagation(); removerItem(a);}} style={{
+                    background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,
+                    padding:"7px 12px",color:"#ff4d6d",fontSize:11,fontWeight:600,cursor:"pointer",
+                    display:"flex",alignItems:"center",gap:6
+                  }}><Trash2 size={12}/>Remover</button>
+                </div>
               </div>
             )}
           </Card>
@@ -1507,7 +1742,7 @@ function TabHistorico({ userId }) {
 }
 
 // ─── Tab: Proventos ───────────────────────────────────────────────────────────
-function TabProventos({ userId }) {
+function TabProventos({ userId, pedirConfirmacao }) {
   const [proventos, setProventos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ticker, setTicker] = useState("");
@@ -1536,19 +1771,28 @@ function TabProventos({ userId }) {
       });
       setProventos(prev => [novo, ...prev]);
       setTicker(""); setValor(""); setData(""); setObs("");
+      showToast(`Provento de ${novo.ticker} registrado`, "success");
     } catch (e) {
-      alert("Erro: " + e.message);
+      showToast("Erro: " + e.message, "error");
     } finally {
       setSalvando(false);
     }
   };
 
-  const remover = async (id) => {
-    if (!confirm("Remover este provento?")) return;
-    try {
-      await removerProvento(id);
-      setProventos(p => p.filter(x => x.id !== id));
-    } catch (e) { alert("Erro: " + e.message); }
+  const remover = (id) => {
+    const prov = proventos.find(p => p.id === id);
+    pedirConfirmacao({
+      titulo: "Remover provento?",
+      mensagem: `Remover ${prov?.tipo} de ${prov?.ticker} (${fmtBRL(prov?.valor)}) do histórico?`,
+      perigoso: true,
+      onConfirm: async () => {
+        try {
+          await removerProvento(id);
+          setProventos(p => p.filter(x => x.id !== id));
+          showToast("Provento removido", "success");
+        } catch (e) { showToast("Erro: " + e.message, "error"); }
+      }
+    });
   };
 
   // Estatísticas
@@ -1692,6 +1936,406 @@ function TabProventos({ userId }) {
   );
 }
 
+// ─── Tab: Patrimônio (evolução histórica) ─────────────────────────────────────
+function TabPatrimonio({ userId, dados }) {
+  const [snapshots, setSnapshots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [periodo, setPeriodo] = useState(90);
+
+  const carregar = async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const data = await carregarSnapshotsPatrimonio(userId, periodo);
+      setSnapshots(data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { carregar(); }, [userId, periodo]);
+
+  const salvarHoje = async () => {
+    if (!dados?.totalCarteira) {
+      showToast("Rode uma análise primeiro para registrar o patrimônio", "warning");
+      return;
+    }
+    try {
+      await salvarSnapshotPatrimonio(userId, dados.totalCarteira, dados.posicoes);
+      showToast(`Snapshot salvo: ${fmtBRL(dados.totalCarteira)}`, "success");
+      carregar();
+    } catch (e) { showToast("Erro: " + e.message, "error"); }
+  };
+
+  const dadosGrafico = snapshots.map(s => ({
+    data: new Date(s.data).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
+    valor: Number(s.valor)
+  }));
+
+  const primeiro = snapshots[0];
+  const ultimo = snapshots[snapshots.length-1];
+  const variacao = primeiro && ultimo ? ((ultimo.valor - primeiro.valor) / primeiro.valor) * 100 : 0;
+  const ganho = primeiro && ultimo ? Number(ultimo.valor) - Number(primeiro.valor) : 0;
+
+  // Comparação com CDI/IBOV
+  const diasPeriodo = primeiro ? (new Date(ultimo.data) - new Date(primeiro.data)) / (1000*60*60*24) : 0;
+  const fatorCDI = Math.pow(1 + CDI_ANO/100, diasPeriodo/365) - 1;
+  const cdiAcumulado = primeiro ? Number(primeiro.valor) * fatorCDI : 0;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <div>
+            <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Activity size={12} strokeWidth={2.5}/>EVOLUÇÃO DO PATRIMÔNIO</span></STitle>
+            <div style={{fontSize:12,color:"#a8a8b8"}}>Acompanhe sua jornada patrimonial ao longo do tempo</div>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {[30,90,180,365].map(d => (
+              <button key={d} onClick={()=>setPeriodo(d)} style={{
+                background:periodo===d?"#7b61ff":"#0a0a0f",
+                border:`1px solid ${periodo===d?"#7b61ff":"#252535"}`,
+                borderRadius:6,padding:"6px 12px",color:periodo===d?"#fff":"#7a7a8a",
+                fontSize:11,fontWeight:600,cursor:"pointer"
+              }}>{d}d</button>
+            ))}
+            <button onClick={salvarHoje} style={{
+              background:"linear-gradient(135deg,#00e5a0,#00b4d8)",border:"none",borderRadius:6,
+              padding:"7px 12px",color:"#000",fontSize:11,fontWeight:700,cursor:"pointer",
+              display:"flex",alignItems:"center",gap:5,marginLeft:6
+            }}><Save size={12}/>Snapshot</button>
+          </div>
+        </div>
+      </Card>
+
+      {snapshots.length >= 2 && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
+          <Stat label="ATUAL" value={fmtBRL(ultimo.valor)} color="#00e5a0" mono/>
+          <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"#00e5a0":"#ff4d6d"} mono/>
+          <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"#00e5a0":"#ff4d6d"} mono/>
+          <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="#ffd60a" mono/>
+        </div>
+      )}
+
+      {loading ? (
+        <Card><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"40px auto",display:"block"}}/></Card>
+      ) : snapshots.length < 2 ? (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+          <Activity size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>
+            {snapshots.length === 0 ? "Nenhum snapshot ainda" : "Apenas 1 snapshot — precisamos de pelo menos 2 para gerar o gráfico"}
+          </div>
+          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6,marginBottom:14}}>
+            Os snapshots são tirados manualmente. Rode uma análise da carteira<br/>
+            e clique em <b style={{color:"#00e5a0"}}>Snapshot</b> para registrar seu patrimônio do dia.
+          </div>
+          <div style={{color:"#5a5a6a",fontSize:11,fontStyle:"italic"}}>
+            Dica: tire 1 snapshot por semana para acompanhar a evolução.
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <STitle>HISTÓRICO ({snapshots.length} snapshots)</STitle>
+          <ResponsiveContainer width="100%" height={320}>
+            <AreaChart data={dadosGrafico} margin={{left:0,right:0,top:10,bottom:5}}>
+              <defs>
+                <linearGradient id="gradPatrimonio" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7b61ff" stopOpacity={0.4}/>
+                  <stop offset="100%" stopColor="#7b61ff" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
+              <XAxis dataKey="data" tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)}/>
+              <Tooltip content={<TTip/>}/>
+              <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="#7b61ff" strokeWidth={2} fill="url(#gradPatrimonio)"/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Oportunidades (scan da B3 com IA) ───────────────────────────────────
+function TabOportunidades({ chamarIAComSearch }) {
+  const [filtros, setFiltros] = useState({
+    tipo: "acoes_subprecificadas",
+    perfil: "moderado",
+    setor: "qualquer"
+  });
+  const [loading, setLoading] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [erro, setErro] = useState("");
+  const [fase, setFase] = useState("");
+
+  const TIPOS = {
+    acoes_subprecificadas: {
+      titulo: "Ações sub-precificadas",
+      descricao: "Encontre ações com P/L baixo, P/VP < 1 e bons fundamentos",
+      icon: TrendingDown
+    },
+    fiis_alto_dy: {
+      titulo: "FIIs com alto DY",
+      descricao: "FIIs com Dividend Yield acima da média e P/VP atrativo",
+      icon: Coins
+    },
+    crescimento: {
+      titulo: "Empresas em crescimento",
+      descricao: "Receita crescendo 20%+, lucros consistentes e setores promissores",
+      icon: Rocket
+    },
+    blue_chips_baratas: {
+      titulo: "Blue chips em desconto",
+      descricao: "Grandes empresas líderes negociando com desconto histórico",
+      icon: Award
+    },
+    dividendos_estaveis: {
+      titulo: "Pagadoras consistentes",
+      descricao: "Histórico de 5+ anos pagando dividendos crescentes",
+      icon: DollarSign
+    }
+  };
+
+  const buscar = async () => {
+    setErro(""); setLoading(true); setResultado(null);
+    try {
+      setFase("🔍 Escaneando B3...");
+      const cfg = TIPOS[filtros.tipo];
+      const setorTxt = filtros.setor !== "qualquer" ? `Foque em empresas do setor ${filtros.setor}.` : "";
+
+      const prompt = `Você é analista da B3 com acesso a dados em tempo real. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+
+OBJETIVO: ${cfg.titulo} — ${cfg.descricao}
+PERFIL DO INVESTIDOR: ${filtros.perfil}
+${setorTxt}
+
+PASSO 1 — Use Google Search para escanear o mercado:
+- "melhores ${filtros.tipo.replace(/_/g," ")} B3 ${new Date().getFullYear()}"
+- "ranking ações descontadas P/L P/VP baixo bovespa"
+- Verifique cotações atuais nos sites Status Invest, Investidor10, Investing.com
+
+PASSO 2 — Selecione 8-10 ativos que melhor se enquadram nos critérios.
+
+PASSO 3 — Retorne APENAS este JSON:
+{
+  "tipo": "${filtros.tipo}",
+  "data_busca": "${new Date().toISOString().split("T")[0]}",
+  "criterios_usados": "Descrição em 1 frase dos critérios aplicados na busca",
+  "oportunidades": [
+    {
+      "ticker": "TICKER",
+      "nome": "Nome empresa",
+      "setor": "Setor",
+      "preco": 22.50,
+      "dy": 8.5,
+      "pl": 4.2,
+      "pvp": 0.65,
+      "score": 85,
+      "destaque": "O motivo principal pelo qual está nesta lista (1 frase impactante)",
+      "risco_principal": "Maior risco em 1 frase",
+      "potencial_upside": 25
+    }
+  ],
+  "contexto_macro": "Análise em 2 parágrafos sobre o momento atual do mercado e por que essas oportunidades fazem sentido AGORA",
+  "aviso": "Lista gerada por IA usando dados públicos. Não é recomendação personalizada."
+}
+
+Use APENAS dados reais encontrados na busca. Ordene as oportunidades por score (maior primeiro).`;
+
+      setFase("🧠 IA selecionando oportunidades...");
+      const r = await chamarIAComSearch(prompt, 4000);
+      setResultado(r);
+    } catch (e) {
+      setErro(e.message || "Erro");
+    } finally {
+      setLoading(false);
+      setFase("");
+    }
+  };
+
+  const TipoIcon = TIPOS[filtros.tipo].icon;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
+        <div style={{fontSize:12,color:"#a8a8b8",marginBottom:14,lineHeight:1.6}}>
+          A IA escaneia a B3 buscando ativos que se encaixam no critério escolhido. Use como ponto de partida para suas próprias análises.
+        </div>
+
+        {/* Tipo de oportunidade */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginBottom:14}}>
+          {Object.entries(TIPOS).map(([k,cfg]) => {
+            const Icon = cfg.icon;
+            const ativo = filtros.tipo === k;
+            return (
+              <button key={k} onClick={()=>setFiltros({...filtros,tipo:k})} style={{
+                background:ativo?"#7b61ff15":"#0a0a14",
+                border:`1px solid ${ativo?"#7b61ff60":"#1a1a25"}`,
+                borderRadius:10,padding:"12px 14px",color:"#fff",cursor:"pointer",
+                textAlign:"left",display:"flex",alignItems:"flex-start",gap:10
+              }}>
+                <Icon size={18} color={ativo?"#7b61ff":"#7a7a8a"} strokeWidth={2}/>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:3,color:ativo?"#fff":"#c5c5d0"}}>{cfg.titulo}</div>
+                  <div style={{fontSize:10,color:"#7a7a8a",lineHeight:1.4}}>{cfg.descricao}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Filtros adicionais */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          <select value={filtros.perfil} onChange={e=>setFiltros({...filtros,perfil:e.target.value})}
+            style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer"}}>
+            <option value="conservador">Conservador</option>
+            <option value="moderado">Moderado</option>
+            <option value="arrojado">Arrojado</option>
+          </select>
+          <select value={filtros.setor} onChange={e=>setFiltros({...filtros,setor:e.target.value})}
+            style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer"}}>
+            <option value="qualquer">Qualquer setor</option>
+            <option value="bancos">Bancos</option>
+            <option value="energia eletrica">Energia Elétrica</option>
+            <option value="saneamento">Saneamento</option>
+            <option value="petróleo e gás">Petróleo & Gás</option>
+            <option value="siderurgia">Siderurgia</option>
+            <option value="varejo">Varejo</option>
+            <option value="tecnologia">Tecnologia</option>
+            <option value="saúde">Saúde</option>
+            <option value="agro">Agronegócio</option>
+            <option value="imobiliário">Imobiliário (FIIs)</option>
+          </select>
+          <button onClick={buscar} disabled={loading} style={{
+            background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,
+            padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:8
+          }}>
+            {loading ? <><Loader2 size={14} className="spin"/>{fase || "Buscando..."}</> : <><Sparkles size={14} strokeWidth={2.5}/>Buscar oportunidades</>}
+          </button>
+        </div>
+
+        {erro && <div style={{background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+      </Card>
+
+      {resultado && (
+        <>
+          {resultado.contexto_macro && (
+            <Card accent>
+              <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Activity size={12} strokeWidth={2.5}/>CONTEXTO DO MERCADO</span></STitle>
+              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.contexto_macro}</div>
+              {resultado.criterios_usados && (
+                <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #1a1a25",fontSize:11,color:"#7a7a8a",fontStyle:"italic"}}>
+                  Critérios: {resultado.criterios_usados}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {resultado.oportunidades?.length > 0 && (
+            <>
+              <STitle>{resultado.oportunidades.length} OPORTUNIDADES IDENTIFICADAS</STitle>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:12}}>
+                {resultado.oportunidades.map((o,i) => (
+                  <Card key={i} className="card-hover" style={{position:"relative",overflow:"hidden"}}>
+                    {/* Score badge */}
+                    <div style={{position:"absolute",top:12,right:12}}>
+                      <div style={{
+                        padding:"4px 10px",borderRadius:6,fontWeight:800,fontSize:13,
+                        fontFamily:"'JetBrains Mono',monospace",
+                        background:o.score>=80?"#00e5a020":o.score>=65?"#ffd60a20":"#ff4d6d20",
+                        color:o.score>=80?"#00e5a0":o.score>=65?"#ffd60a":"#ff4d6d",
+                        border:`1px solid ${o.score>=80?"#00e5a040":o.score>=65?"#ffd60a40":"#ff4d6d40"}`
+                      }}>{o.score}</div>
+                    </div>
+
+                    {/* Ranking */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                      <div style={{
+                        width:28,height:28,borderRadius:7,
+                        background:i<3?"linear-gradient(135deg,#ffd60a,#f77f00)":"#1a1a25",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:12,fontWeight:800,color:i<3?"#000":"#7a7a8a"
+                      }}>#{i+1}</div>
+                      <div>
+                        <div style={{fontWeight:800,color:"#fff",fontSize:16}}>{o.ticker}</div>
+                        <div style={{fontSize:10,color:"#7a7a8a"}}>{o.setor}</div>
+                      </div>
+                    </div>
+
+                    <div style={{fontSize:11,color:"#a8a8b8",marginBottom:12,lineHeight:1.5}}>{o.nome}</div>
+
+                    <div style={{
+                      background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:10,
+                      display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12
+                    }}>
+                      <div>
+                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>PREÇO</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(o.preco)}</div>
+                      </div>
+                      {o.dy != null && <div>
+                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>DY</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.dy,1)}%</div>
+                      </div>}
+                      {o.pl != null && <div>
+                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>P/L</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pl,1)}</div>
+                      </div>}
+                      {o.pvp != null && <div>
+                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>P/VP</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pvp,2)}</div>
+                      </div>}
+                    </div>
+
+                    {o.destaque && (
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <CheckCircle2 size={14} color="#00e5a0" style={{flexShrink:0,marginTop:1}}/>
+                        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.5}}>{o.destaque}</div>
+                      </div>
+                    )}
+
+                    {o.risco_principal && (
+                      <div style={{display:"flex",gap:8,marginBottom:o.potencial_upside?8:0}}>
+                        <AlertCircle size={14} color="#ff4d6d" style={{flexShrink:0,marginTop:1}}/>
+                        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.5}}>{o.risco_principal}</div>
+                      </div>
+                    )}
+
+                    {o.potencial_upside != null && (
+                      <div style={{
+                        marginTop:10,padding:"6px 10px",borderRadius:6,
+                        background:"#7b61ff10",border:"1px solid #7b61ff30",
+                        display:"flex",alignItems:"center",justifyContent:"space-between"
+                      }}>
+                        <span style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1}}>POTENCIAL UPSIDE</span>
+                        <span style={{fontSize:14,fontWeight:800,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>+{o.potencial_upside}%</span>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+
+          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+        </>
+      )}
+
+      {!resultado && !loading && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
+          <Lightbulb size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>Descubra novas oportunidades de investimento</div>
+          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6}}>
+            Escolha o tipo de oportunidade que busca acima<br/>
+            e clique em <b style={{color:"#7b61ff"}}>Buscar oportunidades</b>.
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── App Principal ────────────────────────────────────────────────────────────
 export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("carteira");
@@ -1708,6 +2352,9 @@ export default function App({ session, onLogout }) {
   const [savedMsg, setSavedMsg] = useState("");
   const [carteiraId, setCarteiraId] = useState(null);
   const [carregandoDados, setCarregandoDados] = useState(true);
+  const [confirmacao, setConfirmacao] = useState({open:false});
+
+  const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
   const userId = session?.user?.id;
   const userEmail = session?.user?.email;
@@ -1933,6 +2580,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             tickers_analisados: todosOsTickers.split(", ")
           });
         } catch(e) { console.warn("Erro ao salvar análise:", e); }
+
+        // Salva snapshot do patrimônio automaticamente (se houver carteira analisada)
+        if (temCarteira && totalCarteira > 0) {
+          try {
+            await salvarSnapshotPatrimonio(userId, totalCarteira, posicoesComPeso);
+          } catch(e) { console.warn("Erro ao salvar snapshot:", e); }
+        }
       }
 
     } catch(e) {
@@ -1947,10 +2601,12 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
   const TABS = [
     {k:"carteira",icon:Briefcase,label:"Carteira"},
+    {k:"patrimonio",icon:Activity,label:"Patrimônio"},
     {k:"graficos",icon:BarChart3,label:"Gráficos"},
     {k:"analise",icon:Brain,label:"Análise IA"},
     {k:"ticker",icon:FileSearch,label:"Analisar Ticker"},
     {k:"comparador",icon:GitCompare,label:"Comparador"},
+    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades"},
     {k:"historico",icon:History,label:"Histórico"},
     {k:"proventos",icon:Coins,label:"Proventos"},
     {k:"watchlist",icon:Eye,label:"Watchlist"},
@@ -1963,7 +2619,15 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   const metricaCarteira = dados?.totalCarteira || 0;
   const metricaPosicoes = dados?.posicoes?.length || 0;
   const metricaDY = dados?.posicoes?.length ? (dados.posicoes.reduce((s,p)=>s+(p.dy||0)*(p.peso/100),0)) : 0;
-  const horaAtual = new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+
+  // Relógio em tempo real
+  const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHoraAtual(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{minHeight:"100vh",background:"#000000",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#ffffff"}}>
@@ -2153,18 +2817,33 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* ÁREA DE CONTEÚDO - Tab atual */}
         <div className="anim">
-          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId}/>}
+          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="graficos" && <TabGraficos dados={dados}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
-          {tab==="historico" && <TabHistorico userId={userId}/>}
-          {tab==="proventos" && <TabProventos userId={userId}/>}
+          {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch}/>}
+          {tab==="patrimonio" && <TabPatrimonio userId={userId} dados={dados}/>}
+          {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
+          {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}
           {tab==="cenarios" && <TabCenarios dados={dados}/>}
-          {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId}/>}
+          {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="ir" && <TabIR dados={dados}/>}
         </div>
+
+        {/* Toast notifications */}
+        <ToastContainer/>
+
+        {/* Modal de confirmação */}
+        <ConfirmModal
+          open={confirmacao.open}
+          titulo={confirmacao.titulo}
+          mensagem={confirmacao.mensagem}
+          perigoso={confirmacao.perigoso}
+          onConfirm={() => { confirmacao.onConfirm?.(); setConfirmacao({open:false}); }}
+          onCancel={() => setConfirmacao({open:false})}
+        />
 
         {/* Footer */}
         <div style={{
