@@ -76,30 +76,50 @@ async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       nome = c.corporate_name || c.name || null;
     }
 
-    // Mapeamento bolsai → nosso schema
+    // Mapeamento bolsai → nosso schema (validado contra schema real em /api/debug-screening?inspect=true)
+    //
+    // /fundamentals/{ticker} (ação) retorna:
+    //   pl, pvp, roe, roic, ev_ebitda, vpa, lpa, gross_margin, net_margin,
+    //   ebit_margin, ebitda_margin, debt_equity, net_debt_equity, net_debt_ebitda,
+    //   cagr_revenue_5y, cagr_earnings_5y, ...
+    //   NÃO retorna: dividend_yield (ações precisam de outro endpoint pra DY)
+    //
+    // /fiis/{ticker} (FII) retorna:
+    //   pvp, dividend_yield_ttm, net_asset_value, segment, book_value_per_share, name, ...
+    //   NÃO tem: pl, roe (FIIs não têm esses indicadores)
+    //
+    // Para ação: usa nome de /companies (corporate_name)
+    // Para FII: usa nome de /fiis (campo "name")
+    const nomeAtivo = ehFII
+      ? (dados.name || nome)  // FII tem "name", senão fallback pro companies
+      : (nome || dados.corporate_name);  // ação usa corporate_name
+
     return {
       ticker,
       tipo: tipoFinal,
-      nome: nome,
+      nome: nomeAtivo,
       setor_cvm: setorCVM,
       // Ações
       pl: dados.pl ?? null,
       pvp: dados.pvp ?? null,
       roe: dados.roe ?? null,
       roic: dados.roic ?? null,
-      margem_liquida: dados.net_margin ?? dados.margem_liquida ?? null,
-      div_ebitda: dados.div_ebitda ?? dados.debt_ebitda ?? null,
-      cagr_lucro_5y: dados.cagr_lucro_5y ?? null,
-      cagr_receita_5y: dados.cagr_receita_5y ?? null,
+      margem_liquida: dados.net_margin ?? null,
+      div_ebitda: dados.net_debt_ebitda ?? null,
+      cagr_lucro_5y: dados.cagr_earnings_5y ?? null,
+      cagr_receita_5y: dados.cagr_revenue_5y ?? null,
       ev_ebitda: dados.ev_ebitda ?? null,
       vpa: dados.vpa ?? null,
       lpa: dados.lpa ?? null,
       // FIIs
-      dy: dados.dividend_yield ?? dados.dy ?? null,
-      nav: dados.nav ?? null,
-      segmento: dados.segmento ?? null,
-      // Qualitativo (calculado: lucros consistentes se PL > 0 nos últimos 4 anos)
-      lucros_consistentes: dados.lucros_consistentes ?? null,
+      dy: dados.dividend_yield_ttm ?? null,
+      nav: dados.net_asset_value ?? null,
+      segmento: dados.segment ?? null,
+      // Qualitativo: assume lucros consistentes se cagr de lucros > 0
+      // (CAGR negativo significa lucros caindo / prejuízos)
+      lucros_consistentes: typeof dados.cagr_earnings_5y === "number"
+        ? dados.cagr_earnings_5y > 0
+        : null,
       atualizado_em: new Date().toISOString(),
       fonte: "bolsai",
     };
