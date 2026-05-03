@@ -198,15 +198,19 @@ export default async function handler(req, res) {
     //    O log do Supabase + o JSON da resposta deixam claro o que rolou.
     if (sucessos.length === 0) {
       const duracao = Date.now() - inicio;
-      await supabase.from("screening_catalogo_log").insert({
-        tickers_total: tickers.length,
-        acoes_total: 0,
-        fiis_total: 0,
-        fundamentos_total: 0,
-        fundamentos_falhas: falhas,
-        duracao_ms: duracao,
-        erro: `Nenhum fundamento obtido (chunk offset=${offset})`,
-      }).catch(() => {});
+      try {
+        await supabase.from("screening_catalogo_log").insert({
+          tickers_total: tickers.length,
+          acoes_total: 0,
+          fiis_total: 0,
+          fundamentos_total: 0,
+          fundamentos_falhas: falhas,
+          duracao_ms: duracao,
+          erro: `Nenhum fundamento obtido (chunk offset=${offset})`,
+        });
+      } catch (e) {
+        console.warn("[cron-fundamentos] log warning falhou:", e.message);
+      }
 
       return res.status(200).json({
         ok: true,

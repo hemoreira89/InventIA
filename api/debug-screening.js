@@ -62,13 +62,16 @@ export default async function handler(req, res) {
 
   // Testa bolsai com 1 ticker conhecido
   try {
+    const inicio = Date.now();
     const r = await fetch("https://api.usebolsai.com/api/v1/fundamentals/PETR4", {
       headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000), // 15s — bolsai pode estar lenta
     });
+    const duracao_ms = Date.now() - inicio;
     diag.bolsai_test = {
       status: r.status,
       ok: r.ok,
+      duracao_ms,
       body_preview: r.ok ? "OK (200)" : (await r.text()).slice(0, 200),
     };
   } catch (e) {
