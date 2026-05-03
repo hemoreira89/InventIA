@@ -20,10 +20,12 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'API key não configurada' });
 
     // Tenta modelos em ordem de preferência
-    // Para queries com search, começa pelo flash (mais rápido) para evitar timeout
+    // 2025-05: gemini-2.0-flash foi descontinuado (shutdown 1/junho/2026 mas
+    // já bloqueia usuários novos). Migramos para 2.5-flash + 2.5-flash-lite
+    // (este último é GA, mais rápido e custa 4x menos que o flash).
     const modelos = model === 'pro'
-      ? ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro']
-      : ['gemini-2.5-flash', 'gemini-2.0-flash'];
+      ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
+      : ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
     let lastError = null;
 
