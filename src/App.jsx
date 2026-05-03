@@ -38,7 +38,6 @@ import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
-import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso } from "./lib/catalogoB3";
@@ -2410,8 +2409,6 @@ export default function App({ session, onLogout }) {
     catch { return true; }
   });
   const privacy = usePrivacyMode();
-  const themeApi = useTheme();
-  const isLight = themeApi.isLight;
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
@@ -2708,11 +2705,15 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   }, []);
 
   return (
-    <div style={{minHeight:"100vh",background:"var(--bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--text)",transition:"background .2s, color .2s"}}>
-      <style>{THEME_CSS}</style>
+    <div style={{minHeight:"100vh",background:"#000000",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#ffffff"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
+        body{background:#000000}
+        ::-webkit-scrollbar{width:8px;height:8px}
+        ::-webkit-scrollbar-track{background:#000000}
+        ::-webkit-scrollbar-thumb{background:#252535;border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:#3a3a45}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideIn{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
@@ -2723,126 +2724,19 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
         input,select,button,textarea{outline:none;font-family:inherit}
-        input:focus,select:focus{border-color:var(--accent-primary)!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
-        button:hover:not(:disabled){filter:brightness(1.05)}
+        input:focus,select:focus{border-color:#7b61ff!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
+        button:hover:not(:disabled){filter:brightness(1.1)}
         .tab-btn{transition:all .15s ease}
-        .tab-btn:hover{background:var(--bg-secondary)!important;color:var(--text-secondary)!important}
+        .tab-btn:hover{background:#1a1a25!important;color:#a0a0c0!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
-        .card-hover:hover{border-color:var(--border-strong)!important;transform:translateY(-1px)}
-
-        /* ─── OVERRIDES PARA TEMA CLARO ──────────────────────────────────────
-           O app foi originalmente desenvolvido em dark mode com cores hardcoded.
-           Estes seletores [data-theme="light"] sobrescrevem as cores escuras
-           hardcoded no JSX inline para que tudo se adapte ao tema claro.
-        */
-
-        [data-theme="light"] [style*="background:#000"],
-        [data-theme="light"] [style*="background:#000000"],
-        [data-theme="light"] [style*="background: #000"],
-        [data-theme="light"] [style*="background: #000000"] {
-          background: var(--bg-input) !important;
-        }
-
-        [data-theme="light"] [style*="background:#0a0a0f"],
-        [data-theme="light"] [style*="background: #0a0a0f"] {
-          background: var(--bg-card) !important;
-        }
-
-        [data-theme="light"] [style*="background:#11111a"],
-        [data-theme="light"] [style*="background: #11111a"] {
-          background: var(--bg-card-hover) !important;
-        }
-
-        [data-theme="light"] [style*="background:#1a1a25"],
-        [data-theme="light"] [style*="background: #1a1a25"] {
-          background: var(--bg-secondary) !important;
-        }
-
-        [data-theme="light"] [style*="background:#252535"],
-        [data-theme="light"] [style*="background: #252535"] {
-          background: var(--bg-strong) !important;
-        }
-
-        /* Borders */
-        [data-theme="light"] [style*="border:1px solid #252535"],
-        [data-theme="light"] [style*="border: 1px solid #252535"] {
-          border-color: var(--border) !important;
-        }
-        [data-theme="light"] [style*="border-color:#252535"],
-        [data-theme="light"] [style*="border-color: #252535"] {
-          border-color: var(--border) !important;
-        }
-        [data-theme="light"] [style*="border:1px solid #1a1a25"],
-        [data-theme="light"] [style*="border: 1px solid #1a1a25"] {
-          border-color: var(--border-soft) !important;
-        }
-        [data-theme="light"] [style*="border:1px dashed #252535"],
-        [data-theme="light"] [style*="border: 1px dashed #252535"] {
-          border-color: var(--border) !important;
-        }
-        [data-theme="light"] [style*="borderColor:\"#252535\""] {
-          border-color: var(--border) !important;
-        }
-        [data-theme="light"] [style*="borderTop:\"1px solid #1a1a25\""] {
-          border-color: var(--border-soft) !important;
-        }
-
-        /* Texto branco vira escuro no light */
-        [data-theme="light"] [style*="color:#ffffff"],
-        [data-theme="light"] [style*="color: #ffffff"],
-        [data-theme="light"] [style*="color:#fff"],
-        [data-theme="light"] [style*="color: #fff"] {
-          color: var(--text) !important;
-        }
-
-        [data-theme="light"] [style*="color:#c5c5d0"],
-        [data-theme="light"] [style*="color: #c5c5d0"],
-        [data-theme="light"] [style*="color:#e4e4f0"],
-        [data-theme="light"] [style*="color: #e4e4f0"] {
-          color: var(--text-secondary) !important;
-        }
-
-        [data-theme="light"] [style*="color:#9090a0"],
-        [data-theme="light"] [style*="color: #9090a0"],
-        [data-theme="light"] [style*="color:#a8a8b8"],
-        [data-theme="light"] [style*="color: #a8a8b8"] {
-          color: var(--text-muted) !important;
-        }
-
-        [data-theme="light"] [style*="color:#7a7a8a"],
-        [data-theme="light"] [style*="color: #7a7a8a"],
-        [data-theme="light"] [style*="color:#6a6a7a"],
-        [data-theme="light"] [style*="color: #6a6a7a"],
-        [data-theme="light"] [style*="color:#5a5a6a"],
-        [data-theme="light"] [style*="color: #5a5a6a"] {
-          color: var(--text-faint) !important;
-        }
-
-        /* Top bar específico */
-        [data-theme="light"] header,
-        [data-theme="light"] .topbar {
-          background: var(--topbar-bg) !important;
-          border-bottom: 1px solid var(--border) !important;
-        }
-
-        /* Recharts (gráficos) - eixos e grid no light */
-        [data-theme="light"] .recharts-cartesian-axis-tick-value {
-          fill: var(--text-faint) !important;
-        }
-        [data-theme="light"] .recharts-cartesian-grid line {
-          stroke: var(--border) !important;
-        }
-        [data-theme="light"] .recharts-tooltip-wrapper {
-          filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
-        }
+        .card-hover:hover{border-color:#3a3a45!important;transform:translateY(-1px)}
       `}</style>
 
       {/* TOP BAR - Estilo TradingView */}
       <div style={{
         position:"sticky",top:0,zIndex:100,
-        background: isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.92)",
-        backdropFilter:"blur(20px)",
-        borderBottom: `1px solid ${isLight ? "#e5e7eb" : "#1a1a25"}`
+        background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",
+        borderBottom:"1px solid #1a1a25"
       }}>
         {/* Linha 1: Brand + Métricas + Status */}
         <div style={{
@@ -2905,9 +2799,6 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
-
-            {/* Toggle Tema (claro/escuro) */}
-            <ThemeToggle theme={themeApi.theme} toggle={themeApi.toggle}/>
 
             {/* User badge */}
             <div style={{
