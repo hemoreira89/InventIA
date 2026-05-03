@@ -43,6 +43,7 @@ import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
+import { analisarRisco, classificarHHI } from "./lib/risco";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -147,15 +148,6 @@ function calcIR(vendas) {
   const lucro = vendas.reduce((s,v) => s + v.qtd * (v.precoVenda - (v.pm||0)), 0);
   const isento = totalVendas <= 20000;
   return { totalVendas, lucro, isento, ir: isento || lucro <= 0 ? 0 : lucro * 0.15, restante: 20000 - totalVendas };
-}
-
-function calcScore(pos) {
-  const setores = {};
-  pos.forEach(p => { setores[p.setor] = (setores[p.setor]||0) + p.peso; });
-  const maxSetor = Math.max(...Object.values(setores));
-  const concScore = Math.max(0, 100 - maxSetor * 1.2);
-  const divScore = pos.filter(p => p.tipo === "FII" || p.dy > 3).length / (pos.length||1) * 100;
-  return Math.round(concScore * 0.55 + divScore * 0.45);
 }
 
 function projetarDividendos(pos) {
@@ -363,6 +355,48 @@ function Stat({ label, value, color, mono=false }) {
       <div style={{fontSize:9,color:"var(--ui-text-faint)",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
       <div style={{fontSize:14,fontWeight:700,color:color||"var(--ui-text)",
         fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
+    </div>
+  );
+}
+
+// Componente de métrica individual da Análise de Risco
+function MetricaRisco({ icone: Icone, label, valor, cor = "default", detalhe, tooltip }) {
+  const corPrincipal =
+    cor === "success" ? "var(--ui-success)"
+    : cor === "warning" ? "var(--ui-warning)"
+    : cor === "danger" ? "var(--ui-danger)"
+    : "var(--ui-text)";
+  const corBg =
+    cor === "success" ? "rgba(0,229,160,0.08)"
+    : cor === "warning" ? "rgba(255,214,10,0.08)"
+    : cor === "danger" ? "rgba(255,77,109,0.08)"
+    : "var(--ui-bg-secondary)";
+  const corBorda =
+    cor === "success" ? "rgba(0,229,160,0.22)"
+    : cor === "warning" ? "rgba(255,214,10,0.25)"
+    : cor === "danger" ? "rgba(255,77,109,0.22)"
+    : "var(--ui-border)";
+
+  return (
+    <div title={tooltip} style={{
+      background: corBg,
+      border: `1px solid ${corBorda}`,
+      borderRadius: 9,
+      padding: "10px 12px",
+      cursor: tooltip ? "help" : "default"
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        {Icone && <Icone size={11} color={corPrincipal} strokeWidth={2.2}/>}
+        <span style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>{label}</span>
+      </div>
+      <div style={{fontSize:18,fontWeight:800,color:corPrincipal,fontFamily:"'JetBrains Mono',monospace",lineHeight:1.1,marginBottom:3}}>
+        {valor}
+      </div>
+      {detalhe && (
+        <div style={{fontSize:10,color:"var(--ui-text-muted)",fontWeight:600}}>
+          {detalhe}
+        </div>
+      )}
     </div>
   );
 }
@@ -1418,10 +1452,10 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   const a = dados.analise;
   const pos = dados.posicoes || [];
   const temCarteira = pos.length > 0;
-  const score = temCarteira ? calcScore(pos) : null;
-  const setores = {};
-  pos.forEach(p => { setores[p.setor] = (setores[p.setor]||0) + 1; });
-  const correlacoes = Object.entries(setores).filter(([,n])=>n>1).map(([s,n])=>({setor:s,n}));
+
+  // Análise de risco quantitativa (calculada localmente, sem IA)
+  const risco = temCarteira ? analisarRisco(pos, normalizarSetor) : null;
+  const score = risco?.score ?? null;
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -1436,20 +1470,115 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         </div>
       </div>
 
-      {/* Score */}
-      {score != null && (
+      {/* Análise de Risco Quantitativa */}
+      {risco && (
         <Card accent>
-          <div style={{display:"flex",gap:14,alignItems:"center"}}>
-            <div style={{textAlign:"center",minWidth:70}}>
-              <div style={{fontSize:40,fontWeight:900,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
-              <div style={{fontSize:10,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
-              <div style={{fontSize:9,color:"var(--ui-text-disabled)"}}>Score</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <div style={{textAlign:"center",minWidth:70}}>
+                <div style={{fontSize:40,fontWeight:900,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
+                <div style={{fontSize:10,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
+                <div style={{fontSize:9,color:"var(--ui-text-disabled)"}}>Score</div>
+              </div>
+              <div>
+                <STitle>ANÁLISE DE RISCO</STitle>
+                <div style={{fontSize:11,color:"var(--ui-text-faint)",marginTop:2}}>Métricas quantitativas calculadas a partir da carteira</div>
+              </div>
             </div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:11,color:"var(--ui-text-muted)",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
-              {correlacoes.map((c,i) => <div key={i} style={{fontSize:12,color:"var(--ui-warning)",marginBottom:3}}>⚠️ {c.n} ativos em {c.setor} — alta correlação</div>)}
-              {!correlacoes.length && <div style={{fontSize:12,color:"var(--ui-success)"}}>✅ Boa diversificação setorial</div>}
-            </div>
+          </div>
+
+          {/* Grid de métricas */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:14}}>
+            <MetricaRisco
+              icone={PieIcon}
+              label="HHI ATIVOS"
+              valor={risco.concentracao.hhi.toLocaleString("pt-BR")}
+              cor={classificarHHI(risco.concentracao.hhi).cor}
+              detalhe={classificarHHI(risco.concentracao.hhi).nivel}
+              tooltip="Índice de Herfindahl: <1500 diversificado, 1500-2500 moderado, 2500+ concentrado"
+            />
+            <MetricaRisco
+              icone={TrendingUp}
+              label="MAIOR POSIÇÃO"
+              valor={risco.concentracao.maiorPosicao ? `${risco.concentracao.maiorPosicao.peso}%` : "–"}
+              cor={
+                !risco.concentracao.maiorPosicao ? "default"
+                : risco.concentracao.maiorPosicao.peso > 25 ? "danger"
+                : risco.concentracao.maiorPosicao.peso > 15 ? "warning"
+                : "success"
+              }
+              detalhe={risco.concentracao.maiorPosicao?.ticker || "–"}
+              tooltip="Maior posição individual. Ideal manter abaixo de 15% para evitar concentração."
+            />
+            <MetricaRisco
+              icone={Activity}
+              label="TOP 3 ATIVOS"
+              valor={`${risco.concentracao.top3Pct}%`}
+              cor={
+                risco.concentracao.top3Pct > 70 ? "danger"
+                : risco.concentracao.top3Pct > 50 ? "warning"
+                : "success"
+              }
+              detalhe={`${risco.concentracao.qtdAtivos} ativo${risco.concentracao.qtdAtivos !== 1 ? "s" : ""} no total`}
+              tooltip="Quanto da carteira está nos 3 maiores ativos. Acima de 70% indica concentração."
+            />
+            <MetricaRisco
+              icone={Building2}
+              label="SETOR DOMINANTE"
+              valor={risco.setorial.maiorSetor ? `${risco.setorial.maiorSetor.peso}%` : "–"}
+              cor={
+                !risco.setorial.maiorSetor ? "default"
+                : risco.setorial.maiorSetor.peso > 50 ? "danger"
+                : risco.setorial.maiorSetor.peso > 35 ? "warning"
+                : "success"
+              }
+              detalhe={risco.setorial.maiorSetor?.setor || "–"}
+              tooltip="Maior exposição setorial. Acima de 50% indica risco setorial elevado."
+            />
+            <MetricaRisco
+              icone={Globe}
+              label="DIVERSIFICAÇÃO"
+              valor={`${risco.setorial.qtdSetores}`}
+              cor={
+                risco.setorial.qtdSetores >= 5 ? "success"
+                : risco.setorial.qtdSetores >= 3 ? "warning"
+                : "danger"
+              }
+              detalhe={`setor${risco.setorial.qtdSetores !== 1 ? "es" : ""}`}
+              tooltip="Quantidade de setores diferentes na carteira. 5+ é ideal para boa diversificação."
+            />
+            <MetricaRisco
+              icone={Shield}
+              label="HHI SETORIAL"
+              valor={risco.setorial.hhi.toLocaleString("pt-BR")}
+              cor={classificarHHI(risco.setorial.hhi).cor}
+              detalhe={classificarHHI(risco.setorial.hhi).nivel}
+              tooltip="Concentração entre setores. Mesma escala do HHI de ativos."
+            />
+          </div>
+
+          {/* Alertas */}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {risco.alertas.map((al, i) => {
+              const cor = al.tipo === "danger" ? "var(--ui-danger)" : al.tipo === "warning" ? "var(--ui-warning)" : "var(--ui-success)";
+              const Icon = al.tipo === "danger" ? AlertCircle : al.tipo === "warning" ? AlertTriangle : CheckCircle2;
+              const bg = al.tipo === "danger" ? "rgba(255,77,109,0.06)" : al.tipo === "warning" ? "rgba(255,214,10,0.07)" : "rgba(0,229,160,0.06)";
+              const border = al.tipo === "danger" ? "rgba(255,77,109,0.18)" : al.tipo === "warning" ? "rgba(255,214,10,0.2)" : "rgba(0,229,160,0.18)";
+              return (
+                <div key={i} style={{
+                  background: bg,
+                  border: `1px solid ${border}`,
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
+                }}>
+                  <Icon size={14} color={cor} strokeWidth={2.2} style={{flexShrink:0}}/>
+                  <span style={{fontSize:12,color:"var(--ui-text-secondary)"}}>{al.mensagem}</span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
