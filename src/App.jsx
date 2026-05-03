@@ -150,6 +150,39 @@ function calcIR(vendas) {
   return { totalVendas, lucro, isento, ir: isento || lucro <= 0 ? 0 : lucro * 0.15, restante: 20000 - totalVendas };
 }
 
+/**
+ * Estima posições com peso e setor para análise de risco PRÉ-IA.
+ * Usa cotações ao vivo (brapi) quando disponíveis, fallback para PM.
+ * Retorna estrutura compatível com analisarRisco().
+ */
+function estimarPosicoesParaRisco(carteira, cotacoes, getSetorFn) {
+  if (!carteira || carteira.length === 0) return [];
+
+  // Calcula valor de cada posição
+  const posComValor = carteira.map(a => {
+    const cotacao = cotacoes?.[a.ticker];
+    const preco = cotacao?.preco || a.pm || 0;
+    return {
+      ticker: a.ticker,
+      qtd: a.qtd,
+      pm: a.pm,
+      preco,
+      valor: preco * a.qtd,
+      setor: getSetorFn(a.ticker),
+      tipo: /11$/.test(a.ticker) ? "FII" : "Ação"
+    };
+  });
+
+  const valorTotal = posComValor.reduce((s, p) => s + p.valor, 0);
+  if (valorTotal === 0) return [];
+
+  // Adiciona peso percentual
+  return posComValor.map(p => ({
+    ...p,
+    peso: (p.valor / valorTotal) * 100
+  }));
+}
+
 function projetarDividendos(pos) {
   const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   // FIIs: pagam todos os meses (peso 1.0 cada mês)
@@ -2976,6 +3009,10 @@ export default function App({ session, onLogout }) {
   const privacy = usePrivacyMode();
   const themeApi = useTheme();
 
+  // Cotações ao vivo (também usadas no nível do App para enriquecer prompts da IA)
+  const tickersCarteira = carteira.map(a => a.ticker);
+  const { cotacoes: cotacoesGlobais } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
+
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
   // Atalhos globais de teclado
@@ -3133,6 +3170,12 @@ export default function App({ session, onLogout }) {
       }[perfil];
       const focoDesc = { acoes:"ações da B3", fiis:"fundos imobiliários (FIIs)", misto:"mix de ações e FIIs" }[foco];
 
+      setFase("📊 Calculando perfil de risco da carteira...");
+
+      // Calcula análise de risco LOCAL (antes da IA) usando preços ao vivo + setor do catálogo
+      const posEstimadas = estimarPosicoesParaRisco(carteira, cotacoesGlobais, getSetorPorTicker);
+      const riscoPre = posEstimadas.length > 0 ? analisarRisco(posEstimadas, normalizarSetor) : null;
+
       setFase("🔍 Gemini buscando cotações no Google Finance...");
 
       const carteiraInfo = temCarteira
@@ -3153,6 +3196,24 @@ export default function App({ session, onLogout }) {
         ...universoFiltrado
       ])].join(", ");
 
+      // Bloco de contexto de risco (apenas se já há carteira)
+      const contextoRisco = riscoPre ? `
+
+CONTEXTO DE RISCO (calculado a partir da carteira):
+- HHI ativos: ${riscoPre.concentracao.hhi} (${classificarHHI(riscoPre.concentracao.hhi).nivel})
+- HHI setorial: ${riscoPre.setorial.hhi} (${classificarHHI(riscoPre.setorial.hhi).nivel})
+- Maior posição: ${riscoPre.concentracao.maiorPosicao?.ticker || "–"} com ${riscoPre.concentracao.maiorPosicao?.peso || 0}%
+- Top 3 ativos: ${riscoPre.concentracao.top3Pct}% da carteira
+- Setor dominante: ${riscoPre.setorial.maiorSetor?.setor || "–"} com ${riscoPre.setorial.maiorSetor?.peso || 0}%
+- Setores na carteira: ${riscoPre.setorial.qtdSetores}
+${riscoPre.concentracao.acima10Pct.length > 0 ? `- Posições acima de 10%: ${riscoPre.concentracao.acima10Pct.map(p => `${p.ticker} (${p.peso}%)`).join(", ")}` : ""}
+
+USE este contexto ao recomendar:
+- Se HHI > 2500 ou setor dominante > 40%, EVITE reforçar setores/posições já concentrados
+- Se houver posição > 25%, NÃO recomende mais cotas dela
+- Se setores < 4, PRIORIZE diversificação setorial
+- Mencione na justificativa como a recomendação melhora ou mantém o perfil de risco` : "";
+
       const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
 
 Use Google Search 1x: "cotações ${todosOsTickers.split(", ").slice(0,6).join(" ")} hoje"
@@ -3161,15 +3222,16 @@ ${temCarteira
   ? `Carteira: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
 Aloque R$ ${v.toFixed(2)} (perfil ${perfil}, ${focoDesc}). Pode reforçar ou diversificar.`
   : `Recomende ${focoDesc} para R$ ${v.toFixed(2)} (perfil ${perfil}).`}
+${contextoRisco}
 
 Use APENAS estes tickers: ${universoFiltrado.slice(0, 20).join(", ")}.
 
 Responda APENAS com JSON (sem markdown):
 {
-  "diagnostico": "1-2 frases sobre o mercado",
+  "diagnostico": "1-2 frases sobre o mercado E sobre o risco da carteira atual",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
-    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"score":82,"canal52":35,"justificativa":"breve"}
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"score":82,"canal52":35,"justificativa":"breve, mencionando impacto no risco quando relevante"}
   ],
   "vender": ${temCarteira ? `[]` : "[]"},
   "aviso": "Confirme na sua corretora."
@@ -3293,7 +3355,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       setLoading(false);
       setFase("");
     }
-  }, [carteira, watchlist, aporte, foco, perfil]);
+  }, [carteira, watchlist, aporte, foco, perfil, cotacoesGlobais, universoTickers]);
 
   const TABS = [
     {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
