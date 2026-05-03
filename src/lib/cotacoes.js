@@ -1,26 +1,34 @@
-// ─── Integração com brapi.dev ────────────────────────────────────────────────
-// API gratuita de cotações da B3. Sem auth necessário no plano free.
-// Docs: https://brapi.dev/
+// ─── Integração com proxy /api/cotacoes ─────────────────────────────────────
+// Antes chamava brapi.dev diretamente. Agora chama proxy local que:
+//   1. Adiciona token (não exposto no frontend)
+//   2. Tem cache server-side (5min cotações, 24h fundamentos)
+//   3. Permite buscar fundamentalistas com fundamentos=true
 
-const BRAPI_BASE = "https://brapi.dev/api";
-const CACHE_TTL_MS = 60 * 1000; // cache local de 1min para evitar rate limit
-const cache = new Map(); // ticker → { data, timestamp }
+// Cache local também (reduz round-trips ao Vercel)
+const CACHE_TTL_MS = 60 * 1000; // 1min - alinha com auto-refresh
+const cache = new Map(); // chave: "ticker|hasFund" → { data, timestamp }
+
+function chave(ticker, comFundamentos) {
+  return `${ticker}|${comFundamentos ? "F" : "C"}`;
+}
 
 /**
- * Busca cotações de múltiplos tickers em uma única chamada.
+ * Busca cotações de múltiplos tickers via proxy local.
  * @param {string[]} tickers - Array de tickers (ex: ['PETR4', 'VALE3'])
- * @returns {Promise<Object>} Mapa ticker → cotação
+ * @param {Object} opts - { comFundamentos: boolean }
+ * @returns {Promise<Object>} Mapa ticker → cotação (com .fundamentos se solicitado)
  */
-export async function buscarCotacoes(tickers) {
+export async function buscarCotacoes(tickers, opts = {}) {
   if (!tickers || tickers.length === 0) return {};
+  const comFundamentos = opts.comFundamentos === true;
 
-  // Filtra os que já estão no cache (e ainda válidos)
   const agora = Date.now();
   const naoCacheados = [];
   const resultado = {};
 
   for (const t of tickers) {
-    const cached = cache.get(t);
+    const k = chave(t, comFundamentos);
+    const cached = cache.get(k);
     if (cached && (agora - cached.timestamp) < CACHE_TTL_MS) {
       resultado[t] = cached.data;
     } else {
@@ -31,40 +39,37 @@ export async function buscarCotacoes(tickers) {
   if (naoCacheados.length === 0) return resultado;
 
   try {
-    // brapi aceita múltiplos tickers separados por vírgula
     const tickersStr = naoCacheados.join(",");
-    const response = await fetch(`${BRAPI_BASE}/quote/${tickersStr}`);
+    const url = comFundamentos
+      ? `/api/cotacoes?tickers=${tickersStr}&fundamentos=true`
+      : `/api/cotacoes?tickers=${tickersStr}`;
+
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000)
+    });
 
     if (!response.ok) {
-      console.warn(`brapi: HTTP ${response.status}`);
-      return resultado; // retorna o que tinha em cache
-    }
-
-    const data = await response.json();
-    if (!data.results || !Array.isArray(data.results)) {
-      console.warn("brapi: formato inesperado", data);
+      console.warn(`/api/cotacoes: HTTP ${response.status}`);
       return resultado;
     }
 
-    for (const r of data.results) {
-      const cotacao = {
-        ticker: r.symbol,
-        nome: r.shortName || r.longName,
-        preco: r.regularMarketPrice,
-        variacao: r.regularMarketChange,
-        variacaoPct: r.regularMarketChangePercent,
-        max: r.regularMarketDayHigh,
-        min: r.regularMarketDayLow,
-        volume: r.regularMarketVolume,
-        marketCap: r.marketCap,
-        moeda: r.currency,
-        atualizadoEm: new Date().toISOString()
-      };
-      resultado[r.symbol] = cotacao;
-      cache.set(r.symbol, { data: cotacao, timestamp: agora });
+    const data = await response.json();
+    if (!data.results) {
+      console.warn("/api/cotacoes: sem campo results", data);
+      return resultado;
+    }
+
+    for (const ticker of Object.keys(data.results)) {
+      const item = data.results[ticker];
+      if (item.erro) {
+        console.warn(`Cotação ${ticker} falhou: ${item.erro}`);
+        continue;
+      }
+      resultado[ticker] = item;
+      cache.set(chave(ticker, comFundamentos), { data: item, timestamp: agora });
     }
   } catch (e) {
-    console.error("Erro brapi:", e.message);
+    console.error("Erro buscando cotações:", e.message);
   }
 
   return resultado;
@@ -73,10 +78,11 @@ export async function buscarCotacoes(tickers) {
 /**
  * Busca a cotação de UM ticker.
  * @param {string} ticker
+ * @param {Object} opts - { comFundamentos: boolean }
  * @returns {Promise<Object|null>}
  */
-export async function buscarCotacao(ticker) {
-  const r = await buscarCotacoes([ticker]);
+export async function buscarCotacao(ticker, opts) {
+  const r = await buscarCotacoes([ticker], opts);
   return r[ticker] || null;
 }
 
@@ -88,7 +94,7 @@ export function limparCacheCotacoes() {
 }
 
 /**
- * Retorna a quantidade de tickers em cache.
+ * Retorna a quantidade de itens em cache.
  */
 export function tamanhoCacheCotacoes() {
   return cache.size;

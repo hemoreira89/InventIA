@@ -43,6 +43,7 @@ import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
+import { buscarCotacoes } from "./lib/cotacoes";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
@@ -3109,9 +3110,12 @@ export default function App({ session, onLogout }) {
   const privacy = usePrivacyMode();
   const themeApi = useTheme();
 
-  // Cotações ao vivo (também usadas no nível do App para enriquecer prompts da IA)
+  // Cotações ao vivo + fundamentos (usado para alimentar prompts e validações de critérios)
   const tickersCarteira = carteira.map(a => a.ticker);
-  const { cotacoes: cotacoesGlobais } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
+  const { cotacoes: cotacoesGlobais } = useCotacoes(tickersCarteira, {
+    intervalMs: 60000,
+    comFundamentos: true,
+  });
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
@@ -3356,13 +3360,48 @@ Regras:
       setFase("🧠 Gemini 2.5 Pro analisando...");
       const analise = await chamarIAComSearch(prompt);
 
-      // Enriquecer recomendações com unidades calculadas
-      const recsEnriquecidas = (analise.recomendacoes || []).map(r => ({
-        ...r,
-        unidades: r.precoEstimado ? Math.floor(v * (r.alocacao/100) / r.precoEstimado) : null,
-        // Avalia critérios fundamentalistas (validação Nível 2)
-        avaliacaoCriterios: avaliarRecomendacao(r),
-      }));
+      // Busca fundamentos reais para os tickers recomendados (sobrescreve chutes da IA)
+      const tickersRecs = (analise.recomendacoes || []).map(r => r.ticker).filter(Boolean);
+      let fundamentosReais = {};
+      if (tickersRecs.length > 0) {
+        setFase("📊 Buscando fundamentos reais...");
+        try {
+          const dadosBrapi = await buscarCotacoes(tickersRecs, { comFundamentos: true });
+          fundamentosReais = dadosBrapi;
+        } catch (e) {
+          console.warn("Falhou ao buscar fundamentos reais:", e.message);
+        }
+      }
+
+      // Enriquecer recomendações com unidades calculadas + fundamentos reais
+      const recsEnriquecidas = (analise.recomendacoes || []).map(r => {
+        const dadosReais = fundamentosReais[r.ticker];
+        const fund = dadosReais?.fundamentos;
+
+        // Sobrescreve chutes da IA com dados reais quando disponíveis
+        // Mantém valor da IA como fallback se brapi não retornou
+        const enriquecido = {
+          ...r,
+          // Preço real da brapi (tem prioridade sobre o que a IA disse)
+          precoReal: dadosReais?.preco ?? r.precoReal ?? r.precoEstimado,
+          // Indicadores fundamentalistas reais (sobrescrevem só se brapi tiver dado)
+          dy: fund?.dy ?? r.dy,
+          pl: fund?.pl ?? r.pl,
+          pvp: fund?.pvp ?? r.pvp,
+          roe: fund?.roe ?? r.roe,
+          margemLiquida: fund?.margemLiquida ?? r.margemLiquida,
+          divEbitda: fund?.divEbitda ?? r.divEbitda,
+          // Marca origem dos dados (útil para debug/UI futura)
+          fonteDados: fund ? "brapi" : "ia",
+        };
+
+        return {
+          ...enriquecido,
+          unidades: enriquecido.precoReal ? Math.floor(v * (r.alocacao/100) / enriquecido.precoReal) : null,
+          // Avalia critérios fundamentalistas com dados (preferencialmente) reais
+          avaliacaoCriterios: avaliarRecomendacao(enriquecido),
+        };
+      });
 
       // Montar posições da carteira com dados da IA
       let posicoes = [];

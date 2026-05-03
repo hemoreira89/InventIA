@@ -9,6 +9,9 @@
   "functions": {
     "api/analyze.js": {
       "maxDuration": 60
+    },
+    "api/cotacoes.js": {
+      "maxDuration": 10
     }
   }
 }

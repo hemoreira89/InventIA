@@ -6,11 +6,11 @@ import { buscarCotacoes } from "../lib/cotacoes";
  * Atualiza a cada 60 segundos por padrão.
  *
  * @param {string[]} tickers - Lista de tickers a monitorar
- * @param {Object} options - { intervalMs: número, enabled: boolean }
- * @returns {{ cotacoes: Object, loading: boolean, atualizadoEm: Date|null, refetch: Function }}
+ * @param {Object} options - { intervalMs, enabled, comFundamentos }
+ * @returns {{ cotacoes, loading, atualizadoEm, refetch }}
  */
 export function useCotacoes(tickers, options = {}) {
-  const { intervalMs = 60000, enabled = true } = options;
+  const { intervalMs = 60000, enabled = true, comFundamentos = false } = options;
   const [cotacoes, setCotacoes] = useState({});
   const [loading, setLoading] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState(null);
@@ -23,7 +23,7 @@ export function useCotacoes(tickers, options = {}) {
     if (!tickersRef.current || tickersRef.current.length === 0) return;
     setLoading(true);
     try {
-      const data = await buscarCotacoes(tickersRef.current);
+      const data = await buscarCotacoes(tickersRef.current, { comFundamentos });
       if (Object.keys(data).length > 0) {
         setCotacoes(prev => ({ ...prev, ...data }));
         setAtualizadoEm(new Date());
@@ -45,7 +45,7 @@ export function useCotacoes(tickers, options = {}) {
     const interval = setInterval(fetchData, intervalMs);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tickers.join(","), intervalMs, enabled]);
+  }, [tickers.join(","), intervalMs, enabled, comFundamentos]);
 
   return { cotacoes, loading, atualizadoEm, refetch: fetchData };
 }
