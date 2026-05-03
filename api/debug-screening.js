@@ -124,6 +124,28 @@ export default async function handler(req, res) {
     diag.bolsai_test = { erro: e.message };
   }
 
+  // Consulta uso atual da chave bolsai (cota diária restante, etc)
+  try {
+    const r = await fetch("https://api.usebolsai.com/api/v1/keys/usage", {
+      headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (r.ok) {
+      diag.bolsai_usage = await r.json();
+    } else {
+      diag.bolsai_usage = { status: r.status, error: (await r.text()).slice(0, 300) };
+    }
+    // Captura headers de rate limit (se a bolsai retornar)
+    diag.bolsai_usage_headers = {
+      "x-ratelimit-remaining": r.headers.get("x-ratelimit-remaining"),
+      "x-ratelimit-limit": r.headers.get("x-ratelimit-limit"),
+      "x-ratelimit-reset": r.headers.get("x-ratelimit-reset"),
+      "retry-after": r.headers.get("retry-after"),
+    };
+  } catch (e) {
+    diag.bolsai_usage = { erro: e.message };
+  }
+
   // Inspeção dos campos retornados (pra mapear corretamente)
   // Mostra TODAS as chaves do JSON da bolsai pra entender o schema real
   if (req.query?.inspect === "true") {
