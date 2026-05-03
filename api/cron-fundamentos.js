@@ -236,15 +236,20 @@ export default async function handler(req, res) {
 
     const duracao = Date.now() - inicio;
 
-    // Log da execução
-    await supabase.from("screening_catalogo_log").insert({
-      tickers_total: tickers.length,
-      acoes_total: 0, // não relevante pra esse cron
-      fiis_total: 0,
-      fundamentos_total: sucessos.length,
-      fundamentos_falhas: falhas,
-      duracao_ms: duracao,
-    });
+    // Log da execução (NUNCA fatal — se falhar, logamos e seguimos)
+    try {
+      const { error: logErr } = await supabase.from("screening_catalogo_log").insert({
+        tickers_total: tickers.length,
+        acoes_total: 0,
+        fiis_total: 0,
+        fundamentos_total: sucessos.length,
+        fundamentos_falhas: falhas,
+        duracao_ms: duracao,
+      });
+      if (logErr) console.warn("[cron-fundamentos] log falhou:", logErr.message);
+    } catch (e) {
+      console.warn("[cron-fundamentos] log exception:", e.message);
+    }
 
     return res.status(200).json({
       ok: true,
@@ -269,6 +274,10 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error("[cron-fundamentos] erro:", e);
-    return res.status(500).json({ error: e.message || "Erro interno" });
+    return res.status(500).json({
+      error: e.message || "Erro interno",
+      // Stack ajuda diagnóstico (sem exposição de info sensível, é apenas linha/arquivo)
+      stack: e.stack ? e.stack.split("\n").slice(0, 5).join(" | ") : null,
+    });
   }
 }
