@@ -706,8 +706,11 @@ function VisualizacoesCarteira({ dados }) {
   Object.values(setoresMap).forEach(s => { s.value = +s.value.toFixed(1); });
   const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"var(--ui-success)":"var(--ui-danger)"})).sort((a,b)=>b.retorno-a.retorno);
   // Canal 52s: só mostra os ativos com dados reais da IA (evita gráfico todo a 50%)
-  const canal = pos.filter(p => typeof p.canal52 === "number" && !isNaN(p.canal52))
-    .map(p => ({ ticker:p.ticker, posicao:p.canal52 }));
+  // Detecta também quando todos os valores são idênticos (IA chutou) e descarta
+  const canalRaw = pos.filter(p => typeof p.canal52 === "number" && !isNaN(p.canal52));
+  const valoresUnicos = new Set(canalRaw.map(p => p.canal52));
+  const canalConfia = canalRaw.length >= 3 && valoresUnicos.size > 1; // pelo menos 3 ativos e algum valor diferente
+  const canal = canalConfia ? canalRaw.map(p => ({ ticker:p.ticker, posicao:p.canal52 })) : [];
   const divs = pos.length > 0 ? projetarDividendos(pos) : [];
   const radar = [
     {m:"Diversif.",v:Math.min(100,pos.length*15)},
@@ -770,22 +773,39 @@ function VisualizacoesCarteira({ dados }) {
         {g==="canal" && <>
           <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (estimado pela IA)</STitle>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
-          {canal.length > 0 ? <>
-            <ResponsiveContainer width="100%" height={Math.max(130,canal.length*36)}>
-              <BarChart data={canal} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)" horizontal={false}/>
-                <XAxis type="number" domain={[0,100]} tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
-                <YAxis dataKey="ticker" type="category" tick={{fill:"var(--ui-text-faint)",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
-                <Tooltip formatter={v=>[`${fmt(v,0)}%`,"Canal"]}/>
-                <Bar dataKey="posicao" radius={[0,6,6,0]}>
-                  {canal.map((e,i)=><Cell key={i} fill={e.posicao<=30?"var(--ui-success)":e.posicao<=70?"var(--ui-warning)":"var(--ui-danger)"}/>)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
-              {[{c:"var(--ui-success)",l:"Oportunidade"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
-            </div>
-          </> : <div style={{textAlign:"center",padding:"32px 0"}}>
+          {canal.length > 0 ? (() => {
+            // Detecta se todos os valores são iguais (IA retornou 50 pra todos = sem informação útil)
+            const valores = canal.map(c => c.posicao);
+            const todosIguais = valores.every(v => v === valores[0]);
+
+            if (todosIguais) return (
+              <div style={{textAlign:"center",padding:"32px 0"}}>
+                <div style={{fontSize:13,color:"var(--ui-text-muted)",marginBottom:6}}>
+                  Dados de canal não diferenciados
+                </div>
+                <div style={{fontSize:11,color:"var(--ui-text-faint)",maxWidth:380,margin:"0 auto",lineHeight:1.5}}>
+                  A IA retornou a mesma posição ({valores[0]}%) para todos os ativos, indicando ausência de dados específicos por ticker. Tente rodar nova análise.
+                </div>
+              </div>
+            );
+
+            return <>
+              <ResponsiveContainer width="100%" height={Math.max(130,canal.length*36)}>
+                <BarChart data={canal} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)" horizontal={false}/>
+                  <XAxis type="number" domain={[0,100]} tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+                  <YAxis dataKey="ticker" type="category" tick={{fill:"var(--ui-text-faint)",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
+                  <Tooltip formatter={v=>[`${fmt(v,0)}%`,"Canal"]}/>
+                  <Bar dataKey="posicao" radius={[0,6,6,0]}>
+                    {canal.map((e,i)=><Cell key={i} fill={e.posicao<=30?"var(--ui-success)":e.posicao<=70?"var(--ui-warning)":"var(--ui-danger)"}/>)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
+                {[{c:"var(--ui-success)",l:"Oportunidade"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
+              </div>
+            </>;
+          })() : <div style={{textAlign:"center",padding:"32px 0"}}>
             <div style={{fontSize:13,color:"var(--ui-text-muted)",marginBottom:6}}>
               Sem dados de canal disponíveis
             </div>
@@ -2745,6 +2765,14 @@ Regras: 3 a 5 recomendações, alocação soma 100, SOMENTE JSON.`;
 
         const promptPosicoes = `Use web_search para buscar as cotações atuais de hoje na B3 para: ${tickersCarteira}
 Pesquise "cotações B3 hoje ${tickersCarteira}" e retorne os preços reais encontrados.
+
+Para cada ativo, calcule "canal52" como a posição percentual no canal de 52 semanas:
+canal52 = (preco_atual - minima_52sem) / (maxima_52sem - minima_52sem) * 100
+- 0% = preço próximo da mínima anual (oportunidade)
+- 50% = no meio do canal
+- 100% = próximo da máxima anual (caro)
+Se você não conseguir descobrir min/max das 52 semanas, retorne canal52: null (NÃO invente o valor 50).
+
 Retorne APENAS JSON (sem markdown):
 {"ativos":[{"ticker":"PETR4","preco":48.50,"dy":12.5,"pl":4.2,"setor":"Petróleo","tipo":"Ação","canal52":35}]}`;
 
