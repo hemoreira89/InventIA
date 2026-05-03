@@ -1176,7 +1176,7 @@ function VisualizacoesCarteira({ dados }) {
               Sem dados de canal disponíveis
             </div>
             <div style={{fontSize:11,color:"var(--ui-text-faint)",maxWidth:340,margin:"0 auto",lineHeight:1.5}}>
-              A IA não retornou a posição no canal de 52 semanas para os ativos. Isso pode acontecer com FIIs ou ativos pouco cobertos.
+              brapi não retornou min/max de 52 semanas para estes ativos. Pode acontecer com FIIs novos ou tickers com pouca liquidez.
             </div>
           </div>}
         </>}
@@ -3381,15 +3381,17 @@ Responda APENAS com JSON (sem markdown):
   "diagnostico": "1-2 frases sobre o mercado E sobre o risco da carteira atual",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
-    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"canal52":35,"justificativa":"breve, mencionando impacto no risco e aderência aos critérios"}
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, mencionando impacto no risco e aderência aos critérios"}
   ],
   "vender": ${temCarteira ? `[]` : "[]"},
   "aviso": "Confirme na sua corretora."
 }
 
 INDICADORES por tipo de ativo (use seu conhecimento de mercado, retorne null se não souber):
-- AÇÕES: dy, pl, pvp, roe (% retorno sobre PL), divEbitda (Dívida Líquida/EBITDA), margemLiquida (% lucro líquido), lucrosConsistentes (true se lucros positivos nos últimos 5 anos), score, canal52
-- FIIs: dy, pvp, vacancia (% vacância física/financeira), diversificado (true se >5 imóveis OU >10 inquilinos), score, canal52
+- AÇÕES: dy, pl, pvp, roe (% retorno sobre PL), divEbitda (Dívida Líquida/EBITDA), margemLiquida (% lucro líquido), lucrosConsistentes (true se lucros positivos nos últimos 5 anos), score
+- FIIs: dy, pvp, vacancia (% vacância física/financeira), diversificado (true se >5 imóveis OU >10 inquilinos), score
+
+OBS: Não retorne canal52 - o backend calcula com dados reais da B3.
 
 IMPORTANTE: O sistema enriquece os indicadores DEPOIS com dados oficiais (B3, CVM).
 Sua função é montar a TESE: qual ticker, % alocação, justificativa. Os números
@@ -3449,6 +3451,12 @@ Regras:
           // Preço real da brapi (tem prioridade sobre o que a IA disse)
           precoReal: cot?.preco ?? r.precoReal ?? r.precoEstimado,
 
+          // Canal de 52 semanas real da brapi (substitui chute da IA)
+          // canal52: 0% = preço próximo da mínima anual, 100% = próximo da máxima
+          canal52: cot?.canal52 != null ? Math.round(cot.canal52) : (r.canal52 ?? null),
+          min52: cot?.min52 ?? null,
+          max52: cot?.max52 ?? null,
+
           // Setor (vem da bolsai /companies/{ticker}) - usado para ROE setorial dinâmico
           setorCVM: fund?.setorCVM ?? r.setorCVM ?? null,
 
@@ -3496,14 +3504,11 @@ Regras:
       // Antes pedíamos pra IA buscar via web_search, mas:
       //  - Já temos cotações ao vivo via brapi em cotacoesGlobais
       //  - Já temos fundamentos via bolsai em fundamentosReais (acima)
-      //  - Faltava só montar - sem custo de tempo da IA
+      //  - Canal de 52 semanas vem direto da brapi (fiftyTwoWeekHigh/Low)
       let posicoes = [];
       if (temCarteira) {
         setFase("📊 Calculando posições...");
 
-        // Para canal52 precisamos do range 52 semanas (max/min). brapi free só
-        // retorna o dia atual, então canal52 fica null por enquanto. Não é
-        // crítico - é só uma referência de "caro vs barato no ano".
         posicoes = carteira.map(a => {
           const cot = cotacoesReais[a.ticker] || cotacoesGlobais[a.ticker] || {};
           const fund = fundamentosReais[a.ticker] || {};
@@ -3519,7 +3524,10 @@ Regras:
             pl: fund.pl || null,
             setor: fund.setorCVM || getSetorPorTicker(a.ticker),
             tipo: fund.tipo || (/11$/.test(a.ticker) ? "FII" : "Ação"),
-            canal52: null, // brapi free não retorna 52w range; não inventar
+            // Canal 52 semanas real (brapi retorna fiftyTwoWeekHigh/Low direto)
+            canal52: cot.canal52 != null ? Math.round(cot.canal52) : null,
+            min52: cot.min52 ?? null,
+            max52: cot.max52 ?? null,
             historico: [],
           };
         });

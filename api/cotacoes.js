@@ -39,10 +39,19 @@ function setCache(cache, key, data) {
  * Extrai dados de cotação do response da brapi.
  */
 function extrairCotacao(r) {
+  // Calcula posição no canal de 52 semanas (0% = mín anual, 100% = máx anual)
+  // brapi retorna fiftyTwoWeekLow/High direto no /quote (sem precisar ?range=1y)
+  const min52 = r.fiftyTwoWeekLow ?? null;
+  const max52 = r.fiftyTwoWeekHigh ?? null;
+  const preco = r.regularMarketPrice;
+  const canal52 = (min52 != null && max52 != null && max52 > min52 && preco != null)
+    ? Math.max(0, Math.min(100, ((preco - min52) / (max52 - min52)) * 100))
+    : null;
+
   return {
     ticker: r.symbol,
     nome: r.shortName || r.longName,
-    preco: r.regularMarketPrice,
+    preco,
     variacao: r.regularMarketChange,
     variacaoPct: r.regularMarketChangePercent,
     max: r.regularMarketDayHigh,
@@ -50,6 +59,10 @@ function extrairCotacao(r) {
     volume: r.regularMarketVolume,
     marketCap: r.marketCap,
     moeda: r.currency,
+    // Canal de 52 semanas
+    min52,
+    max52,
+    canal52, // % entre 0 (mín anual) e 100 (máx anual) - null se brapi não retornou
     atualizadoEm: new Date().toISOString()
   };
 }
