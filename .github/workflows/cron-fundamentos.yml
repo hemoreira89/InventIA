@@ -18,29 +18,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
-    # Estratégia: 5 chunks de 200 tickers cada (cobre os 1000 mais líquidos).
-    # 200 tickers × 2 reqs (fundamentals + companies) = 400 reqs paralelas
-    # Em paralelismo 50 = 8 batches sequenciais × ~3s = ~25s total
-    # Cabe folgado nos 60s de timeout do Vercel Hobby.
+    # Estratégia: 10 chunks de 100 tickers cada (cobre os 1000 mais líquidos).
+    # 100 tickers em paralelismo 20 = 5 batches × ~3-15s = ~15-75s
+    # Mais defensivo: se a bolsai estiver lenta (timeout 20s), cabe em 50s.
     #
-    # Por que parar em offset=800 (e não cobrir 1000+):
+    # Por que parar em offset=900 (e não cobrir 1000+):
     # - A bolsai cobre ~750 tickers úteis (ações + FIIs com fundamentos).
     # - Acima do offset ~800 começa zona morta (units obscuras, ETFs sem
-    #   fundamentos na bolsai), e tickers líquidos com volume alto que
-    #   simplesmente não estão na base da bolsai.
-    # - Cobrir offset 0-999 já pega os ativos mais relevantes pra screening.
+    #   fundamentos na bolsai).
     strategy:
       fail-fast: false
+      max-parallel: 5  # GitHub Actions limita pra evitar abuso da bolsai
       matrix:
-        offset: [0, 200, 400, 600, 800]
+        offset: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900]
 
     steps:
       - name: Disparar chunk
         run: |
-          echo "Disparando chunk offset=${{ matrix.offset }}, limit=200..."
+          echo "Disparando chunk offset=${{ matrix.offset }}, limit=100..."
           response=$(curl -sS -w "\n%{http_code}" --max-time 90 -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=${{ matrix.offset }}&limit=200")
+            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=${{ matrix.offset }}&limit=100")
           body=$(echo "$response" | head -n -1)
           status=$(echo "$response" | tail -n 1)
           echo "Status HTTP: $status"

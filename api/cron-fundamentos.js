@@ -24,7 +24,11 @@ const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const VOLUME_MINIMO = 1_000;
 
 // Paralelismo: 50 reqs simultâneas é seguro pro plano Pro
-const PARALELISMO = 50;
+// Paralelismo: 20 reqs simultâneas. Antes era 50, mas a bolsai estava
+// retornando timeouts intermitentes em chamadas paralelas demais. 20 é
+// um meio-termo que mantém o cron rápido (~30s pra 200 tickers) sem
+// stressar a API.
+const PARALELISMO = 20;
 
 /**
  * Busca um ticker individual da bolsai (acoes + companies em paralelo).
@@ -39,11 +43,11 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
     const [respPrincipal, respCompany] = await Promise.all([
       fetch(`${BOLSAI_BASE}${pathPrincipal}`, {
         headers: { "X-API-Key": apiKey },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(20000), // bolsai pode ser lenta (até 15s) — damos folga
       }),
       fetch(`${BOLSAI_BASE}/companies/${ticker}`, {
         headers: { "X-API-Key": apiKey },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(20000),
       }),
     ]);
 
@@ -57,7 +61,7 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       // Fallback: ticker terminado em 11 que falhou em /fundamentals → tenta FII
       const fallback = await fetch(`${BOLSAI_BASE}/fiis/${ticker}`, {
         headers: { "X-API-Key": apiKey },
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(15000),
       });
       if (fallback.ok) {
         dados = await fallback.json();
