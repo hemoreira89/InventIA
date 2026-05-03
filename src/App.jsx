@@ -159,14 +159,22 @@ function calcScore(pos) {
 
 function projetarDividendos(pos) {
   const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  return meses.map(mes => ({
-    mes,
-    dividendos: Math.round(pos.reduce((s,p) => {
-      // Se DY veio da IA, usa. Senão estima por tipo (FII ~8%, Ação ~5%)
+  // FIIs: pagam todos os meses (peso 1.0 cada mês)
+  // Ações: concentram pagamentos em mar, mai, ago, nov (pesos sazonais aproximados)
+  const sazonalidadeAcoes = [0.3, 0.5, 1.8, 0.8, 1.6, 0.7, 0.4, 1.5, 0.6, 0.7, 1.7, 1.4]; // soma = 12
+  return meses.map((mes, idx) => {
+    let total = 0;
+    pos.forEach(p => {
       const dy = p.dy || (p.tipo === "FII" ? 8 : 5);
-      return s + (p.valorAtual||0) * dy / 100 / 12;
-    }, 0))
-  }));
+      const valor = (p.valorAtual || 0) * dy / 100; // anual
+      if (p.tipo === "FII") {
+        total += valor / 12; // distribui igual nos 12 meses
+      } else {
+        total += valor / 12 * sazonalidadeAcoes[idx]; // sazonal
+      }
+    });
+    return { mes, dividendos: Math.round(total) };
+  });
 }
 
 // ─── Micro-componentes ────────────────────────────────────────────────────────
@@ -610,6 +618,43 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 }
 
 // ─── Seção: Visualizações da Carteira (usado dentro de TabAnalise) ────────────
+
+// Normaliza nomes de setores para evitar duplicatas (ex: "Bancos" vs "Financeiro")
+const SETOR_ALIASES = {
+  "bancos": "Financeiro",
+  "banco": "Financeiro",
+  "financeiro": "Financeiro",
+  "bancário": "Financeiro",
+  "energia elétrica": "Energia",
+  "energia eletrica": "Energia",
+  "energia": "Energia",
+  "petróleo": "Petróleo & Mineração",
+  "petroleo": "Petróleo & Mineração",
+  "petróleo & mineração": "Petróleo & Mineração",
+  "petroleo & mineracao": "Petróleo & Mineração",
+  "mineração": "Petróleo & Mineração",
+  "mineracao": "Petróleo & Mineração",
+  "petróleo & gás": "Petróleo & Mineração",
+  "fundos imobiliários": "Fundos Imobiliários",
+  "fundos imobiliarios": "Fundos Imobiliários",
+  "fii": "Fundos Imobiliários",
+  "fiis": "Fundos Imobiliários",
+  "logística": "Fundos Imobiliários",
+  "logistica": "Fundos Imobiliários",
+  "saneamento": "Saneamento",
+  "consumo & varejo": "Consumo",
+  "consumo e varejo": "Consumo",
+  "varejo": "Consumo",
+  "consumo": "Consumo",
+  "saúde": "Saúde",
+  "saude": "Saúde",
+};
+function normalizarSetor(s) {
+  if (!s || s === "–" || s === "-") return "Outros";
+  const key = s.toLowerCase().trim();
+  return SETOR_ALIASES[key] || s; // mantém capitalização original se não conhecido
+}
+
 function VisualizacoesCarteira({ dados }) {
   const [g, setG] = useState("pizza");
   if (!dados || !dados.posicoes || dados.posicoes.length === 0) return null;
@@ -617,14 +662,29 @@ function VisualizacoesCarteira({ dados }) {
   const pos = dados.posicoes || [];
   const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
   const setoresMap = {};
-  pos.forEach((p,i) => { const s=p.setor||"Outros"; if(!setoresMap[s]) setoresMap[s]={name:s,value:0,fill:PALETTE[i%PALETTE.length]}; setoresMap[s].value+=p.peso; });
+  let setorIdx = 0;
+  pos.forEach((p) => {
+    const s = normalizarSetor(p.setor);
+    if (!setoresMap[s]) {
+      setoresMap[s] = { name: s, value: 0, fill: PALETTE[setorIdx % PALETTE.length] };
+      setorIdx++;
+    }
+    setoresMap[s].value += p.peso;
+  });
+  // Arredonda valores para evitar flutuação de 0.01%
+  Object.values(setoresMap).forEach(s => { s.value = +s.value.toFixed(1); });
   const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"var(--ui-success)":"var(--ui-danger)"})).sort((a,b)=>b.retorno-a.retorno);
   const canal = pos.map(p => ({ ticker:p.ticker, posicao:p.canal52??50 }));
   const divs = pos.length > 0 ? projetarDividendos(pos) : [];
   const radar = [
     {m:"Diversif.",v:Math.min(100,pos.length*15)},
     {m:"Dividendos",v:Math.min(100,pos.filter(p=>p.dy>4).length/Math.max(1,pos.length)*100)},
-    {m:"Valor",v:Math.min(100,100-pos.reduce((s,p)=>s+(p.canal52||50),0)/Math.max(1,pos.length))},
+    {m:"Valor",v:(() => {
+      const validas = pos.filter(p => typeof p.canal52 === "number" && !isNaN(p.canal52));
+      if (validas.length === 0) return 50; // sem dados de canal52, valor neutro
+      const media = validas.reduce((s,p) => s + p.canal52, 0) / validas.length;
+      return Math.max(0, Math.min(100, 100 - media));
+    })()},
     {m:"Liquidez",v:Math.min(100,pos.filter(p=>p.tipo==="Ação").length/Math.max(1,pos.length)*100)},
     {m:"Renda",v:Math.min(100,pos.filter(p=>p.tipo==="FII").length/Math.max(1,pos.length)*100)},
   ];
@@ -709,17 +769,17 @@ function VisualizacoesCarteira({ dados }) {
           <ResponsiveContainer width="100%" height={190}>
             <AreaChart data={divs} margin={{left:0,right:0,top:5,bottom:5}}>
               <defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--ui-warning)" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="var(--ui-warning)" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--ui-success)" stopOpacity={0.35}/>
+                <stop offset="95%" stopColor="var(--ui-success)" stopOpacity={0}/>
               </linearGradient></defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
               <XAxis dataKey="mes" tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
               <Tooltip content={<TTip/>}/>
-              <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="var(--ui-warning)" strokeWidth={2} fill="url(#gd)"/>
+              <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="var(--ui-success)" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{textAlign:"center",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:"var(--ui-warning)"}}>
+          <div style={{textAlign:"center",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:"var(--ui-success)"}}>
             Estimativa anual: {fmtBRL(divs.reduce((s,d)=>s+d.dividendos,0))}
           </div>
         </>}
