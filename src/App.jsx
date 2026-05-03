@@ -2707,12 +2707,12 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   }, []);
 
   return (
-    <div style={{minHeight:"100vh",background:"#000000",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#ffffff"}}>
+    <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        body{background:#000000}
+        body{background:var(--ui-bg);transition:background .2s ease}
         ::-webkit-scrollbar{width:8px;height:8px}
         ::-webkit-scrollbar-track{background:#000000}
         ::-webkit-scrollbar-thumb{background:#252535;border-radius:4px}
@@ -2738,8 +2738,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       {/* TOP BAR - Estilo TradingView */}
       <div style={{
         position:"sticky",top:0,zIndex:100,
-        background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",
-        borderBottom:"1px solid #1a1a25"
+        background: themeApi.isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.92)",
+        backdropFilter:"blur(20px)",
+        borderBottom:"1px solid var(--ui-border)"
       }}>
         {/* Linha 1: Brand + Métricas + Status */}
         <div style={{
@@ -2755,10 +2756,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               color:"#000000"
             }}><Sparkles size={20} strokeWidth={2.5}/></div>
             <div>
-              <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3}}>
-                InvestIA <span style={{color:"#7b61ff"}}>Pro</span>
+              <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
+                InvestIA <span style={{color:"var(--ui-accent)"}}>Pro</span>
               </div>
-              <div style={{fontSize:9,color:"#7a7a8a",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
+              <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>
           </div>
 
@@ -2767,35 +2768,42 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             <Metric
               label="PATRIMÔNIO"
               value={metricaCarteira>0 ? (privacy.hidden ? "R$●●●●" : fmtK(metricaCarteira)) : "—"}
-              accent={metricaCarteira>0?"#00e5a0":null}
+              accent={metricaCarteira>0?"var(--ui-success)":null}
               sparkline={sparkPatrimonio}
               sparkColor="auto"
             />
             <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}/>
-            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"#ffd60a":null}/>
+            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"var(--ui-warning)":null}/>
             <Metric label="WATCHLIST" value={watchlist.length||"—"}/>
           </div>
 
           {/* Status à direita */}
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#7a7a8a"}}>
-              <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"#00e5a0"}}/>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--ui-text-faint)"}}>
+              <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"var(--ui-success)"}}/>
               <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
             </div>
             {savedMsg && (
-              <span style={{fontSize:11,color:"#00e5a0",fontWeight:600}}>{savedMsg}</span>
+              <span style={{fontSize:11,color:"var(--ui-success)",fontWeight:600}}>{savedMsg}</span>
             )}
 
             {/* Botão Ctrl+K */}
             <button onClick={() => setPaletteOpen(true)} title="Busca rápida (Ctrl+K)" style={{
-              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
-              padding:"7px 10px",color:"#c5c5d0",cursor:"pointer",
+              background:"var(--ui-bg-elevated)",
+              border:"1px solid var(--ui-border)",
+              borderRadius:6,
+              padding:"7px 10px",
+              color:"var(--ui-text-secondary)",
+              cursor:"pointer",
               display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:600
             }}>
               <Search size={13}/>
               <kbd style={{
-                background:"#1a1a25",border:"1px solid #2a2a35",borderRadius:3,
-                padding:"1px 5px",fontSize:9,color:"#7a7a8a",
+                background:"var(--ui-bg-secondary)",
+                border:"1px solid var(--ui-border)",
+                borderRadius:3,
+                padding:"1px 5px",fontSize:9,
+                color:"var(--ui-text-faint)",
                 fontFamily:"'JetBrains Mono',monospace"
               }}>⌘K</kbd>
             </button>
@@ -2807,22 +2815,32 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             {/* User badge */}
             <div style={{
               display:"flex",alignItems:"center",gap:8,
-              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
+              background:"var(--ui-bg-elevated)",
+              border:"1px solid var(--ui-border)",
+              borderRadius:6,
               padding:"7px 12px"
             }}>
-              <User size={13} color="#7b61ff"/>
-              <span style={{fontSize:11,color:"#c5c5d0",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
+              <User size={13} color="var(--ui-accent)"/>
+              <span style={{fontSize:11,color:"var(--ui-text-secondary)",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
             </div>
             <button onClick={onLogout} title="Sair" style={{
-              background:"#0a0a0f",border:"1px solid #252535",borderRadius:6,
-              padding:"8px 10px",color:"#ff6b85",cursor:"pointer",
+              background:"var(--ui-bg-elevated)",
+              border:"1px solid var(--ui-border)",
+              borderRadius:6,
+              padding:"8px 10px",
+              color:"var(--ui-danger)",
+              cursor:"pointer",
               display:"flex",alignItems:"center",justifyContent:"center"
             }}><LogOut size={14}/></button>
           </div>
         </div>
 
         {/* Linha 2: Tabs com agrupamento por cor */}
-        <div style={{display:"flex",padding:"0 24px",gap:0,borderTop:"1px solid #1a1a25",alignItems:"center",overflowX:"auto"}}>
+        <div style={{
+          display:"flex",padding:"0 24px",gap:0,
+          borderTop:"1px solid var(--ui-border)",
+          alignItems:"center",overflowX:"auto"
+        }}>
           {TABS.map((t, i) => {
             const Icon = t.icon;
             const ativo = tab === t.k;
@@ -2834,14 +2852,14 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               <div key={t.k} style={{display:"flex",alignItems:"center"}}>
                 {novoGrupo && (
                   <div style={{
-                    width:1,height:18,background:"#252535",margin:"0 8px"
+                    width:1,height:18,background:"var(--ui-border)",margin:"0 8px"
                   }}/>
                 )}
                 <button onClick={()=>setTab(t.k)} className="tab-btn"
                   style={{
                     background:"transparent",border:"none",cursor:"pointer",
                     padding:"12px 14px",fontSize:13,fontWeight:600,
-                    color:ativo ? "#ffffff" : "#9090a0",
+                    color:ativo ? "var(--ui-text)" : "var(--ui-text-muted)",
                     borderBottom:`2px solid ${ativo ? t.cor : "transparent"}`,
                     display:"flex",alignItems:"center",gap:7,
                     whiteSpace:"nowrap",
@@ -3019,10 +3037,11 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 function Metric({ label, value, accent, sparkline, sparkColor = "#7b61ff" }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
-      <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:1.5}}>{label}</div>
+      <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:1.5}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{
-          fontSize:14,fontWeight:700,color:accent||"#ffffff",
+          fontSize:14,fontWeight:700,
+          color: accent || "var(--ui-text)",
           fontFamily:"'JetBrains Mono',monospace"
         }}>{value}</div>
         {sparkline && sparkline.length >= 2 && (
