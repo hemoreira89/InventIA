@@ -3075,54 +3075,84 @@ Responda APENAS com este JSON (sem markdown):
       ]);
 
       // ── PASSO 3: monta oportunidades com dados reais + score derivado ──
+      // Cada tipo tem critérios MÍNIMOS (filtros eliminatórios) e SCORE (ranking dos que passam).
+      // Se a IA sugeriu um candidato que não bate o critério mínimo, ele é descartado.
       const oportunidades = candidatos.map(c => {
         const cot = cotacoes[c.ticker];
         const fund = fundamentos[c.ticker];
         const ehFII = fund?.tipo === "FII" || /11$/.test(c.ticker);
 
-        // Score simples baseado no tipo de oportunidade
-        // Não inventa números: se não tiver dado, score fica null
         const dy = ehFII ? fund?.dy : null; // bolsai não retorna DY de ações
         const pl = fund?.pl;
         const pvp = fund?.pvp;
         const roe = fund?.roe;
         const canal52 = cot?.canal52;
 
+        // ── Critérios MÍNIMOS por tipo (descarta quem não passa) ──
+        let passa = false;
         let score = null;
-        if (filtros.tipo === "acoes_subprecificadas" && pl != null && pvp != null) {
-          // Quanto menor P/L e P/VP, maior o score (limitado a faixas razoáveis)
-          score = Math.round(Math.max(0, Math.min(100,
-            (pl < 8 ? 40 : pl < 15 ? 25 : 10) +
-            (pvp < 1 ? 40 : pvp < 1.5 ? 25 : 10) +
-            (roe && roe > 12 ? 20 : 10)
-          )));
-        } else if (filtros.tipo === "fiis_alto_dy" && dy != null && pvp != null) {
-          score = Math.round(Math.max(0, Math.min(100,
-            (dy >= 10 ? 40 : dy >= 8 ? 30 : 15) +
-            (pvp <= 1 ? 30 : pvp <= 1.1 ? 20 : 10) +
-            (canal52 != null && canal52 < 50 ? 30 : 15)
-          )));
+
+        if (filtros.tipo === "acoes_subprecificadas") {
+          // P/L < 12 E P/VP < 1.5 (mais realista que P/VP < 1, que é raríssimo)
+          // Bancos com P/VP entre 0.7-1.2 são clássicos value plays brasileiros
+          passa = !ehFII && pl != null && pvp != null && pl < 12 && pvp < 1.5;
+          if (passa) {
+            score = Math.round(Math.max(0, Math.min(100,
+              (pl < 6 ? 40 : pl < 9 ? 30 : 20) +
+              (pvp < 0.8 ? 40 : pvp < 1.0 ? 30 : 20) +
+              (roe != null && roe > 15 ? 20 : roe != null && roe > 10 ? 10 : 5)
+            )));
+          }
+        } else if (filtros.tipo === "fiis_alto_dy") {
+          // FII com DY >= 8% E P/VP <= 1.1
+          passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1;
+          if (passa) {
+            score = Math.round(Math.max(0, Math.min(100,
+              (dy >= 12 ? 40 : dy >= 10 ? 30 : 20) +
+              (pvp <= 0.9 ? 30 : pvp <= 1.0 ? 25 : 15) +
+              (canal52 != null && canal52 < 50 ? 30 : 15)
+            )));
+          }
         } else if (filtros.tipo === "blue_chips_baratas") {
-          score = Math.round(Math.max(0, Math.min(100,
-            (pl != null && pl < 12 ? 30 : 15) +
-            (pvp != null && pvp < 2 ? 25 : 10) +
-            (canal52 != null && canal52 < 40 ? 30 : canal52 < 60 ? 15 : 5) +
-            (fund?.cagrLucro5y != null && fund.cagrLucro5y > 5 ? 15 : 5)
-          )));
+          // P/L < 15 E (canal52 < 60 OU P/VP < 2)
+          passa = !ehFII && pl != null && pl < 15 && (
+            (canal52 != null && canal52 < 60) || (pvp != null && pvp < 2)
+          );
+          if (passa) {
+            score = Math.round(Math.max(0, Math.min(100,
+              (pl < 10 ? 30 : 20) +
+              (pvp != null && pvp < 1.5 ? 25 : pvp != null && pvp < 2 ? 15 : 10) +
+              (canal52 != null && canal52 < 30 ? 30 : canal52 != null && canal52 < 50 ? 20 : 10) +
+              (fund?.cagrLucro5y != null && fund.cagrLucro5y > 5 ? 15 : 5)
+            )));
+          }
         } else if (filtros.tipo === "crescimento") {
-          score = Math.round(Math.max(0, Math.min(100,
-            (fund?.cagrReceita5y != null && fund.cagrReceita5y > 10 ? 30 : 10) +
-            (fund?.cagrLucro5y != null && fund.cagrLucro5y > 15 ? 30 : 10) +
-            (roe != null && roe > 15 ? 25 : 10) +
-            (fund?.margemLiquida != null && fund.margemLiquida > 10 ? 15 : 5)
-          )));
+          // Crescimento de receita > 10% OU lucro > 15% (CAGR 5y) E ROE > 12%
+          const cresceReceita = fund?.cagrReceita5y != null && fund.cagrReceita5y > 10;
+          const cresceLucro = fund?.cagrLucro5y != null && fund.cagrLucro5y > 15;
+          passa = !ehFII && (cresceReceita || cresceLucro) && roe != null && roe > 12;
+          if (passa) {
+            score = Math.round(Math.max(0, Math.min(100,
+              (fund?.cagrReceita5y != null && fund.cagrReceita5y > 15 ? 30 : cresceReceita ? 20 : 10) +
+              (fund?.cagrLucro5y != null && fund.cagrLucro5y > 20 ? 30 : cresceLucro ? 20 : 10) +
+              (roe > 18 ? 25 : roe > 15 ? 15 : 10) +
+              (fund?.margemLiquida != null && fund.margemLiquida > 10 ? 15 : 5)
+            )));
+          }
         } else if (filtros.tipo === "dividendos_estaveis") {
-          score = Math.round(Math.max(0, Math.min(100,
-            (fund?.lucrosConsistentes ? 30 : 0) +
-            (dy != null && dy > 5 ? 30 : 15) +
-            (fund?.divEbitda != null && fund.divEbitda < 3 ? 20 : 10) +
-            (roe != null && roe > 12 ? 20 : 10)
-          )));
+          // ROE > 10% E divEbitda < 4 (descarta empresas saudáveis)
+          // Lucros consistentes é bonus, não obrigatório (nem sempre temos esse dado)
+          passa = !ehFII && roe != null && roe > 10 && (
+            fund?.divEbitda == null || fund.divEbitda < 4
+          );
+          if (passa) {
+            score = Math.round(Math.max(0, Math.min(100,
+              (fund?.lucrosConsistentes ? 30 : 10) +
+              (dy != null && dy > 6 ? 30 : dy != null && dy > 4 ? 20 : 10) +
+              (fund?.divEbitda != null && fund.divEbitda < 2 ? 20 : fund?.divEbitda != null && fund.divEbitda < 3 ? 15 : 5) +
+              (roe > 15 ? 20 : 10)
+            )));
+          }
         }
 
         return {
@@ -3143,12 +3173,14 @@ Responda APENAS com este JSON (sem markdown):
           risco_principal: c.risco_principal,
           // Metadados
           temDados: !!(cot || fund),
+          passaCriterio: passa,
         };
       });
 
       // Ordena por score (mais alto primeiro), depois por ticker (estabilidade)
+      // Filtra: precisa ter dados E ter passado no critério mínimo do tipo
       const ordenados = oportunidades
-        .filter(o => o.temDados) // remove tickers que API não encontrou
+        .filter(o => o.temDados && o.passaCriterio)
         .sort((a, b) => {
           const sa = a.score ?? 0;
           const sb = b.score ?? 0;
@@ -3157,17 +3189,24 @@ Responda APENAS com este JSON (sem markdown):
         })
         .slice(0, 8); // Mostra top 8
 
+      // Métricas de transparência: quantos candidatos a IA sugeriu, quantos
+      // passaram no filtro objetivo, quantos foram descartados
+      const reprovados = oportunidades.filter(o => o.temDados && !o.passaCriterio).length;
+      const semDados = oportunidades.filter(o => !o.temDados).length;
+
       setResultado({
         tipo: filtros.tipo,
         criterios_usados: analise.criterios_usados,
         oportunidades: ordenados,
         contexto_macro: analise.contexto_macro,
-        aviso: "Candidatos sugeridos pela IA, dados quantitativos via B3/CVM oficial. Confirme antes de operar.",
-        // Estatísticas de transparência
+        aviso: ordenados.length === 0
+          ? `IA sugeriu ${candidatos.length} candidatos mas nenhum passou nos critérios objetivos do filtro. Tente outro tipo ou perfil.`
+          : `Candidatos sugeridos pela IA, ${ordenados.length} passaram no filtro objetivo (${reprovados} descartados por não atenderem aos critérios). Dados via B3/CVM oficial. Confirme antes de operar.`,
         _stats: {
           candidatos: candidatos.length,
-          comDados: ordenados.length,
-          semDados: candidatos.length - ordenados.length,
+          aprovados: ordenados.length,
+          reprovados,
+          semDados,
         }
       });
     } catch (e) {
@@ -3185,7 +3224,7 @@ Responda APENAS com este JSON (sem markdown):
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
-          A IA escaneia a B3 buscando ativos que se encaixam no critério escolhido. Use como ponto de partida para suas próprias análises.
+          A IA sugere candidatos e os dados são validados via B3/CVM oficial. Apenas ativos que passam nos critérios objetivos aparecem listados.
         </div>
 
         {/* Tipo de oportunidade */}
@@ -3609,8 +3648,6 @@ USE este contexto ao recomendar:
 - Mencione na justificativa como a recomendação melhora ou mantém o perfil de risco` : "";
 
       const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
-
-Use Google Search 1x: "cotações ${todosOsTickers.split(", ").slice(0,6).join(" ")} hoje"
 
 ${temCarteira
   ? `Carteira: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
@@ -4317,8 +4354,8 @@ Regras:
           marginTop:40,padding:"20px 0",borderTop:"1px solid var(--ui-border)",
           textAlign:"center",fontSize:11,color:"var(--ui-text-faint)"
         }}>
-          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
-          Cotações em tempo real · Confirme preços na sua corretora antes de operar
+          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Flash</span> · Dados <span style={{color:"var(--ui-success)",fontWeight:600}}>brapi</span> (B3) + <span style={{color:"var(--ui-success)",fontWeight:600}}>bolsai</span> (CVM) · 
+          Confirme preços na sua corretora antes de operar
         </div>
       </div>
     </div>
