@@ -2989,27 +2989,27 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
   const TIPOS = {
     acoes_subprecificadas: {
       titulo: "Ações sub-precificadas",
-      descricao: "Encontre ações com P/L baixo, P/VP < 1 e bons fundamentos",
+      descricao: "Ações com P/L < 12 e P/VP < 1.5 (clássicos value plays)",
       icon: TrendingDown
     },
     fiis_alto_dy: {
       titulo: "FIIs com alto DY",
-      descricao: "FIIs com Dividend Yield acima da média e P/VP atrativo",
+      descricao: "FIIs com Dividend Yield ≥ 8% e P/VP ≤ 1.1",
       icon: Coins
     },
     crescimento: {
       titulo: "Empresas em crescimento",
-      descricao: "Receita crescendo 20%+, lucros consistentes e setores promissores",
+      descricao: "CAGR de receita > 10% ou lucro > 15%, com ROE > 12%",
       icon: Rocket
     },
     blue_chips_baratas: {
       titulo: "Blue chips em desconto",
-      descricao: "Grandes empresas líderes negociando com desconto histórico",
+      descricao: "P/L < 15 e cotação no terço inferior do canal de 52 semanas",
       icon: Award
     },
     dividendos_estaveis: {
       titulo: "Pagadoras consistentes",
-      descricao: "Histórico de 5+ anos pagando dividendos crescentes",
+      descricao: "ROE > 10%, dívida controlada (Dív/EBITDA < 4)",
       icon: DollarSign
     }
   };
@@ -3059,18 +3059,13 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         limit: 30,
       });
 
-      // Se universo do usuário foi configurado, intersecciona com o catálogo
-      if (universoTickers.length > 0) {
-        const universoSet = new Set(universoTickers.map(t => t.toUpperCase()));
-        candidatosCatalogo = candidatosCatalogo.filter(c => universoSet.has(c.ticker));
-      }
+      // Tab Oportunidades intencionalmente IGNORA o universoTickers do usuário.
+      // O propósito desta aba é descobrir oportunidades novas em toda a B3,
+      // não apenas dentro do universo já conhecido pelo investidor.
+      // (universoTickers ainda é usado pela Análise IA da carteira.)
 
       if (candidatosCatalogo.length === 0) {
-        throw new Error(
-          universoTickers.length > 0
-            ? "Nenhum ativo do seu universo casa com este filtro."
-            : "Nenhum ativo encontrado no catálogo. O cron diário pode não ter rodado ainda."
-        );
+        throw new Error("Nenhum ativo encontrado no catálogo. O cron diário pode não ter rodado ainda.");
       }
 
       // ── PASSO 2: busca fundamentos REAIS dos top 30 (bolsai paralelo) ──
