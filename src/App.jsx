@@ -41,7 +41,7 @@ import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
-import { getDefaultUniverso } from "./lib/catalogoB3";
+import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -161,7 +161,11 @@ function projetarDividendos(pos) {
   const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return meses.map(mes => ({
     mes,
-    dividendos: Math.round(pos.reduce((s,p) => s + (p.valorAtual||0) * (p.dy||0) / 100 / 12, 0))
+    dividendos: Math.round(pos.reduce((s,p) => {
+      // Se DY veio da IA, usa. Senão estima por tipo (FII ~8%, Ação ~5%)
+      const dy = p.dy || (p.tipo === "FII" ? 8 : 5);
+      return s + (p.valorAtual||0) * dy / 100 / 12;
+    }, 0))
   }));
 }
 
@@ -2653,7 +2657,8 @@ Retorne APENAS JSON (sem markdown):
             return {
               ticker: a.ticker, qtd: a.qtd, pm: a.pm, preco,
               valorAtual, dy: info.dy || 0, pl: info.pl || null,
-              setor: info.setor || "–", tipo: info.tipo || "Ação",
+              setor: info.setor || getSetorPorTicker(a.ticker),
+              tipo: info.tipo || (/11$/.test(a.ticker) ? "FII" : "Ação"),
               canal52: info.canal52 || null, historico: [],
             };
           });
@@ -2661,7 +2666,10 @@ Retorne APENAS JSON (sem markdown):
           posicoes = carteira.map(a => ({
             ticker: a.ticker, qtd: a.qtd, pm: a.pm,
             preco: a.pm || 0, valorAtual: (a.pm||0) * a.qtd,
-            dy: 0, setor: "–", tipo: "Ação", canal52: null,
+            dy: 0,
+            setor: getSetorPorTicker(a.ticker),
+            tipo: /11$/.test(a.ticker) ? "FII" : "Ação",
+            canal52: null,
           }));
         }
       }

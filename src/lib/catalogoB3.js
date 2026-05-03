@@ -211,3 +211,14 @@ export function findAtivo(ticker) {
   }
   return null;
 }
+
+// Retorna o setor do ticker baseado no catálogo (fallback quando IA não traz)
+export function getSetorPorTicker(ticker) {
+  const found = findAtivo(ticker);
+  if (found) return found.categoria.nome;
+
+  // Heurística para FIIs não catalogados (terminam em 11)
+  if (/11$/.test(ticker)) return "Fundos Imobiliários";
+
+  return "Outros";
+}
