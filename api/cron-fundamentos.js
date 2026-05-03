@@ -110,12 +110,21 @@ async function buscarTicker(ticker, tipoCatalogo, apiKey) {
 
 /**
  * Processa array de tickers em batches paralelos.
+ * Para antes do timeout do Vercel (deixa 5s de folga pra fazer upsert e
+ * responder), retornando os sucessos parciais ao invés de timeoutar.
  */
-async function processarEmBatches(tickers, apiKey, batchSize = PARALELISMO) {
+async function processarEmBatches(tickers, apiKey, batchSize = PARALELISMO, deadlineMs = null) {
   const sucessos = [];
   let falhas = 0;
+  let processados = 0;
 
   for (let i = 0; i < tickers.length; i += batchSize) {
+    // Se já está perto do deadline, para e retorna o que tem
+    if (deadlineMs && Date.now() > deadlineMs) {
+      console.warn(`[cron-fundamentos] Deadline atingido após ${processados} tickers. Parando para não timeoutar.`);
+      break;
+    }
+
     const batch = tickers.slice(i, i + batchSize);
     const resultados = await Promise.all(
       batch.map(t => buscarTicker(t.ticker, t.tipo, apiKey))
@@ -124,9 +133,10 @@ async function processarEmBatches(tickers, apiKey, batchSize = PARALELISMO) {
       if (r) sucessos.push(r);
       else falhas++;
     }
+    processados += batch.length;
   }
 
-  return { sucessos, falhas };
+  return { sucessos, falhas, processados };
 }
 
 export default async function handler(req, res) {
@@ -176,7 +186,10 @@ export default async function handler(req, res) {
     }
 
     // ── Busca fundamentos em batches paralelos ──
-    const { sucessos, falhas } = await processarEmBatches(tickers, apiKey);
+    // Vercel Hobby tem 60s de timeout. Reservamos 8s pra upsert+resposta,
+    // então damos 50s pro processamento de fundamentos.
+    const deadlineMs = inicio + 50_000;
+    const { sucessos, falhas, processados } = await processarEmBatches(tickers, apiKey, PARALELISMO, deadlineMs);
 
     if (sucessos.length === 0) {
       throw new Error(`Nenhum fundamento obtido. Falhas: ${falhas}. Verifique BOLSAI_API_KEY e quota.`);
@@ -212,11 +225,21 @@ export default async function handler(req, res) {
       offset,
       limit,
       candidatos: tickers.length,
+      processados,
       sucessos: sucessos.length,
       falhas,
       upsert_errors: upsertErrors,
       duracao_ms: duracao,
-      proxima_chamada: tickers.length === limit ? `?offset=${offset + limit}&limit=${limit}` : null,
+      // Se processou tudo no range pedido E o range atingiu o limit (ou seja,
+      // pode ter mais ainda no catálogo), sugere próximo offset
+      proxima_chamada: (processados === tickers.length && tickers.length === limit)
+        ? `?offset=${offset + limit}&limit=${limit}`
+        : null,
+      // Se processou parcialmente (deadline atingido), sugere reprocessar
+      // do meio em diante na próxima chamada
+      truncado: processados < tickers.length
+        ? { proximo_offset: offset + processados, restantes: tickers.length - processados }
+        : null,
     });
   } catch (e) {
     console.error("[cron-fundamentos] erro:", e);

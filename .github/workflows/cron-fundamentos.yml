@@ -3,83 +3,43 @@ name: Atualizar fundamentos B3
 on:
   # Toda segunda-feira às 9h UTC = 6h Brasil
   # Roda DEPOIS do cron-screening do Vercel (que é diário às 6h UTC)
-  # então o catálogo já está atualizado quando este workflow roda.
   schedule:
     - cron: "0 9 * * 1"
 
-  # Botão manual no GitHub Actions UI (caso queira atualizar fora do cronograma)
   workflow_dispatch:
 
-# Concorrência: cancela execução anterior se uma nova for disparada.
-# Evita que duas execuções concorrentes tentem escrever na mesma tabela.
 concurrency:
   group: cron-fundamentos
   cancel-in-progress: true
 
 jobs:
   fundamentos:
-    name: Atualizar fundamentos via cron-fundamentos
+    name: Chunk offset ${{ matrix.offset }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+
+    # Estratégia: 7 chunks de 200 tickers cada.
+    # 200 tickers × 2 reqs (fundamentals + companies) = 400 reqs paralelas
+    # Em paralelismo 50 = 8 batches sequenciais × ~3s = ~25s total
+    # Cabe folgado nos 60s de timeout do Vercel Hobby.
+    # 7 chunks × 200 = 1400 tickers cobertos (mais que o catálogo todo).
+    strategy:
+      fail-fast: false
+      matrix:
+        offset: [0, 200, 400, 600, 800, 1000, 1200]
 
     steps:
-      - name: Chunk 1 — top 500 ativos mais líquidos
-        id: chunk1
+      - name: Disparar chunk
         run: |
-          echo "Disparando chunk 1 (offset=0, limit=500)..."
-          response=$(curl -sS -w "\n%{http_code}" -X POST \
+          echo "Disparando chunk offset=${{ matrix.offset }}, limit=200..."
+          response=$(curl -sS -w "\n%{http_code}" --max-time 90 -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=0&limit=500")
+            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=${{ matrix.offset }}&limit=200")
           body=$(echo "$response" | head -n -1)
           status=$(echo "$response" | tail -n 1)
           echo "Status HTTP: $status"
           echo "Resposta: $body"
           if [ "$status" != "200" ]; then
-            echo "::error::Chunk 1 falhou (status $status)"
+            echo "::error::Chunk offset=${{ matrix.offset }} falhou (status $status)"
             exit 1
           fi
-
-      - name: Chunk 2 — ativos 500-999
-        id: chunk2
-        run: |
-          echo "Disparando chunk 2 (offset=500, limit=500)..."
-          response=$(curl -sS -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=500&limit=500")
-          body=$(echo "$response" | head -n -1)
-          status=$(echo "$response" | tail -n 1)
-          echo "Status HTTP: $status"
-          echo "Resposta: $body"
-          if [ "$status" != "200" ]; then
-            echo "::error::Chunk 2 falhou (status $status)"
-            exit 1
-          fi
-
-      - name: Chunk 3 — ativos 1000+
-        id: chunk3
-        run: |
-          echo "Disparando chunk 3 (offset=1000, limit=500)..."
-          response=$(curl -sS -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://invent-ia.vercel.app/api/cron-fundamentos?offset=1000&limit=500")
-          body=$(echo "$response" | head -n -1)
-          status=$(echo "$response" | tail -n 1)
-          echo "Status HTTP: $status"
-          echo "Resposta: $body"
-          if [ "$status" != "200" ]; then
-            echo "::error::Chunk 3 falhou (status $status)"
-            exit 1
-          fi
-
-      - name: Resumo
-        if: always()
-        run: |
-          echo "## Atualização de fundamentos B3" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Workflow finalizado em $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Logs detalhados de cada chunk estão disponíveis acima." >> $GITHUB_STEP_SUMMARY
-          echo "Para verificar o resultado no Supabase:" >> $GITHUB_STEP_SUMMARY
-          echo '\`\`\`sql' >> $GITHUB_STEP_SUMMARY
-          echo "SELECT tipo, COUNT(*) FROM screening_fundamentos GROUP BY tipo;" >> $GITHUB_STEP_SUMMARY
-          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
