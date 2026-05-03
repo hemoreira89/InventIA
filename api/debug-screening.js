@@ -2,8 +2,16 @@
 // Verifica se env vars estão presentes e tabelas existem.
 // Não retorna valores das chaves, só confirma se foram setadas.
 // Protegido por CRON_SECRET (mesmo segredo).
+//
+// Modos:
+//   ?dryrun=PETR4    → roda o mapeamento real do cron pra UM ticker
+//                       (1 ação ou 1 FII), retorna o objeto que IRIA pro
+//                       Supabase. Não escreve nada. Custa 2 reqs bolsai.
+//   ?inspect=true    → mostra schema cru de PETR4 (ação) e MXRF11 (FII)
+//   (sem param)      → só checa env vars + tabelas + bolsai connectivity
 
 import { createClient } from "@supabase/supabase-js";
+import { buscarTicker } from "./cron-fundamentos.js";
 
 export const config = { maxDuration: 10 };
 
@@ -17,6 +25,44 @@ export default async function handler(req, res) {
   }
   if (authHeader !== `Bearer ${expectedSecret}`) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // ── Modo dry-run: testa o mapeamento real pra 1 ticker, sem escrever ──
+  // Custa apenas 2 reqs bolsai (fundamentals + companies, ou fiis + companies)
+  // Útil pra validar mudanças no mapeamento antes de rodar o cron inteiro
+  const dryrunTicker = req.query?.dryrun;
+  if (dryrunTicker) {
+    const apiKey = process.env.BOLSAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "BOLSAI_API_KEY não configurado" });
+    }
+
+    const ticker = String(dryrunTicker).toUpperCase().trim();
+    // Auto-detecta tipo: ticker terminado em 11 (provável FII) ou 3/4/5/6 (ação)
+    const tipoChute = /11$/.test(ticker) ? "fund" : "stock";
+
+    try {
+      const inicio = Date.now();
+      const resultado = await buscarTicker(ticker, tipoChute, apiKey);
+      const duracao_ms = Date.now() - inicio;
+
+      return res.status(200).json({
+        ok: !!resultado,
+        ticker,
+        tipo_chute: tipoChute,
+        duracao_ms,
+        // Objeto exato que iria pro Supabase
+        objeto_mapeado: resultado,
+        // Identifica campos que ficaram null (suspeitos de mapping ruim)
+        campos_null: resultado
+          ? Object.entries(resultado)
+              .filter(([k, v]) => v === null && k !== "atualizado_em")
+              .map(([k]) => k)
+          : null,
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message, stack: e.stack?.split("\n").slice(0, 5).join(" | ") });
+    }
   }
 
   const diag = {

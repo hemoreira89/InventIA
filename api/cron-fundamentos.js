@@ -30,7 +30,7 @@ const PARALELISMO = 50;
  * Busca um ticker individual da bolsai (acoes + companies em paralelo).
  * Retorna objeto pronto pra inserir no Supabase, ou null se falhou.
  */
-async function buscarTicker(ticker, tipoCatalogo, apiKey) {
+export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
   // Decide endpoint baseado no tipo do catálogo
   const ehFII = tipoCatalogo === "fund";
   const pathPrincipal = ehFII ? `/fiis/${ticker}` : `/fundamentals/${ticker}`;
