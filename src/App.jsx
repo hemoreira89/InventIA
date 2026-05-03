@@ -3074,9 +3074,24 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
 
       const tickers = candidatosCatalogo.map(c => c.ticker);
       const [cotacoes, fundamentos] = await Promise.all([
-        buscarCotacoes(tickers).catch(() => ({})),
-        buscarFundamentos(tickers).catch(() => ({})),
+        buscarCotacoes(tickers).catch(e => {
+          console.error("[Oportunidades] buscarCotacoes falhou:", e.message);
+          return {};
+        }),
+        buscarFundamentos(tickers).catch(e => {
+          console.error("[Oportunidades] buscarFundamentos falhou:", e.message);
+          return {};
+        }),
       ]);
+
+      // Diagnóstico: quantos tickers temos com dados vs sem
+      const comCotacao = Object.keys(cotacoes).length;
+      const comFundamentos = Object.keys(fundamentos).length;
+      console.log(`[Oportunidades] ${tickers.length} candidatos → ${comCotacao} com cotação, ${comFundamentos} com fundamentos`);
+
+      if (comFundamentos === 0 && comCotacao === 0) {
+        throw new Error("APIs de cotação e fundamentos não responderam. Recarregue a página e tente de novo. Se persistir, abra o Console (F12) e veja o erro.");
+      }
 
       // ── PASSO 3: critérios eliminatórios + score local ──
       // Cada tipo tem critérios MÍNIMOS (filtros eliminatórios) e SCORE (ranking).
