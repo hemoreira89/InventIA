@@ -636,6 +636,18 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   const tickersCarteira = carteira.map(a => a.ticker);
   const { cotacoes, atualizadoEm } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
 
+  // Histórico de 1 mês para sparklines (atualiza ao mudar carteira, cache 1h)
+  const [historicos, setHistoricos] = useState({});
+  useEffect(() => {
+    if (tickersCarteira.length === 0) return;
+    let cancelled = false;
+    buscarHistoricos(tickersCarteira, "1mo")
+      .then(mapa => { if (!cancelled) setHistoricos(mapa); })
+      .catch(e => console.warn("Histórico carteira falhou:", e.message));
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickersCarteira.join(",")]);
+
   const add = async () => {
     const t = ticker.toUpperCase().trim();
     if (!t || !qtd || !carteiraId || !userId) return;
@@ -933,6 +945,18 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                     <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"var(--ui-success)"}}/>
                     <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:0.5}}>AO VIVO</span>
                   </div>
+                  {/* Sparkline 30d entre o badge "AO VIVO" e o preço */}
+                  {historicos[a.ticker]?.pontos?.length >= 5 && (
+                    <div style={{flex:1,display:"flex",justifyContent:"center",margin:"0 8px",opacity:0.85}} title="Últimos 30 dias">
+                      <Sparkline
+                        data={historicos[a.ticker].pontos.map(p => p.c)}
+                        width={70}
+                        height={20}
+                        color="auto"
+                        strokeWidth={1.4}
+                      />
+                    </div>
+                  )}
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(precoAtual)}</span>
                     {variacaoDia != null && (
