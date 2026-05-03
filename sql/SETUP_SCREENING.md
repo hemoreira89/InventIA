@@ -99,11 +99,26 @@ Esperado:
 
 ## 6. Cron diário automático
 
-Apenas o `cron-screening` (catálogo) é chamado automaticamente todo dia às 6h UTC.
+Apenas o `cron-screening` (catálogo) é chamado automaticamente todo dia às 6h UTC pelo Vercel Cron.
 
-Os **fundamentos vc atualiza manualmente** quando achar que vale a pena (semanalmente é mais que suficiente, pois eles só mudam quando empresa publica balanço).
+### Atualização semanal de fundamentos via GitHub Actions
 
-Pra ver as execuções do cron de catálogo: Supabase → Table Editor → `screening_catalogo_log`.
+O arquivo `.github/workflows/cron-fundamentos.yml` configura um workflow que dispara os 3 chunks de cron-fundamentos automaticamente.
+
+**Setup (uma vez):**
+
+1. Acesse https://github.com/hemoreira89/InventIA/settings/secrets/actions
+2. Em "Repository secrets" → **New repository secret**
+3. Adicione:
+   - Name: `CRON_SECRET`
+   - Secret: (mesmo valor configurado no Vercel)
+4. Save
+
+**Cronograma:** Toda segunda-feira às 9h UTC (6h Brasil). Roda 1h depois do cron-screening, garantindo catálogo atualizado.
+
+**Disparo manual:** https://github.com/hemoreira89/InventIA/actions/workflows/cron-fundamentos.yml → "Run workflow"
+
+Pra ver as execuções: aba Actions do repo no GitHub.
 
 ## Custos
 
