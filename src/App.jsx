@@ -3094,7 +3094,10 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         let score = null;
 
         if (filtros.tipo === "acoes_subprecificadas") {
-          passa = !ehFII && pl != null && pvp != null && pl < 12 && pvp < 1.5;
+          // P/L positivo (empresa lucrativa) E P/VP positivo
+          // P/L < 12 = barato pra empresa lucrativa
+          // P/VP < 1.5 = não está absurdamente acima do valor patrimonial
+          passa = !ehFII && pl != null && pvp != null && pl > 0 && pvp > 0 && pl < 12 && pvp < 1.5;
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
               (pl < 6 ? 40 : pl < 9 ? 30 : 20) +
@@ -3103,7 +3106,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             )));
           }
         } else if (filtros.tipo === "fiis_alto_dy") {
-          passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1;
+          passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1 && pvp > 0;
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
               (dy >= 12 ? 40 : dy >= 10 ? 30 : 20) +
@@ -3112,21 +3115,24 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             )));
           }
         } else if (filtros.tipo === "blue_chips_baratas") {
-          passa = !ehFII && pl != null && pl < 15 && (
-            (canal52 != null && canal52 < 60) || (pvp != null && pvp < 2)
+          // Blue chip = empresa grande lucrativa. P/L positivo é obrigatório.
+          // Se está perto da mínima de 52s OU P/VP < 2, é desconto.
+          passa = !ehFII && pl != null && pl > 0 && pl < 15 && (
+            (canal52 != null && canal52 < 60) || (pvp != null && pvp > 0 && pvp < 2)
           );
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
               (pl < 10 ? 30 : 20) +
-              (pvp != null && pvp < 1.5 ? 25 : pvp != null && pvp < 2 ? 15 : 10) +
+              (pvp != null && pvp > 0 && pvp < 1.5 ? 25 : pvp != null && pvp > 0 && pvp < 2 ? 15 : 10) +
               (canal52 != null && canal52 < 30 ? 30 : canal52 != null && canal52 < 50 ? 20 : 10) +
               (fund?.cagrLucro5y != null && fund.cagrLucro5y > 5 ? 15 : 5)
             )));
           }
         } else if (filtros.tipo === "crescimento") {
+          // Empresa em crescimento precisa ser lucrativa (não dá pra "crescer" lucro negativo)
           const cresceReceita = fund?.cagrReceita5y != null && fund.cagrReceita5y > 10;
           const cresceLucro = fund?.cagrLucro5y != null && fund.cagrLucro5y > 15;
-          passa = !ehFII && (cresceReceita || cresceLucro) && roe != null && roe > 12;
+          passa = !ehFII && (cresceReceita || cresceLucro) && roe != null && roe > 12 && (pl == null || pl > 0);
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
               (fund?.cagrReceita5y != null && fund.cagrReceita5y > 15 ? 30 : cresceReceita ? 20 : 10) +
@@ -3136,7 +3142,8 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             )));
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
-          passa = !ehFII && roe != null && roe > 10 && (
+          // Pagadora de dividendos precisa ter lucro positivo
+          passa = !ehFII && roe != null && roe > 10 && (pl == null || pl > 0) && (
             fund?.divEbitda == null || fund.divEbitda < 4
           );
           if (passa) {
