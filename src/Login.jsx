@@ -91,7 +91,7 @@ export default function Login({ onAuth }) {
             width: 44, height: 44, borderRadius: 10,
             background: "linear-gradient(135deg,#7b61ff,#00e5a0)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "var(--ui-bg)"
+            color: "#ffffff"
           }}>
             <Sparkles size={22} strokeWidth={2.5}/>
           </div>
@@ -108,7 +108,7 @@ export default function Login({ onAuth }) {
         {sucessoSignup ? (
           <>
             <div style={{
-              background: "#00e5a015",
+              background: "rgba(0,229,160,0.08)",
               border: "1px solid #00e5a035",
               borderRadius: 10,
               padding: 16,
@@ -218,7 +218,7 @@ export default function Login({ onAuth }) {
 
             {erro && (
               <div style={{
-                background: "#ff4d6d10",
+                background: "rgba(255,77,109,0.06)",
                 border: "1px solid #ff4d6d30",
                 borderRadius: 8,
                 padding: "10px 14px",
@@ -243,7 +243,7 @@ export default function Login({ onAuth }) {
                 border: "none",
                 borderRadius: 8,
                 padding: "13px",
-                color: "var(--ui-text)",
+                color: loading ? "var(--ui-text-muted)" : "#ffffff",
                 fontWeight: 700,
                 fontSize: 14,
                 cursor: loading ? "not-allowed" : "pointer",

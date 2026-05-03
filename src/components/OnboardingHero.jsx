@@ -7,13 +7,14 @@ import { Sparkles, ArrowRight, Briefcase, FileSearch, Lightbulb, Brain, X } from
 export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportCSV, onClose }) {
   return (
     <div className="anim" style={{
-      background: "linear-gradient(135deg, #0a0a0f 0%, #11111a 100%)",
+      background: "linear-gradient(135deg, var(--ui-bg-card) 0%, var(--ui-bg-elevated) 100%)",
       border: "1px solid var(--ui-border)",
       borderRadius: 16,
       padding: "40px 32px",
       position: "relative",
       overflow: "hidden",
-      marginBottom: 16
+      marginBottom: 16,
+      boxShadow: "var(--ui-shadow-md)"
     }}>
       {/* Glow decorativo */}
       <div style={{
@@ -31,7 +32,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
         left: "-50px",
         width: 400,
         height: 400,
-        background: "radial-gradient(circle, #00e5a012 0%, transparent 60%)",
+        background: "radial-gradient(circle, rgba(0,229,160,0.07) 0%, transparent 60%)",
         pointerEvents: "none"
       }}/>
 
@@ -232,8 +233,8 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
 
       <style>{`
         .cta-card:hover {
-          background: #11111a !important;
-          border-color: #3a3a4a !important;
+          background: var(--ui-bg-secondary) !important;
+          border-color: var(--ui-border-strong) !important;
           transform: translateY(-2px);
         }
       `}</style>

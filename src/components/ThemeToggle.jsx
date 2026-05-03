@@ -28,7 +28,7 @@ export function ThemeToggle({ theme, toggle }) {
       onClick={toggle}
       title={theme === "light" ? "Mudar para tema escuro" : "Mudar para tema claro"}
       style={{
-        background: "var(--ui-bg-elevated)",
+        background: "var(--ui-bg-secondary)",
         border: "1px solid var(--ui-border)",
         borderRadius: 6,
         padding: "8px 10px",

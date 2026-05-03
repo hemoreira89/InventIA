@@ -43,8 +43,8 @@ export function PrivacyToggle({ hidden, toggle, size = 14 }) {
       onClick={toggle}
       title={hidden ? "Mostrar valores" : "Esconder valores (modo apresentação)"}
       style={{
-        background: hidden ? "rgba(123,97,255,0.12)" : "var(--ui-bg-card)",
-        border: `1px solid ${hidden ? "rgba(123,97,255,0.31)" : "var(--ui-bg-tertiary)"}`,
+        background: hidden ? "rgba(123,97,255,0.12)" : "var(--ui-bg-secondary)",
+        border: `1px solid ${hidden ? "rgba(123,97,255,0.31)" : "var(--ui-border)"}`,
         borderRadius: 6,
         padding: "8px 10px",
         color: hidden ? "var(--ui-accent)" : "var(--ui-text-muted)",
