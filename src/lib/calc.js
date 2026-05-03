@@ -41,26 +41,35 @@ export function fmtK(n) {
 export function extrairJSON(text) {
   if (!text || !text.trim()) throw new Error("Resposta vazia da IA");
 
+  // Limpa caracteres invisíveis e normaliza aspas "smart"
+  const limpo = text
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, "") // zero-width
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")  // smart single quotes
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"'); // smart double quotes
+
   // Tenta direto primeiro
-  try { return JSON.parse(text.trim()); } catch(_) {}
+  try { return JSON.parse(limpo.trim()); } catch(_) {}
 
   // Remove blocos markdown
-  const semMd = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const semMd = limpo.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   try { return JSON.parse(semMd); } catch(_) {}
 
-  // Extrai o maior bloco JSON entre chaves
-  const match = text.match(/\{[\s\S]*\}/);
+  // Extrai o maior bloco JSON entre chaves (greedy)
+  const match = limpo.match(/\{[\s\S]*\}/);
   if (match) {
     try { return JSON.parse(match[0]); } catch(_) {}
+    // Tenta consertar trailing commas
+    try { return JSON.parse(match[0].replace(/,\s*([}\]])/g, "$1")); } catch(_) {}
   }
 
   // Tenta array
-  const arrMatch = text.match(/\[[\s\S]*\]/);
+  const arrMatch = limpo.match(/\[[\s\S]*\]/);
   if (arrMatch) {
     try { return JSON.parse(arrMatch[0]); } catch(_) {}
+    try { return JSON.parse(arrMatch[0].replace(/,\s*([}\]])/g, "$1")); } catch(_) {}
   }
 
-  throw new Error("Não foi possível extrair JSON da resposta: " + text.slice(0, 200));
+  throw new Error("Não foi possível extrair JSON da resposta: " + limpo.slice(0, 200));
 }
 
 // ─── Cálculos financeiros ────────────────────────────────────────────────────

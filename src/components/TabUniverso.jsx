@@ -255,7 +255,7 @@ export default function TabUniverso({ userId }) {
               background: filtroTipo === opt.k ? "var(--ui-info)" : "transparent",
               border: "none", borderRadius: 5,
               padding: "6px 12px", fontSize: 11, fontWeight: 700,
-              color: filtroTipo === opt.k ? "var(--ui-text)" : "var(--ui-text-muted)",
+              color: filtroTipo === opt.k ? "#ffffff" : "var(--ui-text-muted)",
               cursor: "pointer"
             }}>{opt.l}</button>
           ))}
@@ -401,8 +401,8 @@ export default function TabUniverso({ userId }) {
                   border: `2px solid ${cat.cor}`,
                   display: "flex", alignItems: "center", justifyContent: "center"
                 }}>
-                  {todosMarcados && <Check size={11} color="var(--ui-text)" strokeWidth={3}/>}
-                  {algunsMarcados && <div style={{width: 8, height: 2, background: "var(--ui-text)"}}/>}
+                  {todosMarcados && <Check size={11} color="#ffffff" strokeWidth={3}/>}
+                  {algunsMarcados && <div style={{width: 8, height: 2, background: "#ffffff"}}/>}
                 </div>
               </button>
 
@@ -426,7 +426,7 @@ export default function TabUniverso({ userId }) {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         flexShrink: 0
                       }}>
-                        {checked && <Check size={10} color="var(--ui-text)" strokeWidth={3}/>}
+                        {checked && <Check size={10} color="#ffffff" strokeWidth={3}/>}
                       </div>
                       <input
                         type="checkbox"

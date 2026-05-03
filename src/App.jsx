@@ -1392,7 +1392,8 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{
                     fontSize:11,fontWeight:800,letterSpacing:1.5,padding:"5px 12px",borderRadius:6,
-                    background:resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.12)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
+                    background:resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.18)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.22)":"rgba(255,77,109,0.18)",
+                    border:`1px solid ${resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.4)":resultado.tese.tipo==="aguardar"?"rgba(194,65,12,0.35)":"rgba(255,77,109,0.4)"}`,
                     color:resultado.tese.tipo==="comprar"?"var(--ui-success)":resultado.tese.tipo==="aguardar"?"var(--ui-warning)":"var(--ui-danger)"
                   }}>{resultado.tese.tipo.toUpperCase()}</span>
                   {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
@@ -2060,8 +2061,8 @@ function TabPatrimonio({ userId, dados }) {
               <button key={d} onClick={()=>setPeriodo(d)} style={{
                 background:periodo===d?"var(--ui-accent)":"var(--ui-bg-secondary)",
                 border:`1px solid ${periodo===d?"var(--ui-accent)":"var(--ui-border)"}`,
-                borderRadius:6,padding:"6px 12px",color:periodo===d?"#ffffff":"var(--ui-text-faint)",
-                fontSize:11,fontWeight:600,cursor:"pointer"
+                borderRadius:6,padding:"6px 12px",color:periodo===d?"#ffffff":"var(--ui-text-secondary)",
+                fontSize:11,fontWeight:700,cursor:"pointer"
               }}>{d}d</button>
             ))}
             <button onClick={salvarHoje} style={{
@@ -2196,7 +2197,20 @@ Selecione 5-8 ativos. Responda APENAS com JSON (sem markdown):
 Ordene por score (maior primeiro).`;
 
       setFase("🧠 IA selecionando oportunidades...");
-      const r = await chamarIAComSearch(prompt);
+      let r;
+      try {
+        r = await chamarIAComSearch(prompt);
+      } catch (e1) {
+        // Se falhou na extração de JSON, tenta novamente com prompt reforçado
+        if (e1.message && e1.message.includes("JSON")) {
+          setFase("🔄 Tentando novamente...");
+          await sleep(1500);
+          const promptReforcado = prompt + "\n\nIMPORTANTE: Retorne APENAS o objeto JSON válido, sem texto antes ou depois, sem markdown, sem explicações.";
+          r = await chamarIAComSearch(promptReforcado);
+        } else {
+          throw e1;
+        }
+      }
       setResultado(r);
     } catch (e) {
       setErro(e.message || "Erro");
@@ -3072,8 +3086,8 @@ function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent
           color: accent || "var(--ui-text)",
           fontFamily:"'JetBrains Mono',monospace"
         }}>{value}</div>
-        {sparkline && sparkline.length >= 2 && (
-          <Sparkline data={sparkline} width={50} height={18} color={sparkColor}/>
+        {sparkline && sparkline.length >= 5 && (
+          <Sparkline data={sparkline} width={70} height={22} color={sparkColor} strokeWidth={1.8}/>
         )}
       </div>
     </div>

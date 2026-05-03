@@ -25,22 +25,27 @@ export default function Sparkline({
     );
   }
 
-  // Normaliza dados para o tamanho do SVG
+  // Normaliza dados para o tamanho do SVG (com padding vertical)
+  const padding = 2;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
 
   const points = data.map((v, i) => {
     const x = (i / (data.length - 1)) * width;
-    const y = height - ((v - min) / range) * height;
+    const y = padding + (height - 2 * padding) - ((v - min) / range) * (height - 2 * padding);
     return [x, y];
   });
 
-  const path = points
-    .map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`))
-    .join(" ");
+  // Path com curvas suaves (cardinal spline simplificado)
+  const smoothPath = points.reduce((acc, p, i, arr) => {
+    if (i === 0) return `M ${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    const prev = arr[i - 1];
+    const cx = (prev[0] + p[0]) / 2;
+    return `${acc} Q ${cx.toFixed(1)} ${prev[1].toFixed(1)}, ${cx.toFixed(1)} ${((prev[1] + p[1]) / 2).toFixed(1)} T ${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+  }, "");
 
-  const areaPath = `${path} L ${width} ${height} L 0 ${height} Z`;
+  const areaPath = `${smoothPath} L ${width} ${height} L 0 ${height} Z`;
 
   // Detecta tendência
   const isUp = data[data.length - 1] >= data[0];
@@ -54,14 +59,14 @@ export default function Sparkline({
     <svg width={width} height={height} style={{ display: "block" }}>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={finalColor} stopOpacity={0.4}/>
+          <stop offset="0%" stopColor={finalColor} stopOpacity={0.25}/>
           <stop offset="100%" stopColor={finalColor} stopOpacity={0}/>
         </linearGradient>
       </defs>
 
       {showArea && <path d={areaPath} fill={`url(#${gradId})`}/>}
       <path
-        d={path}
+        d={smoothPath}
         fill="none"
         stroke={finalColor}
         strokeWidth={strokeWidth}
