@@ -2917,7 +2917,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
       {/* CONTEÚDO PRINCIPAL */}
       <div style={{padding:"20px 24px",maxWidth:1600,margin:"0 auto"}}>
-        {/* PAINEL DE ANÁLISE - Horizontal */}
+        {/* PAINEL DE ANÁLISE - Horizontal (apenas na aba Análise IA) */}
+        {tab === "analise" && (
         <div className="anim" style={{
           background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:12,
           padding:"16px 20px",marginBottom:20,
@@ -2986,8 +2987,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             </button>
           </div>
         </div>
+        )}
 
-        {erro && (
+        {erro && tab === "analise" && (
           <div style={{
             background:"rgba(255,77,109,0.06)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:8,
             padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,marginBottom:16,
