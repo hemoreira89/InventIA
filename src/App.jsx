@@ -477,7 +477,22 @@ function CriteriosBadges({ avaliacao, classificacao }) {
           fontWeight: 800,
           letterSpacing: 1,
           color: "var(--ui-text-faint)"
-        }}>CRITÉRIOS FUNDAMENTALISTAS</span>
+        }}>
+          CRITÉRIOS FUNDAMENTALISTAS
+          {avaliacao.setor && (
+            <span style={{
+              marginLeft: 6,
+              fontSize: 9,
+              fontWeight: 600,
+              color: "var(--ui-text-faint)",
+              opacity: 0.75,
+              letterSpacing: 0.3,
+              textTransform: "none"
+            }} title={`Setor (CVM): ${avaliacao.setorCVM || "—"}\nThresholds ajustados para o setor.`}>
+              · setor: {avaliacao.setor}
+            </span>
+          )}
+        </span>
         {classificacao && (
           <span style={{
             fontSize: 10,
@@ -3398,6 +3413,9 @@ Regras:
           ...r,
           // Preço real da brapi (tem prioridade sobre o que a IA disse)
           precoReal: cot?.preco ?? r.precoReal ?? r.precoEstimado,
+
+          // Setor (vem da bolsai /companies/{ticker}) - usado para ROE setorial dinâmico
+          setorCVM: fund?.setorCVM ?? r.setorCVM ?? null,
 
           // Indicadores fundamentalistas reais da bolsai (sobrescrevem chutes da IA)
           // P/L, P/VP funcionam para ações e FIIs

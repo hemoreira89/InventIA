@@ -159,3 +159,104 @@ describe("classificarAderencia", () => {
     expect(c.cor).toBe("default");
   });
 });
+
+describe("avaliarRecomendacao - critério ROE setorial dinâmico", () => {
+  it("Banco com ROE 13% (acima de 12%) → APROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "BBSE3",
+      setorCVM: "Bancos",
+      roe: 13, divEbitda: 1, margemLiquida: 10, dy: 6, pl: 10, pvp: 1.5
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("aprovado");
+    expect(av.setor).toBe("Bancos");
+  });
+
+  it("Energia Elétrica com ROE 11% (acima do mínimo 8%) → APROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "TAEE11_ACAO",
+      setorCVM: "Emp. Adm. Part. - Energia Elétrica",
+      roe: 11, divEbitda: 2, margemLiquida: 30, dy: 7, pl: 8, pvp: 2
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("aprovado");
+    expect(av.setor).toBe("Energia Elétrica");
+  });
+
+  it("Saneamento com ROE 8% (acima do mínimo 6%) → APROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "SAPR3",
+      setorCVM: "Saneamento, Serv. Água e Gás",
+      roe: 8, divEbitda: 2, margemLiquida: 15, dy: 5, pl: 10, pvp: 1
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("aprovado");
+    expect(av.setor).toBe("Saneamento");
+  });
+
+  it("Saneamento com ROE 4% (abaixo do mínimo 6%) → REPROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "SAPR3_RUIM",
+      setorCVM: "Saneamento, Serv. Água e Gás",
+      roe: 4, divEbitda: 2, margemLiquida: 15, dy: 5, pl: 10, pvp: 1
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("reprovado");
+  });
+
+  it("Tecnologia com ROE 16% (abaixo do mínimo 18%) → REPROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "TECH3",
+      setorCVM: "Programas e Serviços",
+      roe: 16, divEbitda: 1, margemLiquida: 20, dy: 1, pl: 15, pvp: 3
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("reprovado");
+    expect(av.setor).toBe("Tecnologia");
+  });
+
+  it("BBAS3 com ROE real 7.24% (abaixo do mínimo 12% Bancos) → REPROVADO", () => {
+    const av = avaliarRecomendacao({
+      ticker: "BBAS3",
+      setorCVM: "Bancos",
+      roe: 7.24
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("reprovado");
+    expect(roeCriterio.label).toContain("Bancos");
+    expect(roeCriterio.label).toContain("12%");
+  });
+
+  it("Sem setorCVM mantém threshold padrão de 15%", () => {
+    const av = avaliarRecomendacao({
+      ticker: "XPTO3",
+      roe: 14 // entre 12 e 15: passaria com setor genérico mas falha sem setor (15)
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.status).toBe("reprovado"); // 14 < 15 (default fixo)
+    expect(av.setor).toBe(null);
+  });
+
+  it("FIIs ignoram lógica setorial (não tem ROE)", () => {
+    const av = avaliarRecomendacao({
+      ticker: "HGLG11",
+      setorCVM: "Fundos Imobiliários",
+      pvp: 0.94, dy: 7.3
+    });
+    expect(av.tipo).toBe("FII");
+    // FII não tem critério ROE
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio).toBeUndefined();
+  });
+
+  it("Label do critério ROE inclui o setor quando aplicável", () => {
+    const av = avaliarRecomendacao({
+      ticker: "TAEE3",
+      setorCVM: "Energia Elétrica",
+      roe: 10
+    });
+    const roeCriterio = av.criterios.find(c => c.chave === "roe");
+    expect(roeCriterio.label).toContain("Energia Elétrica");
+    expect(roeCriterio.label).toContain("8%");
+  });
+});

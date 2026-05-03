@@ -1,10 +1,11 @@
 // ─── Proxy para bolsai (api.usebolsai.com) ──────────────────────────────────
-// Fundamentos quantitativos de ações e FIIs com dados oficiais B3/CVM.
-// Plano FREE: 200 req/dia, mais que suficiente com cache de 24h server-side.
+// Fundamentos quantitativos + setor da empresa, com dados oficiais B3/CVM.
+// Plano FREE: 200 req/dia.
 //
-// Endpoints da bolsai:
+// Endpoints da bolsai usados:
 //   GET /fundamentals/{ticker} → ações (P/L, ROE, P/VP, DY, ...)
 //   GET /fiis/{ticker}         → FIIs (P/VP, DY, NAV, ...)
+//   GET /companies/{ticker}    → setor + dados cadastrais
 //
 // Auth: header X-API-Key
 //
@@ -17,50 +18,59 @@ export const config = {
 
 const BOLSAI_BASE = "https://api.usebolsai.com/api/v1";
 
-// Cache em memória (24h - fundamentos só mudam em balanço trimestral)
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const cache = new Map(); // ticker → { data, ts }
+// Caches em memória separados por TTL diferente:
+// - Fundamentos: 24h (mudam em balanço trimestral, suficiente)
+// - Setor: 7 dias (raramente muda, economiza cota da bolsai)
+const FUNDAMENTOS_TTL_MS = 24 * 60 * 60 * 1000;
+const SETOR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const cacheFundamentos = new Map(); // ticker → { data, ts }
+const cacheSetor = new Map();        // ticker → { setorCVM, ts }
 
 function isFII(ticker) {
   return /11$/.test(ticker || "");
 }
 
-function getFromCache(key) {
+function getFromCache(cache, key, ttlMs) {
   const item = cache.get(key);
   if (!item) return null;
-  if (Date.now() - item.ts > CACHE_TTL_MS) {
+  if (Date.now() - item.ts > ttlMs) {
     cache.delete(key);
     return null;
   }
-  return item.data;
+  return item.data ?? item.setorCVM;
 }
 
-function setCache(key, data) {
-  cache.set(key, { data, ts: Date.now() });
+function setFundamentosCache(key, data) {
+  cacheFundamentos.set(key, { data, ts: Date.now() });
+}
+
+function setSetorCache(key, setorCVM) {
+  cacheSetor.set(key, { setorCVM, ts: Date.now() });
 }
 
 /**
- * Mapeia campos da bolsai pros nomes que criterios.js espera.
- * Crítico: os nomes em criterios.js (CRITERIOS_ACAO/CRITERIOS_FII) precisam bater.
+ * Mapeia campos da bolsai (ação) pros nomes que criterios.js espera.
  */
-function mapearAcao(raw) {
+function mapearAcao(raw, setorCVM) {
   return {
     ticker: raw.ticker,
     nome: raw.corporate_name,
     tipo: "Ação",
     referencia: raw.reference_date,
 
-    // Critérios em criterios.js esperam estes nomes:
-    pl: raw.pl,                        // P/L
-    pvp: raw.pvp,                      // P/VP
-    roe: raw.roe,                      // ROE (%)
-    dy: null,                          // DY: bolsai não retorna em /fundamentals para ações
-                                       // (calculado a partir de dividendos no histórico)
-    margemLiquida: raw.net_margin,     // %
-    divEbitda: raw.net_debt_ebitda,    // Dívida Líquida / EBITDA
-    pl: raw.pl,
+    // Setor (vem de /companies/{ticker})
+    setorCVM: setorCVM ?? null,
 
-    // Bônus (não usados pelos critérios atuais, mas podem ser úteis)
+    // Critérios em criterios.js esperam estes nomes:
+    pl: raw.pl,
+    pvp: raw.pvp,
+    roe: raw.roe,
+    dy: null,                          // bolsai não retorna DY direto pra ações
+    margemLiquida: raw.net_margin,
+    divEbitda: raw.net_debt_ebitda,
+
+    // Bônus (úteis em features futuras)
     roic: raw.roic,
     roa: raw.roa,
     evEbitda: raw.ev_ebitda,
@@ -74,7 +84,6 @@ function mapearAcao(raw) {
     lpa: raw.lpa,
 
     // Lucros consistentes 5 anos: derivado do CAGR positivo
-    // Se cagr_earnings_5y > 0, lucros foram crescentes nos últimos 5 anos
     lucrosConsistentes: raw.cagr_earnings_5y != null && raw.cagr_earnings_5y > 0,
 
     fonte: "bolsai",
@@ -82,18 +91,20 @@ function mapearAcao(raw) {
   };
 }
 
-function mapearFII(raw) {
+function mapearFII(raw, setorCVM) {
   return {
     ticker: raw.ticker,
     nome: raw.name,
     tipo: "FII",
     referencia: raw.reference_date,
 
-    // Critérios em criterios.js esperam estes nomes:
-    pvp: raw.pvp,                              // P/VP do FII
-    dy: raw.dividend_yield_ttm,                // DY 12 meses
-    vacancia: null,                            // bolsai não fornece (limitação)
-    liquidez: null,                            // bolsai não fornece (limitação)
+    // Setor (FIIs geralmente vem null em /companies, mas tentamos)
+    setorCVM: setorCVM ?? null,
+
+    pvp: raw.pvp,
+    dy: raw.dividend_yield_ttm,
+    vacancia: null,
+    liquidez: null,
 
     // Bônus
     nav: raw.net_asset_value,
@@ -106,6 +117,39 @@ function mapearFII(raw) {
     fonte: "bolsai",
     atualizadoEm: new Date().toISOString()
   };
+}
+
+/**
+ * Busca o setor de um ticker.
+ * Tenta cache primeiro, senão chama /companies/{ticker}.
+ * Para FIIs geralmente retorna null (e tudo bem - critérios de FII não usam setor).
+ */
+async function buscarSetor(ticker, apiKey) {
+  // Cache 7 dias
+  const cached = getFromCache(cacheSetor, ticker, SETOR_TTL_MS);
+  if (cached !== null && cached !== undefined) return cached;
+
+  try {
+    const r = await fetch(`${BOLSAI_BASE}/companies/${ticker}`, {
+      headers: { 'X-API-Key': apiKey },
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!r.ok) {
+      // 404 ou outros - cacheia null por 7 dias para não tentar de novo
+      setSetorCache(ticker, null);
+      return null;
+    }
+
+    const data = await r.json();
+    const setorCVM = data.sector || null;
+    setSetorCache(ticker, setorCVM);
+    return setorCVM;
+
+  } catch (e) {
+    console.warn(`Setor ${ticker} falhou:`, e.message);
+    return null; // não cacheia em erro de rede - tenta de novo na próxima
+  }
 }
 
 export default async function handler(req, res) {
@@ -134,9 +178,9 @@ export default async function handler(req, res) {
     const resultado = {};
     const tickersParaBuscar = [];
 
-    // Verifica cache
+    // Verifica cache de fundamentos
     for (const t of tickers) {
-      const cached = getFromCache(t);
+      const cached = getFromCache(cacheFundamentos, t, FUNDAMENTOS_TTL_MS);
       if (cached) {
         resultado[t] = cached;
       } else {
@@ -148,30 +192,33 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: resultado, fromCache: true });
     }
 
-    // bolsai não suporta múltiplos tickers em 1 request, então paraleliza
-    // Direciona ações pra /fundamentals e FIIs pra /fiis
+    // bolsai não suporta múltiplos tickers em 1 request → paraleliza
+    // Para cada ticker, busca FUNDAMENTOS + SETOR em paralelo (2 reqs por ticker)
     const promessas = tickersParaBuscar.map(async (t) => {
       const ehFII = isFII(t);
       const path = ehFII ? `/fiis/${t}` : `/fundamentals/${t}`;
 
       try {
-        const r = await fetch(`${BOLSAI_BASE}${path}`, {
-          headers: { 'X-API-Key': apiKey },
-          signal: AbortSignal.timeout(8000)
-        });
+        // Paraleliza fundamentos + setor (cache 7 dias evita maior parte das chamadas)
+        const [respFund, setorCVM] = await Promise.all([
+          fetch(`${BOLSAI_BASE}${path}`, {
+            headers: { 'X-API-Key': apiKey },
+            signal: AbortSignal.timeout(8000)
+          }),
+          buscarSetor(t, apiKey)
+        ]);
 
-        if (!r.ok) {
-          // 404 = ticker não encontrado, 429 = rate limit, etc
-          const errBody = await r.json().catch(() => ({}));
+        if (!respFund.ok) {
+          const errBody = await respFund.json().catch(() => ({}));
           return {
             ticker: t,
-            erro: errBody.error || errBody.detail || `HTTP ${r.status}`,
-            status: r.status
+            erro: errBody.error || errBody.detail || `HTTP ${respFund.status}`,
+            status: respFund.status
           };
         }
 
-        const raw = await r.json();
-        const mapeado = ehFII ? mapearFII(raw) : mapearAcao(raw);
+        const raw = await respFund.json();
+        const mapeado = ehFII ? mapearFII(raw, setorCVM) : mapearAcao(raw, setorCVM);
         return { ticker: t, data: mapeado };
 
       } catch (e) {
@@ -191,7 +238,7 @@ export default async function handler(req, res) {
         continue;
       }
       resultado[resposta.ticker] = resposta.data;
-      setCache(resposta.ticker, resposta.data);
+      setFundamentosCache(resposta.ticker, resposta.data);
     }
 
     return res.status(200).json({

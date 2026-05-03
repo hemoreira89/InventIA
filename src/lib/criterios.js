@@ -2,6 +2,12 @@
 // Funções puras para validar se uma ação ou FII atende a critérios objetivos.
 // Inspirado em princípios de Graham, Buffett, Lynch e popularizado no Brasil
 // por análises fundamentalistas mainstream.
+//
+// IMPORTANTE: O critério de ROE para AÇÕES agora é DINÂMICO por setor.
+// Setores capital-intensivos (saneamento, energia) têm ROE mínimo menor.
+// Setores leves (tech, marca) têm ROE mínimo maior.
+
+import { normalizarSetorCVM, roeMinimoSetor } from "./setorB3";
 
 /**
  * Critérios padrão para AÇÕES.
@@ -91,15 +97,36 @@ function formatarMensagem(valor, criterio, aprovado) {
 /**
  * Avalia uma recomendação completa contra os critérios apropriados.
  * Decide automaticamente se é ação ou FII pelo tipo/ticker.
+ * Para AÇÕES: ajusta dinamicamente o ROE mínimo baseado no setor da empresa.
+ *
  * @param {Object} recomendacao - dados da IA com indicadores
- * @returns {{ tipo: string, criterios: Array, resumo: { aprovados, reprovados, indisponiveis, pontuacao } }}
+ * @returns {{ tipo, setor, criterios, resumo }}
  */
 export function avaliarRecomendacao(rec) {
   if (!rec) return null;
 
   // Detecta tipo: explícito ou pelo sufixo do ticker (11 = FII)
   const ehFII = rec.tipo === "FII" || /11$/.test(rec.ticker || "");
-  const tabela = ehFII ? CRITERIOS_FII : CRITERIOS_ACAO;
+
+  // Para ações, ajusta o critério de ROE conforme o setor
+  // setorCVM vem da bolsai (/companies/{ticker}), pode ser null se desconhecido
+  let tabela = ehFII ? CRITERIOS_FII : { ...CRITERIOS_ACAO };
+  let setorGenerico = null;
+
+  if (!ehFII && rec.setorCVM) {
+    setorGenerico = normalizarSetorCVM(rec.setorCVM);
+    const roeMin = roeMinimoSetor(setorGenerico);
+
+    // Substitui o critério de ROE com o threshold dinâmico
+    tabela = {
+      ...tabela,
+      roe: {
+        min: roeMin,
+        label: `ROE ≥ ${roeMin}% (${setorGenerico})`,
+        descricao: `Retorno sobre Patrimônio Líquido — mínimo ajustado para o setor "${setorGenerico}"`
+      }
+    };
+  }
 
   // Mapeia campos da recomendação para chaves dos critérios
   // Prioridade: campo explícito > indicadores aninhados
@@ -133,6 +160,8 @@ export function avaliarRecomendacao(rec) {
 
   return {
     tipo: ehFII ? "FII" : "Ação",
+    setor: setorGenerico, // útil para UI mostrar contexto
+    setorCVM: rec.setorCVM ?? null, // bruto, caso UI queira
     criterios,
     resumo: { aprovados, reprovados, indisponiveis, total, pontuacao }
   };
