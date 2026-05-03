@@ -3016,52 +3016,160 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
   const buscar = async () => {
     setErro(""); setLoading(true); setResultado(null);
     try {
-      setFase("🔍 Escaneando B3...");
       const cfg = TIPOS[filtros.tipo];
       const setorTxt = filtros.setor !== "qualquer" ? `Foque em empresas do setor ${filtros.setor}.` : "";
 
-      // Restringe busca ao universo do usuário (se definido)
       const universoTxt = universoTickers.length > 0
         ? `\nIMPORTANTE: Considere APENAS estes tickers: ${universoTickers.slice(0, 50).join(", ")}.`
         : "";
 
-      const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
+      // ── PASSO 1: IA gera lista de CANDIDATOS (sem buscar dados de mercado) ──
+      // A IA usa o conhecimento prévio dela para sugerir 8-12 tickers que se
+      // encaixam no critério escolhido. Sem Google Search → rápido.
+      setFase("🧠 IA selecionando candidatos...");
+
+      const promptCandidatos = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
 
 Tipo: ${cfg.titulo} — ${cfg.descricao}
 Perfil: ${filtros.perfil}
 ${setorTxt}${universoTxt}
 
-Use Google Search 1x: "${filtros.tipo.replace(/_/g," ")} B3 ${new Date().getFullYear()}"
+Sua tarefa: sugerir 8-12 tickers da B3 que SE ENCAIXAM neste critério, baseado no seu conhecimento de mercado.
 
-Selecione 5-8 ativos. Responda APENAS com JSON (sem markdown):
+NÃO precisa retornar dados quantitativos (preço, DY, P/L, P/VP, ROE) — o sistema buscará via API B3/CVM oficial. Você só sugere os tickers e justifica brevemente cada um.
+
+Responda APENAS com este JSON (sem markdown):
 {
   "tipo": "${filtros.tipo}",
-  "criterios_usados": "1 frase dos critérios",
-  "oportunidades": [
-    {"ticker":"TICKER","nome":"Nome","setor":"Setor","preco":22.5,"dy":8.5,"pl":4.2,"pvp":0.65,"score":85,"destaque":"motivo principal em 1 frase","risco_principal":"risco em 1 frase","potencial_upside":25}
+  "criterios_usados": "1 frase dos critérios objetivos que serão validados via API",
+  "candidatos": [
+    {"ticker":"TICKER","destaque":"motivo em 1 frase","risco_principal":"risco em 1 frase"}
   ],
-  "contexto_macro": "1 parágrafo sobre o mercado atual",
-  "aviso": "Lista gerada por IA. Confirme antes de operar."
-}
+  "contexto_macro": "1 parágrafo sobre o mercado atual e por que esse tipo de oportunidade faz sentido AGORA"
+}`;
 
-Ordene por score (maior primeiro).`;
-
-      setFase("🧠 IA selecionando oportunidades...");
-      let r;
+      let analise;
       try {
-        r = await chamarIAComSearch(prompt);
+        analise = await chamarIAComSearch(promptCandidatos);
       } catch (e1) {
-        // Se falhou na extração de JSON, tenta novamente com prompt reforçado
         if (e1.message && e1.message.includes("JSON")) {
-          setFase("🔄 Tentando novamente...");
           await sleep(1500);
-          const promptReforcado = prompt + "\n\nIMPORTANTE: Retorne APENAS o objeto JSON válido, sem texto antes ou depois, sem markdown, sem explicações.";
-          r = await chamarIAComSearch(promptReforcado);
+          analise = await chamarIAComSearch(promptCandidatos + "\n\nIMPORTANTE: Retorne APENAS o objeto JSON válido.");
         } else {
           throw e1;
         }
       }
-      setResultado(r);
+
+      const candidatos = analise.candidatos || [];
+      if (candidatos.length === 0) {
+        throw new Error("IA não retornou candidatos. Tente outro filtro.");
+      }
+
+      // ── PASSO 2: enriquece com dados REAIS via brapi+bolsai (paralelo) ──
+      setFase(`📊 Buscando dados B3/CVM de ${candidatos.length} candidatos...`);
+
+      const tickersCandidatos = candidatos.map(c => c.ticker).filter(Boolean);
+      const [cotacoes, fundamentos] = await Promise.all([
+        buscarCotacoes(tickersCandidatos).catch(() => ({})),
+        buscarFundamentos(tickersCandidatos).catch(() => ({})),
+      ]);
+
+      // ── PASSO 3: monta oportunidades com dados reais + score derivado ──
+      const oportunidades = candidatos.map(c => {
+        const cot = cotacoes[c.ticker];
+        const fund = fundamentos[c.ticker];
+        const ehFII = fund?.tipo === "FII" || /11$/.test(c.ticker);
+
+        // Score simples baseado no tipo de oportunidade
+        // Não inventa números: se não tiver dado, score fica null
+        const dy = ehFII ? fund?.dy : null; // bolsai não retorna DY de ações
+        const pl = fund?.pl;
+        const pvp = fund?.pvp;
+        const roe = fund?.roe;
+        const canal52 = cot?.canal52;
+
+        let score = null;
+        if (filtros.tipo === "acoes_subprecificadas" && pl != null && pvp != null) {
+          // Quanto menor P/L e P/VP, maior o score (limitado a faixas razoáveis)
+          score = Math.round(Math.max(0, Math.min(100,
+            (pl < 8 ? 40 : pl < 15 ? 25 : 10) +
+            (pvp < 1 ? 40 : pvp < 1.5 ? 25 : 10) +
+            (roe && roe > 12 ? 20 : 10)
+          )));
+        } else if (filtros.tipo === "fiis_alto_dy" && dy != null && pvp != null) {
+          score = Math.round(Math.max(0, Math.min(100,
+            (dy >= 10 ? 40 : dy >= 8 ? 30 : 15) +
+            (pvp <= 1 ? 30 : pvp <= 1.1 ? 20 : 10) +
+            (canal52 != null && canal52 < 50 ? 30 : 15)
+          )));
+        } else if (filtros.tipo === "blue_chips_baratas") {
+          score = Math.round(Math.max(0, Math.min(100,
+            (pl != null && pl < 12 ? 30 : 15) +
+            (pvp != null && pvp < 2 ? 25 : 10) +
+            (canal52 != null && canal52 < 40 ? 30 : canal52 < 60 ? 15 : 5) +
+            (fund?.cagrLucro5y != null && fund.cagrLucro5y > 5 ? 15 : 5)
+          )));
+        } else if (filtros.tipo === "crescimento") {
+          score = Math.round(Math.max(0, Math.min(100,
+            (fund?.cagrReceita5y != null && fund.cagrReceita5y > 10 ? 30 : 10) +
+            (fund?.cagrLucro5y != null && fund.cagrLucro5y > 15 ? 30 : 10) +
+            (roe != null && roe > 15 ? 25 : 10) +
+            (fund?.margemLiquida != null && fund.margemLiquida > 10 ? 15 : 5)
+          )));
+        } else if (filtros.tipo === "dividendos_estaveis") {
+          score = Math.round(Math.max(0, Math.min(100,
+            (fund?.lucrosConsistentes ? 30 : 0) +
+            (dy != null && dy > 5 ? 30 : 15) +
+            (fund?.divEbitda != null && fund.divEbitda < 3 ? 20 : 10) +
+            (roe != null && roe > 12 ? 20 : 10)
+          )));
+        }
+
+        return {
+          ticker: c.ticker,
+          nome: fund?.nome || c.ticker,
+          setor: fund?.setorCVM || null,
+          tipo: fund?.tipo || (ehFII ? "FII" : "Ação"),
+          // Dados quantitativos REAIS (B3 + CVM)
+          preco: cot?.preco ?? null,
+          dy: dy ?? null,
+          pl: pl ?? null,
+          pvp: pvp ?? null,
+          roe: roe ?? null,
+          canal52: canal52 != null ? Math.round(canal52) : null,
+          score,
+          // Análise qualitativa da IA
+          destaque: c.destaque,
+          risco_principal: c.risco_principal,
+          // Metadados
+          temDados: !!(cot || fund),
+        };
+      });
+
+      // Ordena por score (mais alto primeiro), depois por ticker (estabilidade)
+      const ordenados = oportunidades
+        .filter(o => o.temDados) // remove tickers que API não encontrou
+        .sort((a, b) => {
+          const sa = a.score ?? 0;
+          const sb = b.score ?? 0;
+          if (sb !== sa) return sb - sa;
+          return a.ticker.localeCompare(b.ticker);
+        })
+        .slice(0, 8); // Mostra top 8
+
+      setResultado({
+        tipo: filtros.tipo,
+        criterios_usados: analise.criterios_usados,
+        oportunidades: ordenados,
+        contexto_macro: analise.contexto_macro,
+        aviso: "Candidatos sugeridos pela IA, dados quantitativos via B3/CVM oficial. Confirme antes de operar.",
+        // Estatísticas de transparência
+        _stats: {
+          candidatos: candidatos.length,
+          comDados: ordenados.length,
+          semDados: candidatos.length - ordenados.length,
+        }
+      });
     } catch (e) {
       setErro(e.message || "Erro");
     } finally {
