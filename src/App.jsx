@@ -3265,6 +3265,20 @@ export default function App({ session, onLogout }) {
     setTimeout(() => setSavedMsg(""), 2000);
   }, []);
 
+  // Universo de investimento do usuário (tickers que a IA vai considerar)
+  // IMPORTANTE: precisa estar declarado ANTES do useCallback `analisar` que usa
+  // ele como dependência. Caso contrário o esbuild minifica e gera TDZ
+  // (Cannot access 'universoTickers' before initialization).
+  const [universoTickers, setUniversoTickers] = useState(getDefaultUniverso());
+  useEffect(() => {
+    if (!userId) return;
+    carregarUniverso(userId).then(u => {
+      if (u?.tickers?.length > 0) {
+        setUniversoTickers(u.tickers);
+      }
+    }).catch(() => {});
+  }, [userId]);
+
   const aporteNum = () => parseFloat((aporte||"").replace(/[R$\s.]/g,"").replace(",",".")) || 0;
   const handleAporte = e => {
     const raw = e.target.value.replace(/\D/g,"");
@@ -3593,17 +3607,6 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       }
     }).catch(() => {});
   }, [userId, dados?.totalCarteira]);
-
-  // Universo de investimento do usuário (tickers que a IA vai considerar)
-  const [universoTickers, setUniversoTickers] = useState(getDefaultUniverso());
-  useEffect(() => {
-    if (!userId) return;
-    carregarUniverso(userId).then(u => {
-      if (u?.tickers?.length > 0) {
-        setUniversoTickers(u.tickers);
-      }
-    }).catch(() => {});
-  }, [userId]);
 
   // Relógio em tempo real
   const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
