@@ -1137,7 +1137,7 @@ function VisualizacoesCarteira({ dados }) {
         </>}
 
         {g==="canal" && <>
-          <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (estimado pela IA)</STitle>
+          <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (dados B3 via brapi)</STitle>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
           {canal.length > 0 ? (() => {
             // Detecta se todos os valores são iguais (IA retornou 50 pra todos = sem informação útil)
@@ -1618,7 +1618,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
           display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
         }}><Sparkles size={16} color="var(--ui-accent)" strokeWidth={2.5}/></div>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.6}}>
-          Análise gerada pelo <b style={{color:"var(--ui-text)"}}>Gemini 2.5 Pro</b> com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
+          Análise gerada pelo <b style={{color:"var(--ui-text)"}}>Gemini 2.5 Flash</b> com cotações em tempo real (<b>brapi</b>) e fundamentos oficiais B3/CVM (<b>bolsai</b>). Confirme na sua corretora antes de operar.
         </div>
       </div>
 
