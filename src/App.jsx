@@ -635,8 +635,21 @@ const SETOR_ALIASES = {
   "mineração": "Petróleo & Mineração",
   "mineracao": "Petróleo & Mineração",
   "petróleo & gás": "Petróleo & Mineração",
+  "petroleo & gas": "Petróleo & Mineração",
+  "petróleo e gás": "Petróleo & Mineração",
+  "petroleo e gas": "Petróleo & Mineração",
+  "petróleo, gás e biocombustíveis": "Petróleo & Mineração",
+  "óleo e gás": "Petróleo & Mineração",
+  "oleo e gas": "Petróleo & Mineração",
+  "petroleo & gas": "Petróleo & Mineração",
+  "petróleo e gás": "Petróleo & Mineração",
+  "petroleo e gas": "Petróleo & Mineração",
+  "óleo e gás": "Petróleo & Mineração",
+  "oleo e gas": "Petróleo & Mineração",
   "fundos imobiliários": "Fundos Imobiliários",
   "fundos imobiliarios": "Fundos Imobiliários",
+  "imobiliário": "Fundos Imobiliários",
+  "imobiliario": "Fundos Imobiliários",
   "fii": "Fundos Imobiliários",
   "fiis": "Fundos Imobiliários",
   "logística": "Fundos Imobiliários",
@@ -649,10 +662,28 @@ const SETOR_ALIASES = {
   "saúde": "Saúde",
   "saude": "Saúde",
 };
+
+// Heurística de fallback: detecta categoria por palavra-chave
+function detectarSetorPorPalavraChave(s) {
+  const lower = s.toLowerCase();
+  if (/banc|financ/.test(lower)) return "Financeiro";
+  if (/petr[óo]leo|miner|gás|gas|combust/.test(lower)) return "Petróleo & Mineração";
+  if (/energia|el[eé]trica|distribu/.test(lower)) return "Energia";
+  if (/imobili|fii|log[íi]stica|shopping|lajes|h[íi]brido|papel/.test(lower)) return "Fundos Imobiliários";
+  if (/sane|[áa]gua/.test(lower)) return "Saneamento";
+  if (/sa[úu]de|hospital|farma/.test(lower)) return "Saúde";
+  if (/varejo|consumo|aliment/.test(lower)) return "Consumo";
+  return null;
+}
+
 function normalizarSetor(s) {
   if (!s || s === "–" || s === "-") return "Outros";
   const key = s.toLowerCase().trim();
-  return SETOR_ALIASES[key] || s; // mantém capitalização original se não conhecido
+  if (SETOR_ALIASES[key]) return SETOR_ALIASES[key];
+  // Tenta heurística por palavra-chave
+  const detectado = detectarSetorPorPalavraChave(s);
+  if (detectado) return detectado;
+  return s; // mantém capitalização original se não conhecido
 }
 
 function VisualizacoesCarteira({ dados }) {
@@ -674,11 +705,17 @@ function VisualizacoesCarteira({ dados }) {
   // Arredonda valores para evitar flutuação de 0.01%
   Object.values(setoresMap).forEach(s => { s.value = +s.value.toFixed(1); });
   const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"var(--ui-success)":"var(--ui-danger)"})).sort((a,b)=>b.retorno-a.retorno);
-  const canal = pos.map(p => ({ ticker:p.ticker, posicao:p.canal52??50 }));
+  // Canal 52s: só mostra os ativos com dados reais da IA (evita gráfico todo a 50%)
+  const canal = pos.filter(p => typeof p.canal52 === "number" && !isNaN(p.canal52))
+    .map(p => ({ ticker:p.ticker, posicao:p.canal52 }));
   const divs = pos.length > 0 ? projetarDividendos(pos) : [];
   const radar = [
     {m:"Diversif.",v:Math.min(100,pos.length*15)},
-    {m:"Dividendos",v:Math.min(100,pos.filter(p=>p.dy>4).length/Math.max(1,pos.length)*100)},
+    {m:"Dividendos",v:Math.min(100,pos.filter(p => {
+      // Considera "bom pagador" quem tem DY >= 4%, usando estimativa por tipo se IA não trouxe
+      const dy = p.dy || (p.tipo === "FII" ? 8 : 5);
+      return dy >= 4;
+    }).length/Math.max(1,pos.length)*100)},
     {m:"Valor",v:(() => {
       const validas = pos.filter(p => typeof p.canal52 === "number" && !isNaN(p.canal52));
       if (validas.length === 0) return 50; // sem dados de canal52, valor neutro
@@ -748,7 +785,14 @@ function VisualizacoesCarteira({ dados }) {
             <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
               {[{c:"var(--ui-success)",l:"Oportunidade"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
             </div>
-          </> : <div style={{textAlign:"center",color:"var(--ui-text-disabled)",padding:"24px 0",fontSize:13}}>Sem dados</div>}
+          </> : <div style={{textAlign:"center",padding:"32px 0"}}>
+            <div style={{fontSize:13,color:"var(--ui-text-muted)",marginBottom:6}}>
+              Sem dados de canal disponíveis
+            </div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",maxWidth:340,margin:"0 auto",lineHeight:1.5}}>
+              A IA não retornou a posição no canal de 52 semanas para os ativos. Isso pode acontecer com FIIs ou ativos pouco cobertos.
+            </div>
+          </div>}
         </>}
 
         {g==="perf" && perf.length > 0 && <>
@@ -1242,10 +1286,10 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.12)":"var(--ui-bg-secondary)",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
-              {r.dy && <span style={{fontSize:11,background:"rgba(255,214,10,0.14)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>DY ~{fmt(r.dy)}%</span>}
-              {r.pl && <span style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>P/L ~{fmt(r.pl)}</span>}
-              {r.score && <span style={{fontSize:11,background:"rgba(0,229,160,0.14)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Score {r.score}/100</span>}
+              {(r.precoReal||r.precoEstimado) ? <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.12)":"var(--ui-bg-secondary)",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span> : null}
+              {r.dy > 0 ? <span style={{fontSize:11,background:"rgba(255,214,10,0.14)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>DY ~{fmt(r.dy)}%</span> : null}
+              {r.pl > 0 ? <span style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>P/L ~{fmt(r.pl)}</span> : null}
+              {r.score > 0 ? <span style={{fontSize:11,background:"rgba(0,229,160,0.14)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Score {r.score}/100</span> : null}
               {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.14)":r.canal52<=70?"rgba(255,214,10,0.14)":"rgba(255,77,109,0.14)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Canal {r.canal52}%</span>}
             </div>
 
