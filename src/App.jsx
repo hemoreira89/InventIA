@@ -526,11 +526,11 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           <STitle>ATIVOS ({carteira.length})</STitle>
           <div style={{display:"flex",gap:6}}>
             <button onClick={exportarCSV} title="Exportar carteira em CSV" style={{
-              background:"var(--ui-bg-card-2)",border:"1px solid var(--ui-border-soft)",borderRadius:6,padding:"6px 10px",
+              background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:6,padding:"6px 10px",
               color:"var(--ui-text-muted)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
             }}><Download size={12}/>Exportar</button>
             <label style={{
-              background:"var(--ui-bg-card-2)",border:"1px solid var(--ui-border-soft)",borderRadius:6,padding:"6px 10px",
+              background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:6,padding:"6px 10px",
               color:"var(--ui-text-muted)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
             }}>
               <FileUp size={12}/>Importar
@@ -979,7 +979,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
             <Card key={w.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"var(--ui-accent)"}}>{w.ticker.slice(0,4)}</div>
+                  <div style={{width:34,height:34,borderRadius:9,background:"rgba(123,97,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"var(--ui-accent)"}}>{w.ticker.slice(0,4)}</div>
                   <div><div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{w.nota}</div>}</div>
                 </div>
                 <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
@@ -1161,7 +1161,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
             )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"rgba(0,229,160,0.09)":"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"var(--ui-success)":"var(--ui-accent)"}}>{r.ticker.slice(0,4)}</div>
+                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"rgba(0,229,160,0.12)":"rgba(123,97,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"var(--ui-success)":"var(--ui-accent)"}}>{r.ticker.slice(0,4)}</div>
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontWeight:800,fontSize:15,color:"var(--ui-text)"}}>{r.ticker}</span>
@@ -1178,11 +1178,11 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.08)":"var(--ui-bg-secondary)",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
-              {r.dy && <span style={{fontSize:11,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
-              {r.pl && <span style={{fontSize:11,background:"rgba(123,97,255,0.07)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
-              {r.score && <span style={{fontSize:11,background:"rgba(0,229,160,0.07)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
-              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.07)":r.canal52<=70?"rgba(255,214,10,0.07)":"rgba(255,77,109,0.07)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px"}}>Canal {r.canal52}%</span>}
+              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.12)":"var(--ui-bg-secondary)",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
+              {r.dy && <span style={{fontSize:11,background:"rgba(255,214,10,0.14)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>DY ~{fmt(r.dy)}%</span>}
+              {r.pl && <span style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>P/L ~{fmt(r.pl)}</span>}
+              {r.score && <span style={{fontSize:11,background:"rgba(0,229,160,0.14)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Score {r.score}/100</span>}
+              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.14)":r.canal52<=70?"rgba(255,214,10,0.14)":"rgba(255,77,109,0.14)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Canal {r.canal52}%</span>}
             </div>
 
             <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
@@ -1350,7 +1350,7 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
           <Card>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:14}}>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:54,height:54,borderRadius:12,background:"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"var(--ui-accent)"}}>{resultado.ticker.slice(0,4)}</div>
+                <div style={{width:54,height:54,borderRadius:12,background:"rgba(123,97,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"var(--ui-accent)"}}>{resultado.ticker.slice(0,4)}</div>
                 <div>
                   <div style={{fontSize:22,fontWeight:800,color:"var(--ui-text)",marginBottom:4}}>{resultado.ticker}</div>
                   <div style={{fontSize:13,color:"var(--ui-text-muted)"}}>{resultado.nome} · {resultado.setor}</div>
@@ -2907,7 +2907,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         <div className="anim" style={{
           background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:12,
           padding:"16px 20px",marginBottom:20,
-          display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"
+          display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",
+          boxShadow:"var(--ui-shadow-sm)"
         }}>
           <div style={{flex:"1 1 200px",minWidth:160}}>
             <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
@@ -2926,7 +2927,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             </div>
           </div>
 
-          <div style={{width:1,alignSelf:"stretch",background:"var(--ui-bg-secondary)"}}/>
+          <div style={{width:1,alignSelf:"stretch",background:"var(--ui-border)"}}/>
 
           <div style={{flex:"1 1 160px",minWidth:140}}>
             <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
@@ -3049,8 +3050,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* Footer */}
         <div style={{
-          marginTop:40,padding:"20px 0",borderTop:"1px solid var(--ui-border-soft)",
-          textAlign:"center",fontSize:11,color:"var(--ui-text-disabled)"
+          marginTop:40,padding:"20px 0",borderTop:"1px solid var(--ui-border)",
+          textAlign:"center",fontSize:11,color:"var(--ui-text-faint)"
         }}>
           Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
           Cotações em tempo real · Confirme preços na sua corretora antes de operar

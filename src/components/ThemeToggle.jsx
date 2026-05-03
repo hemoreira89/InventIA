@@ -59,33 +59,36 @@ export function ThemeToggle({ theme, toggle }) {
 export const THEME_CSS = `
   :root,
   [data-theme="light"] {
+    /* Backgrounds - hierarquia clara */
     --ui-bg: #f5f6f8;
     --ui-bg-card: #ffffff;
     --ui-bg-card-2: #fafbfc;
     --ui-bg-input: #ffffff;
     --ui-bg-elevated: #ffffff;
     --ui-bg-secondary: #f0f2f5;
-    --ui-bg-tertiary: #e8eaed;
+    --ui-bg-tertiary: #e5e7eb;
     --ui-bg-strong: #cbd5e0;
 
-    /* Texto - escurecido para melhor contraste no light */
-    --ui-text: #0f1419;
-    --ui-text-secondary: #1a202c;
-    --ui-text-muted: #2d3748;
-    --ui-text-faint: #4a5568;
-    --ui-text-disabled: #718096;
+    /* Texto - escala alta de contraste */
+    --ui-text: #0f172a;
+    --ui-text-secondary: #1e293b;
+    --ui-text-muted: #334155;
+    --ui-text-faint: #475569;
+    --ui-text-disabled: #64748b;
 
+    /* Bordas - hierarquia visível */
     --ui-border: #d1d5db;
     --ui-border-strong: #9ca3af;
     --ui-border-soft: #e5e7eb;
 
-    /* Accent - mais escuro para contraste no fundo claro */
-    --ui-accent: #5b3df5;
+    /* Cores semânticas - vibrantes mas balanceadas (não pastéis nem fluo) */
+    --ui-accent: #6d28d9;
     --ui-success: #059669;
-    --ui-warning: #d97706;
+    --ui-warning: #c2410c;
     --ui-danger: #dc2626;
-    --ui-info: #0284c7;
+    --ui-info: #0369a1;
 
+    /* Sombras - elevação visível */
     --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
     --ui-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
 

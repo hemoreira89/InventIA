@@ -22,10 +22,18 @@ function Root() {
   }, []);
 
   if (loading) {
+    // Lê tema diretamente do localStorage (componentes ainda não montaram)
+    let isLight = true;
+    try {
+      const saved = localStorage.getItem("inventia_theme");
+      isLight = saved !== "dark";
+    } catch {}
+    const bg = isLight ? "#f5f6f8" : "#000000";
+    const border = isLight ? "#e5e7eb" : "#1a1a25";
     return (
       <div style={{
         minHeight: "100vh",
-        background: "#000",
+        background: bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -33,7 +41,7 @@ function Root() {
       }}>
         <div style={{
           width: 40, height: 40, borderRadius: "50%",
-          border: "3px solid #1a1a25",
+          border: `3px solid ${border}`,
           borderTopColor: "#7b61ff",
           animation: "spin .9s linear infinite"
         }}/>
