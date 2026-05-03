@@ -777,7 +777,7 @@ function TabMeta({ dados }) {
           </div>
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:10}}>Patrimônio atual: <span style={{color:"var(--ui-success)",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
-        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#1a1a25",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"13px",color:"#ffffff",fontWeight:800,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(123,97,255,0.25)"}}>
           <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Calcular Minha Meta</>
         </button>
       </Card>
@@ -1035,7 +1035,7 @@ function TabIR({ dados }) {
               style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           ))}
         </div>
-        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#1a1a25",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"11px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:"0 2px 8px rgba(123,97,255,0.25)"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
         </button>
       </Card>
@@ -1208,7 +1208,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         ))}
       </>}
 
-      {a.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.2)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-warning)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{a.aviso}</div>}
+      {a.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{a.aviso}</div>}
     </div>
   );
 }
@@ -1473,7 +1473,7 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             )}
           </div>
 
-          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid rgba(255,214,10,0.09)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
@@ -1668,7 +1668,7 @@ PASSO 3 — Retorne APENAS este JSON:
             </Card>
           )}
 
-          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid rgba(255,214,10,0.09)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
@@ -1899,7 +1899,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
       {/* Coluna esquerda: registrar + stats */}
       <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
         <Card>
-          <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
+          <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <input type="text" placeholder="Ticker (ex: TAEE11)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}/>
             <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}>
@@ -1913,7 +1913,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
               <input type="date" value={data} onChange={e=>setData(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
             </div>
             <input type="text" placeholder="Observação (opcional)" value={obs} onChange={e=>setObs(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
-            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"var(--ui-bg-secondary)":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"#1a1a25",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"var(--ui-bg-secondary)":"linear-gradient(135deg,#059669,#047857)",border:"none",borderRadius:8,padding:"11px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:salvando?"none":"0 2px 8px rgba(5,150,105,0.25)"}}>
               {salvando ? <Loader2 size={14} className="spin"/> : <Plus size={14} strokeWidth={2.5}/>}
               Registrar
             </button>
@@ -1924,7 +1924,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
           <STitle>RESUMO</STitle>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <Stat label="ESTE MÊS" value={fmtBRL(totalMes)} color="var(--ui-success)" mono/>
-            <Stat label="ESTE ANO" value={fmtBRL(totalAno)} color="var(--ui-warning)" mono/>
+            <Stat label="ESTE ANO" value={fmtBRL(totalAno)} color="var(--ui-success)" mono/>
             <Stat label="TOTAL ACUMULADO" value={fmtBRL(totalGeral)} color="var(--ui-accent)" mono/>
             <Stat label="MÉDIA MENSAL (12M)" value={fmtBRL(meses.reduce((s,m)=>s+m.valor,0)/12)} mono/>
           </div>
@@ -1942,7 +1942,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
                 <XAxis dataKey="mes" tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
                 <Tooltip content={<TTip/>}/>
-                <Bar dataKey="valor" name="Proventos" fill="var(--ui-warning)" radius={[4,4,0,0]}/>
+                <Bar dataKey="valor" name="Proventos" fill="var(--ui-success)" radius={[4,4,0,0]}/>
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -1958,10 +1958,10 @@ function TabProventos({ userId, pedirConfirmacao }) {
                   <div key={t}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                       <span style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{t}</span>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:700,fontSize:13}}>{fmtBRL(v)}</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:700,fontSize:13}}>{fmtBRL(v)}</span>
                     </div>
                     <div style={{background:"var(--ui-bg-secondary)",borderRadius:4,height:6,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:`${pct}%`,background:"var(--ui-warning)",opacity:0.85,borderRadius:4}}/>
+                      <div style={{height:"100%",width:`${pct}%`,background:"var(--ui-success)",opacity:0.85,borderRadius:4}}/>
                     </div>
                   </div>
                 );
@@ -1983,14 +1983,14 @@ function TabProventos({ userId, pedirConfirmacao }) {
               {proventos.map(p => (
                 <div key={p.id} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:32,height:32,borderRadius:8,background:"rgba(255,214,10,0.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><Coins size={14} color="var(--ui-warning)"/></div>
+                    <div style={{width:32,height:32,borderRadius:8,background:"rgba(0,229,160,0.10)",display:"flex",alignItems:"center",justifyContent:"center"}}><Coins size={14} color="var(--ui-success)"/></div>
                     <div>
                       <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{p.ticker} <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:500,marginLeft:4,textTransform:"uppercase"}}>{p.tipo}</span></div>
                       <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{new Date(p.data_pagamento).toLocaleDateString("pt-BR")}{p.observacao && ` · ${p.observacao}`}</div>
                     </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-warning)",fontSize:14}}>{fmtBRL(p.valor)}</span>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-success)",fontSize:14}}>{fmtBRL(p.valor)}</span>
                     <button onClick={()=>remover(p.id)} style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
                   </div>
                 </div>
@@ -2385,7 +2385,7 @@ Ordene por score (maior primeiro).`;
             </>
           )}
 
-          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid rgba(255,214,10,0.09)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
