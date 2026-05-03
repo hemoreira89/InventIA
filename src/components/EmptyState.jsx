@@ -12,14 +12,14 @@ export default function EmptyState({
   onCta,
   examples,
   onExampleClick,
-  iconColor = "#7b61ff",
+  iconColor = "var(--ui-accent)",
   variant = "default" // "default" | "primary" | "minimal"
 }) {
 
   return (
     <div className="anim" style={{
-      background: variant === "primary" ? "#0a0a0f" : "#0a0a0f",
-      border: `1px ${variant === "primary" ? "solid" : "dashed"} ${variant === "primary" ? "#252535" : "#252535"}`,
+      background: variant === "primary" ? "var(--ui-bg-card)" : "var(--ui-bg-card)",
+      border: `1px ${variant === "primary" ? "solid" : "dashed"} ${variant === "primary" ? "var(--ui-bg-tertiary)" : "var(--ui-bg-tertiary)"}`,
       borderRadius: 14,
       padding: "48px 24px",
       textAlign: "center",
@@ -60,7 +60,7 @@ export default function EmptyState({
         <div style={{
           fontSize: 18,
           fontWeight: 700,
-          color: "#ffffff",
+          color: "var(--ui-text)",
           marginBottom: 8,
           position: "relative"
         }}>{title}</div>
@@ -70,7 +70,7 @@ export default function EmptyState({
       {description && (
         <div style={{
           fontSize: 13,
-          color: "#a8a8b8",
+          color: "var(--ui-text-muted)",
           lineHeight: 1.6,
           maxWidth: 420,
           margin: "0 auto",
@@ -86,7 +86,7 @@ export default function EmptyState({
           border: "none",
           borderRadius: 10,
           padding: "12px 24px",
-          color: "#ffffff",
+          color: "var(--ui-text)",
           fontWeight: 700,
           fontSize: 13,
           cursor: "pointer",
@@ -107,14 +107,14 @@ export default function EmptyState({
         <div style={{
           marginTop: 24,
           paddingTop: 20,
-          borderTop: "1px solid #1a1a25",
+          borderTop: "1px solid var(--ui-border-soft)",
           maxWidth: 480,
           margin: "24px auto 0",
           position: "relative"
         }}>
           <div style={{
             fontSize: 10,
-            color: "#5a5a6a",
+            color: "var(--ui-text-disabled)",
             fontWeight: 700,
             letterSpacing: 1.5,
             marginBottom: 10
@@ -130,11 +130,11 @@ export default function EmptyState({
                 key={i}
                 onClick={() => onExampleClick?.(ex)}
                 style={{
-                  background: "#1a1a25",
-                  border: "1px solid #252535",
+                  background: "var(--ui-bg-secondary)",
+                  border: "1px solid var(--ui-border)",
                   borderRadius: 6,
                   padding: "6px 12px",
-                  color: "#c5c5d0",
+                  color: "var(--ui-text-secondary)",
                   fontSize: 11,
                   fontWeight: 700,
                   cursor: "pointer",
@@ -148,9 +148,9 @@ export default function EmptyState({
                   e.target.style.color = iconColor;
                 }}
                 onMouseLeave={e => {
-                  e.target.style.background = "#1a1a25";
-                  e.target.style.borderColor = "#252535";
-                  e.target.style.color = "#c5c5d0";
+                  e.target.style.background = "var(--ui-bg-secondary)";
+                  e.target.style.borderColor = "var(--ui-bg-tertiary)";
+                  e.target.style.color = "var(--ui-text-secondary)";
                 }}
               >
                 {ex}

@@ -8,7 +8,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
   return (
     <div className="anim" style={{
       background: "linear-gradient(135deg, #0a0a0f 0%, #11111a 100%)",
-      border: "1px solid #252535",
+      border: "1px solid var(--ui-border)",
       borderRadius: 16,
       padding: "40px 32px",
       position: "relative",
@@ -22,7 +22,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
         right: "-100px",
         width: 500,
         height: 500,
-        background: "radial-gradient(circle, #7b61ff15 0%, transparent 60%)",
+        background: "radial-gradient(circle, rgba(123,97,255,0.08) 0%, transparent 60%)",
         pointerEvents: "none"
       }}/>
       <div style={{
@@ -43,7 +43,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           right: 14,
           background: "transparent",
           border: "none",
-          color: "#5a5a6a",
+          color: "var(--ui-text-disabled)",
           cursor: "pointer",
           padding: 6,
           borderRadius: 6,
@@ -58,16 +58,16 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           display: "inline-flex",
           alignItems: "center",
           gap: 8,
-          background: "#7b61ff15",
-          border: "1px solid #7b61ff35",
+          background: "rgba(123,97,255,0.08)",
+          border: "1px solid rgba(123,97,255,0.21)",
           borderRadius: 30,
           padding: "5px 14px",
           marginBottom: 18
         }}>
-          <Sparkles size={13} color="#7b61ff"/>
+          <Sparkles size={13} color="var(--ui-accent)"/>
           <span style={{
             fontSize: 11,
-            color: "#7b61ff",
+            color: "var(--ui-accent)",
             fontWeight: 700,
             letterSpacing: 1.5
           }}>BEM-VINDO AO INVESTIA PRO</span>
@@ -77,7 +77,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
         <h1 style={{
           fontSize: 32,
           fontWeight: 800,
-          color: "#ffffff",
+          color: "var(--ui-text)",
           marginBottom: 12,
           lineHeight: 1.2,
           letterSpacing: -0.5
@@ -93,13 +93,13 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
         {/* Subtítulo */}
         <p style={{
           fontSize: 15,
-          color: "#a8a8b8",
+          color: "var(--ui-text-muted)",
           lineHeight: 1.6,
           marginBottom: 28,
           maxWidth: 600
         }}>
           Recomendações personalizadas, análise fundamentalista e controle de carteira
-          alimentado por <b style={{color: "#fff"}}>Gemini 2.5 Pro</b> + Google Search.
+          alimentado por <b style={{color: "var(--ui-text)"}}>Gemini 2.5 Pro</b> + Google Search.
         </p>
 
         {/* CTAs em grid */}
@@ -110,8 +110,8 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           marginBottom: 24
         }}>
           <button onClick={onAddAtivo} className="cta-card" style={{
-            background: "#0a0a14",
-            border: "1px solid #252535",
+            background: "var(--ui-bg-card-2)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 12,
             padding: "18px 16px",
             cursor: "pointer",
@@ -123,26 +123,26 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8,
-              background: "#7b61ff20",
+              background: "rgba(123,97,255,0.12)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0
             }}>
-              <Briefcase size={18} color="#7b61ff" strokeWidth={2}/>
+              <Briefcase size={18} color="var(--ui-accent)" strokeWidth={2}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ui-text)", marginBottom: 3 }}>
                 Adicionar ativo
               </div>
-              <div style={{ fontSize: 11, color: "#7a7a8a", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: "var(--ui-text-faint)", lineHeight: 1.4 }}>
                 Registre suas compras manualmente
               </div>
             </div>
-            <ArrowRight size={14} color="#5a5a6a"/>
+            <ArrowRight size={14} color="var(--ui-text-disabled)"/>
           </button>
 
           <button onClick={onImportCSV} className="cta-card" style={{
-            background: "#0a0a14",
-            border: "1px solid #252535",
+            background: "var(--ui-bg-card-2)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 12,
             padding: "18px 16px",
             cursor: "pointer",
@@ -154,26 +154,26 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8,
-              background: "#00e5a020",
+              background: "rgba(0,229,160,0.12)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0
             }}>
-              <FileSearch size={18} color="#00e5a0" strokeWidth={2}/>
+              <FileSearch size={18} color="var(--ui-success)" strokeWidth={2}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ui-text)", marginBottom: 3 }}>
                 Importar CSV
               </div>
-              <div style={{ fontSize: 11, color: "#7a7a8a", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: "var(--ui-text-faint)", lineHeight: 1.4 }}>
                 Suba sua carteira já existente
               </div>
             </div>
-            <ArrowRight size={14} color="#5a5a6a"/>
+            <ArrowRight size={14} color="var(--ui-text-disabled)"/>
           </button>
 
           <button onClick={onAnalyzeMercado} className="cta-card" style={{
-            background: "#0a0a14",
-            border: "1px solid #252535",
+            background: "var(--ui-bg-card-2)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 12,
             padding: "18px 16px",
             cursor: "pointer",
@@ -185,45 +185,45 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8,
-              background: "#ffd60a20",
+              background: "rgba(255,214,10,0.12)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0
             }}>
-              <Brain size={18} color="#ffd60a" strokeWidth={2}/>
+              <Brain size={18} color="var(--ui-warning)" strokeWidth={2}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ui-text)", marginBottom: 3 }}>
                 Ver oportunidades
               </div>
-              <div style={{ fontSize: 11, color: "#7a7a8a", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: "var(--ui-text-faint)", lineHeight: 1.4 }}>
                 IA analisa o mercado para você
               </div>
             </div>
-            <ArrowRight size={14} color="#5a5a6a"/>
+            <ArrowRight size={14} color="var(--ui-text-disabled)"/>
           </button>
         </div>
 
         {/* Hint do command palette */}
         <div style={{
-          background: "#0a0a14",
-          border: "1px solid #1a1a25",
+          background: "var(--ui-bg-card-2)",
+          border: "1px solid var(--ui-border-soft)",
           borderRadius: 8,
           padding: "10px 14px",
           display: "flex",
           alignItems: "center",
           gap: 10,
           fontSize: 12,
-          color: "#7a7a8a"
+          color: "var(--ui-text-faint)"
         }}>
-          <Lightbulb size={14} color="#ffd60a"/>
+          <Lightbulb size={14} color="var(--ui-warning)"/>
           <span>Dica: aperte</span>
           <kbd style={{
-            background: "#1a1a25",
-            border: "1px solid #252535",
+            background: "var(--ui-bg-secondary)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 4,
             padding: "2px 8px",
             fontSize: 11,
-            color: "#c5c5d0",
+            color: "var(--ui-text-secondary)",
             fontFamily: "'JetBrains Mono', monospace"
           }}>Ctrl + K</kbd>
           <span>a qualquer momento para busca rápida (ex: digite "PETR4" e analise direto)</span>

@@ -128,9 +128,9 @@ async function chamarIA(prompt) {
 
 function simularCenarios(pv, pmt, anos) {
   const cenarios = [
-    { name:"Conservador (CDI)", taxa:CDI_ANO, color:"#00e5a0" },
-    { name:"Moderado (IBOV hist.)", taxa:IBOV_HIST, color:"#7b61ff" },
-    { name:"Arrojado (18% a.a.)", taxa:18, color:"#ffd60a" },
+    { name:"Conservador (CDI)", taxa:CDI_ANO, color:"var(--ui-success)" },
+    { name:"Moderado (IBOV hist.)", taxa:IBOV_HIST, color:"var(--ui-accent)" },
+    { name:"Arrojado (18% a.a.)", taxa:18, color:"var(--ui-warning)" },
   ];
   const pts = [];
   for (let m = 0; m <= anos*12; m += Math.max(1, Math.round(anos*12/20))) {
@@ -171,8 +171,8 @@ function Badge({ val, suffix="%" }) {
   const up = val >= 0;
   return (
     <span style={{display:"inline-flex",alignItems:"center",gap:3,
-      background:up?"#00e5a018":"#ff4d6d18",color:up?"#00e5a0":"#ff4d6d",
-      border:`1px solid ${up?"#00e5a030":"#ff4d6d30"}`,
+      background:up?"rgba(0,229,160,0.09)":"#ff4d6d18",color:up?"var(--ui-success)":"var(--ui-danger)",
+      border:`1px solid ${up?"rgba(0,229,160,0.18)":"rgba(255,77,109,0.18)"}`,
       borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700}}>
       {up?"▲":"▼"} {fmt(Math.abs(val))}{suffix}
     </span>
@@ -182,8 +182,8 @@ function Badge({ val, suffix="%" }) {
 function Card({ children, style={}, accent=false, className="" }) {
   return (
     <div className={`card-hover ${className}`} style={{
-      background:"#0a0a0f",
-      border:`1px solid ${accent?"#7b61ff44":"#252535"}`,
+      background:"var(--ui-bg-card)",
+      border:`1px solid ${accent?"rgba(123,97,255,0.27)":"var(--ui-bg-tertiary)"}`,
       borderRadius:10,padding:"16px",...style
     }}>
       {children}
@@ -219,17 +219,17 @@ function ToastContainer() {
       display:"flex",flexDirection:"column",gap:8,maxWidth:380
     }}>
       {toasts.map(t => {
-        const cor = t.tipo === "success" ? "#00e5a0" : t.tipo === "error" ? "#ff4d6d" : t.tipo === "warning" ? "#ffd60a" : "#7b61ff";
+        const cor = t.tipo === "success" ? "var(--ui-success)" : t.tipo === "error" ? "var(--ui-danger)" : t.tipo === "warning" ? "var(--ui-warning)" : "var(--ui-accent)";
         const Icon = t.tipo === "success" ? CheckCircle2 : t.tipo === "error" ? AlertCircle : t.tipo === "warning" ? AlertTriangle : Sparkles;
         return (
           <div key={t.id} className="anim" style={{
-            background:"#0a0a0f",border:`1px solid ${cor}50`,borderRadius:10,
+            background:"var(--ui-bg-card)",border:`1px solid ${cor}50`,borderRadius:10,
             padding:"12px 16px",display:"flex",alignItems:"center",gap:10,
             boxShadow:`0 8px 24px ${cor}20, 0 0 0 1px #000`,
             minWidth:240
           }}>
             <Icon size={18} color={cor} strokeWidth={2.2}/>
-            <span style={{fontSize:13,color:"#fff",fontWeight:500,flex:1}}>{t.msg}</span>
+            <span style={{fontSize:13,color:"var(--ui-text)",fontWeight:500,flex:1}}>{t.msg}</span>
           </div>
         );
       })}
@@ -246,28 +246,28 @@ function ConfirmModal({ open, titulo, mensagem, onConfirm, onCancel, perigoso = 
       zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center",padding:20
     }}>
       <div onClick={e=>e.stopPropagation()} className="anim" style={{
-        background:"#0a0a0f",border:"1px solid #252535",borderRadius:12,
+        background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:12,
         padding:24,maxWidth:420,width:"100%"
       }}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <div style={{
             width:40,height:40,borderRadius:10,
-            background:perigoso?"#ff4d6d20":"#7b61ff20",
+            background:perigoso?"rgba(255,77,109,0.12)":"rgba(123,97,255,0.12)",
             display:"flex",alignItems:"center",justifyContent:"center"
           }}>
-            {perigoso ? <AlertTriangle size={20} color="#ff4d6d"/> : <AlertCircle size={20} color="#7b61ff"/>}
+            {perigoso ? <AlertTriangle size={20} color="var(--ui-danger)"/> : <AlertCircle size={20} color="var(--ui-accent)"/>}
           </div>
-          <h3 style={{fontSize:16,fontWeight:700,color:"#fff",margin:0}}>{titulo}</h3>
+          <h3 style={{fontSize:16,fontWeight:700,color:"var(--ui-text)",margin:0}}>{titulo}</h3>
         </div>
-        <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6,marginBottom:20}}>{mensagem}</div>
+        <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6,marginBottom:20}}>{mensagem}</div>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
           <button onClick={onCancel} style={{
-            background:"#1a1a25",border:"1px solid #252535",borderRadius:8,
-            padding:"10px 18px",color:"#c5c5d0",fontWeight:600,fontSize:13,cursor:"pointer"
+            background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:8,
+            padding:"10px 18px",color:"var(--ui-text-secondary)",fontWeight:600,fontSize:13,cursor:"pointer"
           }}>Cancelar</button>
           <button onClick={onConfirm} style={{
-            background:perigoso?"#ff4d6d":"#7b61ff",border:"none",borderRadius:8,
-            padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"
+            background:perigoso?"var(--ui-danger)":"var(--ui-accent)",border:"none",borderRadius:8,
+            padding:"10px 18px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:"pointer"
           }}>{perigoso?"Remover":"Confirmar"}</button>
         </div>
       </div>
@@ -275,15 +275,15 @@ function ConfirmModal({ open, titulo, mensagem, onConfirm, onCancel, perigoso = 
   );
 }
 
-function STitle({ children, color="#7b61ff" }) {
+function STitle({ children, color="var(--ui-accent)" }) {
   return <div style={{fontSize:10,color,fontWeight:700,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>{children}</div>;
 }
 
 function Stat({ label, value, color, mono=false }) {
   return (
-    <div style={{background:"#000000",borderRadius:8,padding:"10px 12px",border:"1px solid #1a1a25"}}>
-      <div style={{fontSize:9,color:"#7a7a8a",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
-      <div style={{fontSize:14,fontWeight:700,color:color||"#ffffff",
+    <div style={{background:"var(--ui-bg-input)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--ui-border-soft)"}}>
+      <div style={{fontSize:9,color:"var(--ui-text-faint)",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
+      <div style={{fontSize:14,fontWeight:700,color:color||"var(--ui-text)",
         fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
     </div>
   );
@@ -292,10 +292,10 @@ function Stat({ label, value, color, mono=false }) {
 const TTip = ({active,payload,label}) => {
   if (!active||!payload?.length) return null;
   return (
-    <div style={{background:"#12122e",border:"1px solid #2a2a50",borderRadius:10,padding:"10px 14px",fontSize:12}}>
+    <div style={{background:"var(--ui-bg-secondary)",border:"1px solid #2a2a50",borderRadius:10,padding:"10px 14px",fontSize:12}}>
       {label && <div style={{color:"#888",marginBottom:4}}>{label}</div>}
       {payload.map((p,i) => (
-        <div key={i} style={{color:p.color||p.fill||"#ffffff",fontWeight:600,marginBottom:2}}>
+        <div key={i} style={{color:p.color||p.fill||"var(--ui-text)",fontWeight:600,marginBottom:2}}>
           {p.name}: {typeof p.value==="number" ? p.value>=1000 ? fmtBRL(p.value) : `${fmt(p.value,1)}%` : p.value}
         </div>
       ))}
@@ -310,11 +310,11 @@ function LoadingCard({ fase }) {
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
         <div style={{position:"relative",width:56,height:56}}>
           <div className="spin" style={{width:56,height:56,borderRadius:"50%",
-            border:"3px solid #252535",borderTopColor:"#7b61ff",position:"absolute"}}/>
-          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}><Sparkles size={18} color="#7b61ff" strokeWidth={2.5}/></div>
+            border:"3px solid #252535",borderTopColor:"var(--ui-accent)",position:"absolute"}}/>
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}><Sparkles size={18} color="var(--ui-accent)" strokeWidth={2.5}/></div>
         </div>
-        <div style={{fontSize:13,color:"#a8a8b8"}}>{fase}</div>
-        <div style={{fontSize:11,color:"#5a5a6a"}}>IA analisando o mercado...</div>
+        <div style={{fontSize:13,color:"var(--ui-text-muted)"}}>{fase}</div>
+        <div style={{fontSize:11,color:"var(--ui-text-disabled)"}}>IA analisando o mercado...</div>
       </div>
     </Card>
   );
@@ -481,24 +481,24 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           <input placeholder="Ticker (PETR4)" value={ticker}
             onChange={e => setTicker(e.target.value.toUpperCase())}
             onKeyDown={e => e.key==="Enter"&&add()}
-            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input type="number" placeholder="Quantidade" value={qtd} onChange={e=>setQtd(e.target.value)}
-            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input type="number" placeholder="Preço médio R$" value={pm} onChange={e=>setPm(e.target.value)}
-            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input type="date" value={data} onChange={e=>setData(e.target.value)}
-            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Registrar Compra</>
         </button>
       </Card>
 
       {alertasReb.length > 0 && (
-        <div style={{background:"#ffd60a0a",border:"1px solid #ffd60a25",borderRadius:12,padding:"12px 14px"}}>
-          <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertTriangle size={12} strokeWidth={2.5}/>REBALANCEAMENTO NECESSÁRIO</span></STitle>
+        <div style={{background:"#ffd60a0a",border:"1px solid var(--ui-warning)25",borderRadius:12,padding:"12px 14px"}}>
+          <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertTriangle size={12} strokeWidth={2.5}/>REBALANCEAMENTO NECESSÁRIO</span></STitle>
           {alertasReb.map(p => (
-            <div key={p.ticker} style={{fontSize:12,color:"#a8a8b8",marginBottom:3}}>
+            <div key={p.ticker} style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:3}}>
               {p.ticker}: atual {fmt(p.peso,1)}% · alvo {pesoAlvo[p.ticker]}% · desvio {fmt(Math.abs(p.peso-pesoAlvo[p.ticker]),1)}%
             </div>
           ))}
@@ -509,9 +509,9 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         <Card>
           <STitle>HISTÓRICO DE COMPRAS</STitle>
           {[...historico].reverse().slice(0,8).map((h,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a25",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"#7b61ff",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"#6a6a7a",marginLeft:8}}>{h.data}</span></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#ffffff"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"#9090a0"}}>{fmtBRL(h.pm)} cada</div>}</div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"var(--ui-accent)",fontSize:13}}>{h.ticker}</span><span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{h.data}</span></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"var(--ui-text)"}}>{h.qtd} cotas</div>{h.pm&&<div style={{fontSize:11,color:"var(--ui-text-muted)"}}>{fmtBRL(h.pm)} cada</div>}</div>
             </div>
           ))}
         </Card>
@@ -524,12 +524,12 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           <STitle>ATIVOS ({carteira.length})</STitle>
           <div style={{display:"flex",gap:6}}>
             <button onClick={exportarCSV} title="Exportar carteira em CSV" style={{
-              background:"#0a0a14",border:"1px solid #1a1a25",borderRadius:6,padding:"6px 10px",
-              color:"#9090a0",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
+              background:"var(--ui-bg-card-2)",border:"1px solid var(--ui-border-soft)",borderRadius:6,padding:"6px 10px",
+              color:"var(--ui-text-muted)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
             }}><Download size={12}/>Exportar</button>
             <label style={{
-              background:"#0a0a14",border:"1px solid #1a1a25",borderRadius:6,padding:"6px 10px",
-              color:"#9090a0",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
+              background:"var(--ui-bg-card-2)",border:"1px solid var(--ui-border-soft)",borderRadius:6,padding:"6px 10px",
+              color:"var(--ui-text-muted)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontWeight:600
             }}>
               <FileUp size={12}/>Importar
               <input type="file" accept=".csv" onChange={importarCSV} style={{display:"none"}}/>
@@ -543,38 +543,38 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
             <Card key={a.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a25",display:"flex",
+                  <div style={{width:34,height:34,borderRadius:9,background:"var(--ui-bg-secondary)",display:"flex",
                     alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,
                     color:PALETTE[i%PALETTE.length]}}>{a.ticker.slice(0,4)}</div>
                   <div>
-                    <div style={{fontWeight:700,color:"#ffffff",fontSize:14}}>{a.ticker}</div>
-                    <div style={{fontSize:11,color:"#6a6a7a"}}>{a.qtd} cotas{a.pm?` · PM ${fmtBRL(a.pm)}`:""}</div>
+                    <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14}}>{a.ticker}</div>
+                    <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{a.qtd} cotas{a.pm?` · PM ${fmtBRL(a.pm)}`:""}</div>
                   </div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {pos && (
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:"#ffffff",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
+                      <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
                       {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
                     </div>
                   )}
                   <button onClick={() => removerAtivoCarteira(a)}
-                    style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"6px 8px",color:"#ff4d6d",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
+                    style={{background:"rgba(255,77,109,0.08)",border:"1px solid var(--ui-danger)30",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
                 </div>
               </div>
               {pos && (
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-                  {pos.dy>0 && <span style={{fontSize:10,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
-                  {pos.pl && <span style={{fontSize:10,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
-                  {pos.setor && <span style={{fontSize:10,background:"#ffffff08",color:"#9090a0",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
+                  {pos.dy>0 && <span style={{fontSize:10,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
+                  {pos.pl && <span style={{fontSize:10,background:"#7b61ff12",color:"var(--ui-accent)",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
+                  {pos.setor && <span style={{fontSize:10,background:"#ffffff08",color:"var(--ui-text-muted)",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
                 </div>
               )}
               <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:11,color:"#5a5a6a"}}>Peso alvo %:</span>
+                <span style={{fontSize:11,color:"var(--ui-text-disabled)"}}>Peso alvo %:</span>
                 <input type="number" placeholder="%" value={pesoAlvo[a.ticker]||""} min={0} max={100}
                   onChange={e => setPesoAlvo(p => ({...p,[a.ticker]:Number(e.target.value)}))}
-                  style={{width:58,background:"#000000",border:"1px solid #252535",borderRadius:7,padding:"4px 8px",fontSize:12,color:"#ffffff"}}/>
-                {pos && <span style={{fontSize:11,color:"#5a5a6a"}}>atual {fmt(pos.peso,1)}%</span>}
+                  style={{width:58,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:7,padding:"4px 8px",fontSize:12,color:"var(--ui-text)"}}/>
+                {pos && <span style={{fontSize:11,color:"var(--ui-text-disabled)"}}>atual {fmt(pos.peso,1)}%</span>}
               </div>
             </Card>
           );
@@ -583,7 +583,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       </> : (
         <EmptyState
           icon={Briefcase}
-          iconColor="#7b61ff"
+          iconColor="var(--ui-accent)"
           title="Sua carteira está pronta para começar"
           description="Adicione ativos manualmente no formulário ao lado, importe um CSV existente, ou analise o mercado sem carteira para ver oportunidades."
           examples={["PETR4", "ITUB4", "MXRF11", "VALE3", "BBAS3"]}
@@ -606,13 +606,13 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 // ─── Tab: Gráficos ────────────────────────────────────────────────────────────
 function TabGraficos({ dados }) {
   const [g, setG] = useState("pizza");
-  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"#5a5a6a",fontSize:13}}>Rode a análise primeiro ↑</div>;
+  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"var(--ui-text-disabled)",fontSize:13}}>Rode a análise primeiro ↑</div>;
 
   const pos = dados.posicoes || [];
   const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
   const setoresMap = {};
   pos.forEach((p,i) => { const s=p.setor||"Outros"; if(!setoresMap[s]) setoresMap[s]={name:s,value:0,fill:PALETTE[i%PALETTE.length]}; setoresMap[s].value+=p.peso; });
-  const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"#00e5a0":"#ff4d6d"})).sort((a,b)=>b.retorno-a.retorno);
+  const perf = pos.filter(p=>p.pm&&p.pm>0).map(p=>({ticker:p.ticker,retorno:+((p.preco-p.pm)/p.pm*100).toFixed(2),fill:(p.preco-p.pm)>=0?"var(--ui-success)":"var(--ui-danger)"})).sort((a,b)=>b.retorno-a.retorno);
   const canal = pos.map(p => ({ ticker:p.ticker, posicao:p.canal52??50 }));
   const divs = pos.length > 0 ? projetarDividendos(pos) : [];
   const radar = [
@@ -636,7 +636,7 @@ function TabGraficos({ dados }) {
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {TABS_G.map(t => (
-          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",background:g===t.k?"#7b61ff":"#0a0a0f",border:`1px solid ${g===t.k?"#7b61ff":"#252535"}`,color:g===t.k?"#ffffff":"#9090a0",transition:"all .15s"}}>{t.l}</button>
+          <button key={t.k} onClick={()=>setG(t.k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",background:g===t.k?"var(--ui-accent)":"var(--ui-bg-card)",border:`1px solid ${g===t.k?"var(--ui-accent)":"var(--ui-bg-tertiary)"}`,color:g===t.k?"var(--ui-text)":"var(--ui-text-muted)",transition:"all .15s"}}>{t.l}</button>
         ))}
       </div>
 
@@ -652,7 +652,7 @@ function TabGraficos({ dados }) {
             <div style={{display:"flex",flexWrap:"wrap",gap:"5px 12px",marginTop:8,justifyContent:"center"}}>
               {pizza.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:e.fill}}/><span style={{fontSize:10,color:"#888"}}>{e.name} {fmt(e.value,1)}%</span></div>)}
             </div>
-          </> : <div style={{textAlign:"center",color:"#5a5a6a",padding:"32px 0",fontSize:13}}>Sem ativos na carteira</div>}
+          </> : <div style={{textAlign:"center",color:"var(--ui-text-disabled)",padding:"32px 0",fontSize:13}}>Sem ativos na carteira</div>}
         </>}
 
         {g==="setores" && <>
@@ -666,31 +666,31 @@ function TabGraficos({ dados }) {
 
         {g==="canal" && <>
           <STitle>POSIÇÃO NO CANAL DE 52 SEMANAS (estimado pela IA)</STitle>
-          <div style={{fontSize:10,color:"#5a5a6a",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
+          <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginBottom:10}}>0% = próximo da mínima · 100% = próximo da máxima anual</div>
           {canal.length > 0 ? <>
             <ResponsiveContainer width="100%" height={Math.max(130,canal.length*36)}>
               <BarChart data={canal} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25" horizontal={false}/>
-                <XAxis type="number" domain={[0,100]} tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)" horizontal={false}/>
+                <XAxis type="number" domain={[0,100]} tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
                 <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
                 <Tooltip formatter={v=>[`${fmt(v,0)}%`,"Canal"]}/>
                 <Bar dataKey="posicao" radius={[0,6,6,0]}>
-                  {canal.map((e,i)=><Cell key={i} fill={e.posicao<=30?"#00e5a0":e.posicao<=70?"#ffd60a":"#ff4d6d"}/>)}
+                  {canal.map((e,i)=><Cell key={i} fill={e.posicao<=30?"var(--ui-success)":e.posicao<=70?"var(--ui-warning)":"var(--ui-danger)"}/>)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
             <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
-              {[{c:"#00e5a0",l:"Oportunidade"},{c:"#ffd60a",l:"Neutro"},{c:"#ff4d6d",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"#9090a0"}}>{x.l}</span></div>)}
+              {[{c:"var(--ui-success)",l:"Oportunidade"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
             </div>
-          </> : <div style={{textAlign:"center",color:"#5a5a6a",padding:"24px 0",fontSize:13}}>Sem dados</div>}
+          </> : <div style={{textAlign:"center",color:"var(--ui-text-disabled)",padding:"24px 0",fontSize:13}}>Sem dados</div>}
         </>}
 
         {g==="perf" && perf.length > 0 && <>
           <STitle>PERFORMANCE vs PREÇO MÉDIO</STitle>
           <ResponsiveContainer width="100%" height={Math.max(130,perf.length*38)}>
             <BarChart data={perf} layout="vertical" margin={{left:8,right:16,top:4,bottom:4}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25" horizontal={false}/>
-              <XAxis type="number" tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v>0?"+":""}${fmt(v,1)}%`}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)" horizontal={false}/>
+              <XAxis type="number" tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v>0?"+":""}${fmt(v,1)}%`}/>
               <YAxis dataKey="ticker" type="category" tick={{fill:"#aaa",fontSize:11,fontWeight:700}} axisLine={false} tickLine={false} width={50}/>
               <Tooltip formatter={v=>[`${v>=0?"+":""}${fmt(v,1)}%`,"Retorno"]}/>
               <Bar dataKey="retorno" radius={[0,6,6,0]}>{perf.map((e,i)=><Cell key={i} fill={e.fill}/>)}</Bar>
@@ -703,17 +703,17 @@ function TabGraficos({ dados }) {
           <ResponsiveContainer width="100%" height={190}>
             <AreaChart data={divs} margin={{left:0,right:0,top:5,bottom:5}}>
               <defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--ui-warning)" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="var(--ui-warning)" stopOpacity={0}/>
               </linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
-              <XAxis dataKey="mes" tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#9090a0",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+              <XAxis dataKey="mes" tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
               <Tooltip content={<TTip/>}/>
-              <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="#ffd60a" strokeWidth={2} fill="url(#gd)"/>
+              <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="var(--ui-warning)" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{textAlign:"center",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:"#ffd60a"}}>
+          <div style={{textAlign:"center",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:"var(--ui-warning)"}}>
             Estimativa anual: {fmtBRL(divs.reduce((s,d)=>s+d.dividendos,0))}
           </div>
         </>}
@@ -722,14 +722,14 @@ function TabGraficos({ dados }) {
           <STitle>RADAR DA CARTEIRA</STitle>
           <ResponsiveContainer width="100%" height={210}>
             <RadarChart data={radar} cx="50%" cy="50%" outerRadius={75}>
-              <PolarGrid stroke="#252535"/>
+              <PolarGrid stroke="var(--ui-bg-tertiary)"/>
               <PolarAngleAxis dataKey="m" tick={{fill:"#888",fontSize:11}}/>
-              <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:"#5a5a6a",fontSize:9}}/>
-              <Radar name="Carteira" dataKey="v" stroke="#7b61ff" fill="#7b61ff" fillOpacity={0.3}/>
+              <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:"var(--ui-text-disabled)",fontSize:9}}/>
+              <Radar name="Carteira" dataKey="v" stroke="var(--ui-accent)" fill="var(--ui-accent)" fillOpacity={0.3}/>
             </RadarChart>
           </ResponsiveContainer>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
-            {radar.map(r => <Stat key={r.m} label={r.m} value={`${fmt(r.v,0)}%`} color="#7b61ff"/>)}
+            {radar.map(r => <Stat key={r.m} label={r.m} value={`${fmt(r.v,0)}%`} color="var(--ui-accent)"/>)}
           </div>
         </>}
       </Card>
@@ -756,26 +756,26 @@ function TabMeta({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
       <Card accent style={{position:"sticky",top:120}}>
-        <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
+        <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
-            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Meta patrimonial (R$)</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Meta patrimonial (R$)</div>
             <input type="number" value={meta} onChange={e=>setMeta(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"12px",fontSize:16,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"12px",fontSize:16,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Aporte mensal (R$)</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Taxa anual (%)</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Taxa anual (%)</div>
             <input type="number" value={taxaAnual} onChange={e=>setTaxaAnual(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
         </div>
-        {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Patrimônio atual: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
-        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        {pv > 0 && <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:10}}>Patrimônio atual: <span style={{color:"var(--ui-success)",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
+        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"var(--ui-bg-input)",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Calcular Minha Meta</>
         </button>
       </Card>
@@ -783,32 +783,32 @@ function TabMeta({ dados }) {
       {resultado && <>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
-            <div style={{fontSize:32,fontWeight:900,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
-            <div style={{fontSize:12,color:"#ffd60a",fontWeight:700}}>anos</div>
-            <div style={{fontSize:11,color:"#6a6a7a",marginTop:2}}>{resultado.meses} meses</div>
+            <div style={{fontSize:32,fontWeight:900,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
+            <div style={{fontSize:12,color:"var(--ui-warning)",fontWeight:700}}>anos</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginTop:2}}>{resultado.meses} meses</div>
           </Card>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
-            <div style={{fontSize:20,fontWeight:900,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
-            <div style={{fontSize:11,color:"#00e5a0",fontWeight:700}}>renda mensal potencial</div>
-            <div style={{fontSize:10,color:"#6a6a7a",marginTop:2}}>ao atingir a meta</div>
+            <div style={{fontSize:20,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtK(resultado.divMensal)}</div>
+            <div style={{fontSize:11,color:"var(--ui-success)",fontWeight:700}}>renda mensal potencial</div>
+            <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>ao atingir a meta</div>
           </Card>
           <Stat label="Total aportado" value={fmtBRL(resultado.totalAportado)} mono/>
-          <Stat label="Ganho com juros" value={fmtBRL(Math.max(0,resultado.totalJuros))} color="#00e5a0" mono/>
+          <Stat label="Ganho com juros" value={fmtBRL(Math.max(0,resultado.totalJuros))} color="var(--ui-success)" mono/>
         </div>
         <Card>
           <STitle>PROJEÇÃO PATRIMONIAL</STitle>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={resultado.projecao} margin={{left:0,right:0,top:5,bottom:5}}>
               <defs>
-                <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ffd60a" stopOpacity={0.3}/><stop offset="95%" stopColor="#ffd60a" stopOpacity={0}/></linearGradient>
-                <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6a6a7a" stopOpacity={0.2}/><stop offset="95%" stopColor="#6a6a7a" stopOpacity={0}/></linearGradient>
+                <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--ui-warning)" stopOpacity={0.3}/><stop offset="95%" stopColor="var(--ui-warning)" stopOpacity={0}/></linearGradient>
+                <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--ui-text-faint)" stopOpacity={0.2}/><stop offset="95%" stopColor="var(--ui-text-faint)" stopOpacity={0}/></linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
-              <XAxis dataKey="ano" tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+              <XAxis dataKey="ano" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
               <Tooltip content={<TTip/>}/>
-              <Area type="monotone" dataKey="Sem juros" stroke="#5a5a6a" strokeWidth={1} fill="url(#gs)" strokeDasharray="4 2"/>
-              <Area type="monotone" dataKey="Com juros" stroke="#ffd60a" strokeWidth={2} fill="url(#gm)"/>
+              <Area type="monotone" dataKey="Sem juros" stroke="var(--ui-text-disabled)" strokeWidth={1} fill="url(#gs)" strokeDasharray="4 2"/>
+              <Area type="monotone" dataKey="Com juros" stroke="var(--ui-warning)" strokeWidth={2} fill="url(#gm)"/>
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -831,23 +831,23 @@ function TabCenarios({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
-        <STitle color="#00b4d8"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
+        <STitle color="var(--ui-info)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div>
-            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Aporte mensal (R$)</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Aporte mensal (R$)</div>
             <input type="number" value={aporteMensal} onChange={e=>setAporteMensal(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:14,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#6a6a7a",marginBottom:5}}>Período</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Período</div>
             <select value={anos} onChange={e=>setAnos(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",cursor:"pointer"}}>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",cursor:"pointer"}}>
               {[5,10,15,20,25,30].map(a => <option key={a} value={a}>{a} anos</option>)}
             </select>
           </div>
         </div>
-        {pv > 0 && <div style={{fontSize:12,color:"#9090a0",marginBottom:10}}>Ponto de partida: <span style={{color:"#00e5a0",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
-        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#ffffff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        {pv > 0 && <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:10}}>Ponto de partida: <span style={{color:"var(--ui-success)",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
+        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"var(--ui-text)",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Cenários</>
         </button>
       </Card>
@@ -860,7 +860,7 @@ function TabCenarios({ dados }) {
               <Card key={c.name}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div><div style={{fontSize:12,color:"#888",marginBottom:2}}>{c.name}</div><div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:18,fontWeight:700,color:c.color}}>{fmtK(final)}</div></div>
-                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"#6a6a7a"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:"var(--ui-text-faint)"}}>em {resultado.anos} anos</div><div style={{fontSize:12,color:c.color,fontWeight:600}}>+{fmt(c.taxa,1)}% a.a.</div></div>
                 </div>
               </Card>
             );
@@ -870,9 +870,9 @@ function TabCenarios({ dados }) {
           <STitle>COMPARATIVO DE CENÁRIOS</STitle>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={resultado.pts} margin={{left:0,right:0,top:5,bottom:5}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
-              <XAxis dataKey="ano" tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#9090a0",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+              <XAxis dataKey="ano" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
               <Tooltip content={<TTip/>}/>
               <Legend wrapperStyle={{fontSize:11,color:"#888"}}/>
               {resultado.cenarios.map(c => <Line key={c.name} type="monotone" dataKey={c.name} stroke={c.color} strokeWidth={2} dot={false}/>)}
@@ -947,25 +947,25 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
         <STitle color="#e040fb"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
-            style={{gridColumn:"1/-1",background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 12px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input type="number" placeholder="Preço alvo R$" value={alvo} onChange={e=>setAlvo(e.target.value)}
-            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input placeholder="Nota (opcional)" value={nota} onChange={e=>setNota(e.target.value)}
-            style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"11px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Adicionar à Watchlist</>
         </button>
       </Card>
 
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {atingiram.length > 0 && (
-        <div style={{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:12,padding:"14px 16px"}}>
-          <STitle color="#00e5a0"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PREÇO ALVO ATINGIDO</span></STitle>
+        <div style={{background:"rgba(0,229,160,0.06)",border:"1px solid var(--ui-success)30",borderRadius:12,padding:"14px 16px"}}>
+          <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PREÇO ALVO ATINGIDO</span></STitle>
           {atingiram.map(w => (
             <div key={w.ticker} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-              <span style={{fontWeight:700,color:"#00e5a0",fontSize:14}}>{w.ticker}</span>
-              <span style={{fontSize:13,color:"#ffffff"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
+              <span style={{fontWeight:700,color:"var(--ui-success)",fontSize:14}}>{w.ticker}</span>
+              <span style={{fontSize:13,color:"var(--ui-text)"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
             </div>
           ))}
         </div>
@@ -977,28 +977,28 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
             <Card key={w.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#e040fb"}}>{w.ticker.slice(0,4)}</div>
-                  <div><div style={{fontWeight:700,color:"#ffffff",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"#6a6a7a"}}>{w.nota}</div>}</div>
+                  <div style={{width:34,height:34,borderRadius:9,background:"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#e040fb"}}>{w.ticker.slice(0,4)}</div>
+                  <div><div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{w.nota}</div>}</div>
                 </div>
                 <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
-                  style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"6px 8px",color:"#ff4d6d",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
+                  style={{background:"rgba(255,77,109,0.08)",border:"1px solid var(--ui-danger)30",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"#00e5a0":"#ffffff"} mono/>
+                <Stat label="Preço (estimado IA)" value={w.precoAtual?fmtBRL(w.precoAtual):"Rode análise"} color={w.atingiu?"var(--ui-success)":"var(--ui-text)"} mono/>
                 <Stat label="Preço alvo" value={fmtBRL(w.alvo)} color="#e040fb" mono/>
-                <Stat label="Distância" value={w.diff!=null?`${w.diff>0?"↓":"↑"} ${fmt(Math.abs(w.diff),1)}%`:"–"} color={w.diff!=null?(w.diff>0?"#00e5a0":"#ff4d6d"):"#888"}/>
+                <Stat label="Distância" value={w.diff!=null?`${w.diff>0?"↓":"↑"} ${fmt(Math.abs(w.diff),1)}%`:"–"} color={w.diff!=null?(w.diff>0?"var(--ui-success)":"var(--ui-danger)"):"#888"}/>
               </div>
               {w.diff!=null && (
-                <div style={{marginTop:10,background:"#000000",borderRadius:8,height:6,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${Math.min(100,Math.max(0,100-w.diff))}%`,background:w.atingiu?"#00e5a0":"#e040fb",borderRadius:8,transition:"width 1s ease"}}/>
+                <div style={{marginTop:10,background:"var(--ui-bg-input)",borderRadius:8,height:6,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${Math.min(100,Math.max(0,100-w.diff))}%`,background:w.atingiu?"var(--ui-success)":"#e040fb",borderRadius:8,transition:"width 1s ease"}}/>
                 </div>
               )}
-              <div style={{fontSize:10,color:"#5a5a6a",marginTop:4}}>Adicionado em {w.adicionado}</div>
+              <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:4}}>Adicionado em {w.adicionado}</div>
             </Card>
           ))}
         </div>
       ) : (
-        <div style={{textAlign:"center",padding:"32px 0",color:"#5a5a6a",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
+        <div style={{textAlign:"center",padding:"32px 0",color:"var(--ui-text-disabled)",fontSize:13}}>Nenhum ativo na watchlist ainda</div>
       )}
       </div>
     </div>
@@ -1022,18 +1022,18 @@ function TabIR({ dados }) {
   return (
     <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
-        <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
-        <div style={{fontSize:12,color:"#9090a0",lineHeight:1.7,marginBottom:12}}>
-          Ações têm isenção de IR para vendas até <b style={{color:"#ffd60a"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
+        <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.7,marginBottom:12}}>
+          Ações têm isenção de IR para vendas até <b style={{color:"var(--ui-warning)"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
           {[{p:"Ticker",v:ticker,s:setTicker,up:true},{p:"Qtd",v:qtd,s:setQtd,t:"number"},{p:"Preço venda R$",v:precoV,s:setPrecoV,t:"number"}].map((f,i) => (
             <input key={i} type={f.t||"text"} placeholder={f.p} value={f.v}
               onChange={e=>f.s(f.up?e.target.value.toUpperCase():e.target.value)}
-              style={{background:"#000000",border:"1px solid #252535",borderRadius:9,padding:"10px 10px",fontSize:13,color:"#ffffff",width:"100%"}}/>
+              style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           ))}
         </div>
-        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"var(--ui-bg-input)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
         </button>
       </Card>
@@ -1043,23 +1043,23 @@ function TabIR({ dados }) {
         <Card>
           <STitle>VENDAS SIMULADAS</STitle>
           {vendas.map((v,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a25",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"#ffd60a"}}>{v.ticker}</span><span style={{fontSize:11,color:"#6a6a7a",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
+              <div><span style={{fontWeight:700,color:"var(--ui-warning)"}}>{v.ticker}</span><span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
             </div>
           ))}
-          <button onClick={()=>setVendas([])} style={{fontSize:11,color:"#ff4d6d",background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginTop:4}}><Trash2 size={11}/>Limpar vendas</button>
+          <button onClick={()=>setVendas([])} style={{fontSize:11,color:"var(--ui-danger)",background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginTop:4}}><Trash2 size={11}/>Limpar vendas</button>
         </Card>
 
-        <div style={{background:ir.isento?"#00e5a010":"#ff4d6d10",border:`1px solid ${ir.isento?"#00e5a030":"#ff4d6d30"}`,borderRadius:16,padding:"18px 16px"}}>
-          <STitle color={ir.isento?"#00e5a0":"#ff4d6d"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.isento?<><CheckCircle2 size={12} strokeWidth={2.5}/>ISENTO DE IR</>:<><AlertTriangle size={12} strokeWidth={2.5}/>IR DEVIDO ESTE MÊS</>}</span></STitle>
+        <div style={{background:ir.isento?"rgba(0,229,160,0.06)":"rgba(255,77,109,0.06)",border:`1px solid ${ir.isento?"rgba(0,229,160,0.18)":"rgba(255,77,109,0.18)"}`,borderRadius:16,padding:"18px 16px"}}>
+          <STitle color={ir.isento?"var(--ui-success)":"var(--ui-danger)"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.isento?<><CheckCircle2 size={12} strokeWidth={2.5}/>ISENTO DE IR</>:<><AlertTriangle size={12} strokeWidth={2.5}/>IR DEVIDO ESTE MÊS</>}</span></STitle>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Stat label="Total de vendas" value={fmtBRL(ir.totalVendas)} mono/>
-            <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"#00e5a0":"#ff4d6d"} mono/>
-            <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"#ff4d6d":"#00e5a0"} mono/>
-            <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"#ffd60a":"#ff4d6d"} mono/>
+            <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+            <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"var(--ui-danger)":"var(--ui-success)"} mono/>
+            <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"var(--ui-warning)":"var(--ui-danger)"} mono/>
           </div>
-          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"#ff6b85",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
+          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"var(--ui-danger)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
         </div>
       </>}
       </div>
@@ -1071,8 +1071,8 @@ function TabIR({ dados }) {
 function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   if (loading) return <LoadingCard fase={fase}/>;
   if (!dados?.analise) return (
-    <div style={{textAlign:"center",padding:"48px 0",color:"#5a5a6a",fontSize:13}}>
-      Configure o aporte e clique em <b style={{color:"#7b61ff"}}>Analisar</b>
+    <div style={{textAlign:"center",padding:"48px 0",color:"var(--ui-text-disabled)",fontSize:13}}>
+      Configure o aporte e clique em <b style={{color:"var(--ui-accent)"}}>Analisar</b>
     </div>
   );
 
@@ -1087,13 +1087,13 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {/* Badge IA */}
-      <div style={{background:"#7b61ff10",border:"1px solid #7b61ff25",borderRadius:10,padding:"12px 16px",display:"flex",gap:12,alignItems:"center"}}>
+      <div style={{background:"rgba(123,97,255,0.06)",border:"1px solid var(--ui-accent)25",borderRadius:10,padding:"12px 16px",display:"flex",gap:12,alignItems:"center"}}>
         <div style={{
-          width:32,height:32,borderRadius:8,background:"#7b61ff20",
+          width:32,height:32,borderRadius:8,background:"rgba(123,97,255,0.12)",
           display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
-        }}><Sparkles size={16} color="#7b61ff" strokeWidth={2.5}/></div>
-        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>
-          Análise gerada pelo <b style={{color:"#fff"}}>Gemini 2.5 Pro</b> com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
+        }}><Sparkles size={16} color="var(--ui-accent)" strokeWidth={2.5}/></div>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.6}}>
+          Análise gerada pelo <b style={{color:"var(--ui-text)"}}>Gemini 2.5 Pro</b> com cotações buscadas via Google Search em tempo real. Confirme na sua corretora antes de operar.
         </div>
       </div>
 
@@ -1102,14 +1102,14 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <Card accent>
           <div style={{display:"flex",gap:14,alignItems:"center"}}>
             <div style={{textAlign:"center",minWidth:70}}>
-              <div style={{fontSize:40,fontWeight:900,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
-              <div style={{fontSize:10,color:score>=70?"#00e5a0":score>=45?"#ffd60a":"#ff4d6d",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
-              <div style={{fontSize:9,color:"#5a5a6a"}}>Score</div>
+              <div style={{fontSize:40,fontWeight:900,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
+              <div style={{fontSize:10,color:score>=70?"var(--ui-success)":score>=45?"var(--ui-warning)":"var(--ui-danger)",marginTop:2,fontWeight:700}}>{score>=70?"Saudável":score>=45?"Moderado":"Atenção"}</div>
+              <div style={{fontSize:9,color:"var(--ui-text-disabled)"}}>Score</div>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:11,color:"#9090a0",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
-              {correlacoes.map((c,i) => <div key={i} style={{fontSize:12,color:"#ffd60a",marginBottom:3}}>⚠️ {c.n} ativos em {c.setor} — alta correlação</div>)}
-              {!correlacoes.length && <div style={{fontSize:12,color:"#00e5a0"}}>✅ Boa diversificação setorial</div>}
+              <div style={{fontSize:11,color:"var(--ui-text-muted)",fontWeight:700,marginBottom:6}}>SAÚDE DA CARTEIRA</div>
+              {correlacoes.map((c,i) => <div key={i} style={{fontSize:12,color:"var(--ui-warning)",marginBottom:3}}>⚠️ {c.n} ativos em {c.setor} — alta correlação</div>)}
+              {!correlacoes.length && <div style={{fontSize:12,color:"var(--ui-success)"}}>✅ Boa diversificação setorial</div>}
             </div>
           </div>
         </Card>
@@ -1118,23 +1118,23 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
       {/* Diagnóstico */}
       <Card>
         <STitle>{temCarteira?"DIAGNÓSTICO DA CARTEIRA":"CONTEXTO DO MERCADO"}</STitle>
-        <p style={{fontSize:13,color:"#a8a8b8",lineHeight:1.75}}>{a.diagnostico}</p>
+        <p style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.75}}>{a.diagnostico}</p>
       </Card>
 
       {/* Alertas em grid */}
       {a.alertas?.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
       {a.alertas?.map((al,i) => (
-        <div key={i} style={{background:al.tipo==="perigo"?"#ff4d6d10":al.tipo==="atencao"?"#ffd60a10":"#00e5a010",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"#ffd60a28":"#00e5a028"}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
+        <div key={i} style={{background:al.tipo==="perigo"?"rgba(255,77,109,0.06)":al.tipo==="atencao"?"rgba(255,214,10,0.06)":"rgba(0,229,160,0.06)",border:`1px solid ${al.tipo==="perigo"?"#ff4d6d28":al.tipo==="atencao"?"rgba(255,214,10,0.16)":"rgba(0,229,160,0.16)"}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{flexShrink:0,marginTop:1}}>
             {al.tipo==="perigo"
-              ? <AlertCircle size={18} color="#ff4d6d" strokeWidth={2.2}/>
+              ? <AlertCircle size={18} color="var(--ui-danger)" strokeWidth={2.2}/>
               : al.tipo==="atencao"
-                ? <AlertTriangle size={18} color="#ffd60a" strokeWidth={2.2}/>
-                : <CheckCircle2 size={18} color="#00e5a0" strokeWidth={2.2}/>}
+                ? <AlertTriangle size={18} color="var(--ui-warning)" strokeWidth={2.2}/>
+                : <CheckCircle2 size={18} color="var(--ui-success)" strokeWidth={2.2}/>}
           </div>
           <div>
-            <div style={{fontWeight:700,fontSize:13,color:"#ffffff",marginBottom:4}}>{al.titulo}</div>
-            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>{al.descricao}</div>
+            <div style={{fontWeight:700,fontSize:13,color:"var(--ui-text)",marginBottom:4}}>{al.titulo}</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.6}}>{al.descricao}</div>
           </div>
         </div>
       ))}
@@ -1146,7 +1146,7 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => (
           <Card key={i} style={{
-            borderColor: r.score>=80 ? "#00e5a050" : r.score>=60 ? "#ffd60a40" : r.nova ? "#00e5a030" : "#252535",
+            borderColor: r.score>=80 ? "rgba(0,229,160,0.31)" : r.score>=60 ? "rgba(255,214,10,0.25)" : r.nova ? "rgba(0,229,160,0.18)" : "var(--ui-bg-tertiary)",
             position: "relative",
             overflow: "hidden"
           }}>
@@ -1154,39 +1154,39 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
             {r.score >= 70 && (
               <div style={{
                 position:"absolute",left:0,top:0,bottom:0,width:3,
-                background: r.score>=85 ? "linear-gradient(180deg,#00e5a0,#00b4d8)" : "#00e5a060"
+                background: r.score>=85 ? "linear-gradient(180deg,#00e5a0,#00b4d8)" : "rgba(0,229,160,0.38)"
               }}/>
             )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"#00e5a018":"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"#00e5a0":"#7b61ff"}}>{r.ticker.slice(0,4)}</div>
+                <div style={{width:40,height:40,borderRadius:10,background:r.nova?"rgba(0,229,160,0.09)":"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:r.nova?"var(--ui-success)":"var(--ui-accent)"}}>{r.ticker.slice(0,4)}</div>
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontWeight:800,fontSize:15,color:"#ffffff"}}>{r.ticker}</span>
-                    {r.nova && <span style={{fontSize:9,background:"#00e5a018",color:"#00e5a0",border:"1px solid #00e5a028",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}}>NOVO</span>}
+                    <span style={{fontWeight:800,fontSize:15,color:"var(--ui-text)"}}>{r.ticker}</span>
+                    {r.nova && <span style={{fontSize:9,background:"rgba(0,229,160,0.09)",color:"var(--ui-success)",border:"1px solid var(--ui-success)28",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}}>NOVO</span>}
                   </div>
-                  <div style={{fontSize:11,color:"#6a6a7a"}}>{r.acao} · {r.setor}</div>
+                  <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{r.acao} · {r.setor}</div>
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontWeight:700,fontSize:16,color:"#7b61ff"}}>{r.alocacao}%</div>
-                <div style={{fontSize:12,color:"#6a6a7a"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
+                <div style={{fontWeight:700,fontSize:16,color:"var(--ui-accent)"}}>{r.alocacao}%</div>
+                <div style={{fontSize:12,color:"var(--ui-text-faint)"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
               </div>
             </div>
 
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"#00e5a015":"#ffffff08",color:r.precoReal?"#00e5a0":"#a8a8b8",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
-              {r.dy && <span style={{fontSize:11,background:"#ffd60a12",color:"#ffd60a",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
-              {r.pl && <span style={{fontSize:11,background:"#7b61ff12",color:"#7b61ff",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
-              {r.score && <span style={{fontSize:11,background:"#00e5a012",color:"#00e5a0",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
-              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"#00e5a012":r.canal52<=70?"#ffd60a12":"#ff4d6d12",color:r.canal52<=30?"#00e5a0":r.canal52<=70?"#ffd60a":"#ff4d6d",borderRadius:10,padding:"3px 8px"}}>Canal {r.canal52}%</span>}
+              {(r.precoReal||r.precoEstimado) && <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.08)":"#ffffff08",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px"}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span>}
+              {r.dy && <span style={{fontSize:11,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px"}}>DY ~{fmt(r.dy)}%</span>}
+              {r.pl && <span style={{fontSize:11,background:"#7b61ff12",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px"}}>P/L ~{fmt(r.pl)}</span>}
+              {r.score && <span style={{fontSize:11,background:"rgba(0,229,160,0.07)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px"}}>Score {r.score}/100</span>}
+              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.07)":r.canal52<=70?"rgba(255,214,10,0.07)":"#ff4d6d12",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px"}}>Canal {r.canal52}%</span>}
             </div>
 
-            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.65,background:"#000000",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
 
             {r.unidades > 0 && (
-              <div style={{marginTop:8,fontSize:11,color:"#9090a0"}}>
+              <div style={{marginTop:8,fontSize:11,color:"var(--ui-text-muted)"}}>
                 ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
               </div>
             )}
@@ -1197,16 +1197,16 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
       {/* Vender */}
       {a.vender?.length > 0 && <>
-        <STitle color="#ff4d6d"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertCircle size={12} strokeWidth={2.5}/>CONSIDERE REVISAR / VENDER</span></STitle>
+        <STitle color="var(--ui-danger)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertCircle size={12} strokeWidth={2.5}/>CONSIDERE REVISAR / VENDER</span></STitle>
         {a.vender.map((v,i) => (
-          <Card key={i} style={{borderColor:"#ff4d6d20"}}>
-            <div style={{fontWeight:700,fontSize:14,color:"#ff6b85",marginBottom:4}}>{v.ticker}</div>
-            <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.6}}>{v.motivo}</div>
+          <Card key={i} style={{borderColor:"rgba(255,77,109,0.12)"}}>
+            <div style={{fontWeight:700,fontSize:14,color:"var(--ui-danger)",marginBottom:4}}>{v.ticker}</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.6}}>{v.motivo}</div>
           </Card>
         ))}
       </>}
 
-      {a.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{a.aviso}</div>}
+      {a.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid var(--ui-warning)18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{a.aviso}</div>}
     </div>
   );
 }
@@ -1327,19 +1327,19 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             value={ticker}
             onChange={e=>setTicker(e.target.value.toUpperCase())}
             onKeyDown={e=>e.key==="Enter"&&analisar()}
-            style={{flex:1,background:"#000",border:"1px solid #252535",borderRadius:8,padding:"12px 16px",fontSize:16,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
+            style={{flex:1,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"12px 16px",fontSize:16,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
           />
-          <button onClick={analisar} disabled={loading} style={{background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"#fff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={analisar} disabled={loading} style={{background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
             {loading ? <Loader2 size={15} className="spin"/> : <Sparkles size={15} strokeWidth={2.5}/>}
             {loading ? fase || "Analisando..." : "Analisar"}
           </button>
         </div>
-        {erro && <div style={{marginTop:10,background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+        {erro && <div style={{marginTop:10,background:"rgba(255,77,109,0.06)",border:"1px solid var(--ui-danger)30",borderRadius:8,padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
       </Card>
 
       {/* LoadingSteps animado durante análise */}
       {loading && step > 0 && (
-        <LoadingSteps steps={steps} currentStep={step - 1} accent="#7b61ff"/>
+        <LoadingSteps steps={steps} currentStep={step - 1} accent="var(--ui-accent)"/>
       )}
 
       {resultado && (
@@ -1348,19 +1348,19 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
           <Card>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:14}}>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:54,height:54,borderRadius:12,background:"#1a1a25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#7b61ff"}}>{resultado.ticker.slice(0,4)}</div>
+                <div style={{width:54,height:54,borderRadius:12,background:"var(--ui-bg-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"var(--ui-accent)"}}>{resultado.ticker.slice(0,4)}</div>
                 <div>
-                  <div style={{fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>{resultado.ticker}</div>
-                  <div style={{fontSize:13,color:"#a8a8b8"}}>{resultado.nome} · {resultado.setor}</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"var(--ui-text)",marginBottom:4}}>{resultado.ticker}</div>
+                  <div style={{fontSize:13,color:"var(--ui-text-muted)"}}>{resultado.nome} · {resultado.setor}</div>
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:28,fontWeight:800,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.preco)}</div>
+                <div style={{fontSize:28,fontWeight:800,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.preco)}</div>
                 <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
                   {resultado.variacaoDia != null && <Badge val={resultado.variacaoDia}/>}
-                  {resultado.variacaoAno != null && <span style={{fontSize:11,color:resultado.variacaoAno>=0?"#00e5a0":"#ff4d6d",fontWeight:600}}>Ano: {resultado.variacaoAno>=0?"+":""}{fmt(resultado.variacaoAno,1)}%</span>}
+                  {resultado.variacaoAno != null && <span style={{fontSize:11,color:resultado.variacaoAno>=0?"var(--ui-success)":"var(--ui-danger)",fontWeight:600}}>Ano: {resultado.variacaoAno>=0?"+":""}{fmt(resultado.variacaoAno,1)}%</span>}
                 </div>
-                {resultado.fontePreco && <div style={{fontSize:10,color:"#5a5a6a",marginTop:4}}>Fonte: {resultado.fontePreco}</div>}
+                {resultado.fontePreco && <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:4}}>Fonte: {resultado.fontePreco}</div>}
               </div>
             </div>
           </Card>
@@ -1370,36 +1370,36 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             <Card>
               <STitle>INDICADORES FUNDAMENTALISTAS</STitle>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10}}>
-                {resultado.indicadores.dy != null && <Stat label="DIVIDEND YIELD" value={fmt(resultado.indicadores.dy,2)+"%"} color="#ffd60a" mono/>}
-                {resultado.indicadores.pl != null && <Stat label="P/L" value={fmt(resultado.indicadores.pl,2)} color="#7b61ff" mono/>}
-                {resultado.indicadores.pvp != null && <Stat label="P/VP" value={fmt(resultado.indicadores.pvp,2)} color="#7b61ff" mono/>}
-                {resultado.indicadores.roe != null && <Stat label="ROE" value={fmt(resultado.indicadores.roe,1)+"%"} color="#00e5a0" mono/>}
+                {resultado.indicadores.dy != null && <Stat label="DIVIDEND YIELD" value={fmt(resultado.indicadores.dy,2)+"%"} color="var(--ui-warning)" mono/>}
+                {resultado.indicadores.pl != null && <Stat label="P/L" value={fmt(resultado.indicadores.pl,2)} color="var(--ui-accent)" mono/>}
+                {resultado.indicadores.pvp != null && <Stat label="P/VP" value={fmt(resultado.indicadores.pvp,2)} color="var(--ui-accent)" mono/>}
+                {resultado.indicadores.roe != null && <Stat label="ROE" value={fmt(resultado.indicadores.roe,1)+"%"} color="var(--ui-success)" mono/>}
                 {resultado.indicadores.margemLiquida != null && <Stat label="MARGEM LÍQ." value={fmt(resultado.indicadores.margemLiquida,1)+"%"} mono/>}
                 {resultado.indicadores.divEbitda != null && <Stat label="DÍV/EBITDA" value={fmt(resultado.indicadores.divEbitda,2)} mono/>}
-                {resultado.indicadores.min52 != null && <Stat label="MÍN 52S" value={fmtBRL(resultado.indicadores.min52)} color="#ff4d6d" mono/>}
-                {resultado.indicadores.max52 != null && <Stat label="MÁX 52S" value={fmtBRL(resultado.indicadores.max52)} color="#00e5a0" mono/>}
-                {resultado.indicadores.canal52 != null && <Stat label="CANAL 52S" value={resultado.indicadores.canal52+"%"} color={resultado.indicadores.canal52<=30?"#00e5a0":resultado.indicadores.canal52<=70?"#ffd60a":"#ff4d6d"} mono/>}
+                {resultado.indicadores.min52 != null && <Stat label="MÍN 52S" value={fmtBRL(resultado.indicadores.min52)} color="var(--ui-danger)" mono/>}
+                {resultado.indicadores.max52 != null && <Stat label="MÁX 52S" value={fmtBRL(resultado.indicadores.max52)} color="var(--ui-success)" mono/>}
+                {resultado.indicadores.canal52 != null && <Stat label="CANAL 52S" value={resultado.indicadores.canal52+"%"} color={resultado.indicadores.canal52<=30?"var(--ui-success)":resultado.indicadores.canal52<=70?"var(--ui-warning)":"var(--ui-danger)"} mono/>}
               </div>
             </Card>
           )}
 
           {/* Tese */}
           {resultado.tese && (
-            <Card style={{border:`1px solid ${resultado.tese.tipo==="comprar"?"#00e5a040":resultado.tese.tipo==="aguardar"?"#ffd60a40":"#ff4d6d40"}`}}>
+            <Card style={{border:`1px solid ${resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.25)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.25)":"rgba(255,77,109,0.25)"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{
                     fontSize:11,fontWeight:800,letterSpacing:1.5,padding:"5px 12px",borderRadius:6,
-                    background:resultado.tese.tipo==="comprar"?"#00e5a020":resultado.tese.tipo==="aguardar"?"#ffd60a20":"#ff4d6d20",
-                    color:resultado.tese.tipo==="comprar"?"#00e5a0":resultado.tese.tipo==="aguardar"?"#ffd60a":"#ff4d6d"
+                    background:resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.12)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
+                    color:resultado.tese.tipo==="comprar"?"var(--ui-success)":resultado.tese.tipo==="aguardar"?"var(--ui-warning)":"var(--ui-danger)"
                   }}>{resultado.tese.tipo.toUpperCase()}</span>
-                  {resultado.tese.score && <span style={{fontSize:11,color:"#a8a8b8"}}>Score <b style={{color:"#fff"}}>{resultado.tese.score}/100</b></span>}
+                  {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
                 </div>
                 {resultado.tese.preco_alvo && (
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
-                    <div style={{fontSize:18,fontWeight:800,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
-                    <div style={{fontSize:11,color:resultado.tese.preco_alvo>resultado.preco?"#00e5a0":"#ff4d6d",fontWeight:600}}>
+                    <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
+                    <div style={{fontSize:11,color:resultado.tese.preco_alvo>resultado.preco?"var(--ui-success)":"var(--ui-danger)",fontWeight:600}}>
                       {resultado.tese.preco_alvo>resultado.preco?"+":""}{fmt((resultado.tese.preco_alvo-resultado.preco)/resultado.preco*100,1)}%
                     </div>
                   </div>
@@ -1408,20 +1408,20 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 {resultado.tese.argumentos_positivos?.length>0 && (
                   <div>
-                    <div style={{fontSize:10,color:"#00e5a0",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><CheckCircle2 size={12}/>PONTOS POSITIVOS</div>
+                    <div style={{fontSize:10,color:"var(--ui-success)",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><CheckCircle2 size={12}/>PONTOS POSITIVOS</div>
                     {resultado.tese.argumentos_positivos.map((arg,i) => (
-                      <div key={i} style={{fontSize:12,color:"#a8a8b8",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
-                        <span style={{position:"absolute",left:0,color:"#00e5a0"}}>+</span>{arg}
+                      <div key={i} style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
+                        <span style={{position:"absolute",left:0,color:"var(--ui-success)"}}>+</span>{arg}
                       </div>
                     ))}
                   </div>
                 )}
                 {resultado.tese.argumentos_negativos?.length>0 && (
                   <div>
-                    <div style={{fontSize:10,color:"#ff4d6d",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><AlertCircle size={12}/>PONTOS DE ATENÇÃO</div>
+                    <div style={{fontSize:10,color:"var(--ui-danger)",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><AlertCircle size={12}/>PONTOS DE ATENÇÃO</div>
                     {resultado.tese.argumentos_negativos.map((arg,i) => (
-                      <div key={i} style={{fontSize:12,color:"#a8a8b8",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
-                        <span style={{position:"absolute",left:0,color:"#ff4d6d"}}>−</span>{arg}
+                      <div key={i} style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
+                        <span style={{position:"absolute",left:0,color:"var(--ui-danger)"}}>−</span>{arg}
                       </div>
                     ))}
                   </div>
@@ -1434,7 +1434,7 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
           {resultado.fundamentos && (
             <Card>
               <STitle>ANÁLISE FUNDAMENTALISTA</STitle>
-              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.fundamentos}</div>
+              <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.fundamentos}</div>
             </Card>
           )}
 
@@ -1443,11 +1443,11 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             {resultado.resumo && (
               <Card accent>
                 <STitle>RESUMO</STitle>
-                <div style={{fontSize:14,color:"#fff",lineHeight:1.6,fontWeight:500}}>{resultado.resumo}</div>
+                <div style={{fontSize:14,color:"var(--ui-text)",lineHeight:1.6,fontWeight:500}}>{resultado.resumo}</div>
                 {resultado.ultimoDividendo && (
-                  <div style={{marginTop:12,padding:"10px 14px",background:"#ffd60a10",border:"1px solid #ffd60a25",borderRadius:8,display:"flex",alignItems:"center",gap:10}}>
-                    <Coins size={16} color="#ffd60a"/>
-                    <div style={{fontSize:12,color:"#a8a8b8"}}>Último provento: <b style={{color:"#ffd60a"}}>{fmtBRL(resultado.ultimoDividendo.valor)}</b> em {resultado.ultimoDividendo.data}</div>
+                  <div style={{marginTop:12,padding:"10px 14px",background:"rgba(255,214,10,0.06)",border:"1px solid var(--ui-warning)25",borderRadius:8,display:"flex",alignItems:"center",gap:10}}>
+                    <Coins size={16} color="var(--ui-warning)"/>
+                    <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>Último provento: <b style={{color:"var(--ui-warning)"}}>{fmtBRL(resultado.ultimoDividendo.valor)}</b> em {resultado.ultimoDividendo.data}</div>
                   </div>
                 )}
               </Card>
@@ -1458,8 +1458,8 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {resultado.comparaveis.map((t,i) => (
                     <button key={i} onClick={()=>{setTicker(t); setTimeout(analisar, 100);}} style={{
-                      background:"#1a1a25",border:"1px solid #252535",borderRadius:6,padding:"8px 12px",
-                      color:"#7b61ff",fontWeight:700,fontSize:12,cursor:"pointer",textAlign:"left",
+                      background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:6,padding:"8px 12px",
+                      color:"var(--ui-accent)",fontWeight:700,fontSize:12,cursor:"pointer",textAlign:"left",
                       fontFamily:"'JetBrains Mono',monospace",display:"flex",alignItems:"center",justifyContent:"space-between"
                     }}>
                       {t} <ChevronRight size={14}/>
@@ -1470,15 +1470,15 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             )}
           </div>
 
-          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid var(--ui-warning)18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
       {!resultado && !loading && (
-        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-          <FileSearch size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:8}}>Análise profunda de qualquer ticker da B3</div>
-          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.7}}>
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <FileSearch size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:8}}>Análise profunda de qualquer ticker da B3</div>
+          <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.7}}>
             Digite um ticker acima e o Gemini busca preço atual,<br/>
             indicadores, fundamentos e gera tese de investimento completa.
           </div>
@@ -1553,7 +1553,7 @@ PASSO 3 — Retorne APENAS este JSON:
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><GitCompare size={12} strokeWidth={2.5}/>COMPARADOR DE ATIVOS</span></STitle>
-        <div style={{fontSize:12,color:"#a8a8b8",marginBottom:12,lineHeight:1.6}}>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:12,lineHeight:1.6}}>
           Compare 2 a 4 ativos lado a lado. A IA analisa fundamentos, valuation e indica qual é a melhor escolha.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:14}}>
@@ -1564,27 +1564,27 @@ PASSO 3 — Retorne APENAS este JSON:
               placeholder={`Ticker ${i+1}`}
               value={t}
               onChange={e=>{const u=[...tickers];u[i]=e.target.value.toUpperCase();setTickers(u);}}
-              style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"12px 14px",fontSize:14,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
+              style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"12px 14px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
             />
           ))}
         </div>
-        <button onClick={comparar} disabled={loading} style={{width:"100%",background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"13px",color:"#fff",fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <button onClick={comparar} disabled={loading} style={{width:"100%",background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"13px",color:"var(--ui-text)",fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {loading ? <><Loader2 size={15} className="spin"/>{fase || "Comparando..."}</> : <><GitCompare size={15} strokeWidth={2.5}/>Comparar Ativos</>}
         </button>
-        {erro && <div style={{marginTop:10,background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+        {erro && <div style={{marginTop:10,background:"rgba(255,77,109,0.06)",border:"1px solid var(--ui-danger)30",borderRadius:8,padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
       </Card>
 
       {resultado && (
         <>
           {/* Vencedor */}
           {resultado.vencedor && (
-            <Card accent style={{background:"linear-gradient(135deg,#7b61ff10,#00e5a005)"}}>
+            <Card accent style={{background:"linear-gradient(135deg,rgba(123,97,255,0.06),#00e5a005)"}}>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#7b61ff,#00e5a0)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={22} color="#000" strokeWidth={2.5}/></div>
+                <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#7b61ff,#00e5a0)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={22} color="var(--ui-bg-input)" strokeWidth={2.5}/></div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#7b61ff",fontWeight:700,letterSpacing:1.5,marginBottom:4}}>VENCEDOR DA COMPARAÇÃO</div>
-                  <div style={{fontSize:24,fontWeight:800,color:"#fff",marginBottom:6}}>{resultado.vencedor.ticker}</div>
-                  <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6}}>{resultado.vencedor.motivo}</div>
+                  <div style={{fontSize:11,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1.5,marginBottom:4}}>VENCEDOR DA COMPARAÇÃO</div>
+                  <div style={{fontSize:24,fontWeight:800,color:"var(--ui-text)",marginBottom:6}}>{resultado.vencedor.ticker}</div>
+                  <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6}}>{resultado.vencedor.motivo}</div>
                 </div>
               </div>
             </Card>
@@ -1597,33 +1597,33 @@ PASSO 3 — Retorne APENAS este JSON:
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
-                    <tr style={{borderBottom:"1px solid #252535"}}>
-                      <th style={{textAlign:"left",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>ATIVO</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>PREÇO</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>DY</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>P/L</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>P/VP</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>ROE</th>
-                      <th style={{textAlign:"right",padding:"10px 8px",color:"#7a7a8a",fontWeight:700,fontSize:10,letterSpacing:1}}>SCORE</th>
+                    <tr style={{borderBottom:"1px solid var(--ui-border)"}}>
+                      <th style={{textAlign:"left",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>ATIVO</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>PREÇO</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>DY</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>P/L</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>P/VP</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>ROE</th>
+                      <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>SCORE</th>
                     </tr>
                   </thead>
                   <tbody>
                     {resultado.ativos.map((a,i) => (
-                      <tr key={i} style={{borderBottom:"1px solid #1a1a25"}}>
+                      <tr key={i} style={{borderBottom:"1px solid var(--ui-border-soft)"}}>
                         <td style={{padding:"12px 8px"}}>
-                          <div style={{fontWeight:700,color:a.ticker===resultado.vencedor?.ticker?"#7b61ff":"#fff"}}>{a.ticker}</div>
-                          <div style={{fontSize:10,color:"#7a7a8a"}}>{a.setor}</div>
+                          <div style={{fontWeight:700,color:a.ticker===resultado.vencedor?.ticker?"var(--ui-accent)":"var(--ui-text)"}}>{a.ticker}</div>
+                          <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{a.setor}</div>
                         </td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff",fontWeight:600}}>{fmtBRL(a.preco)}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#ffd60a",fontWeight:600}}>{a.dy?fmt(a.dy,2)+"%":"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff"}}>{a.pl?fmt(a.pl,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#fff"}}>{a.pvp?fmt(a.pvp,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"#00e5a0",fontWeight:600}}>{a.roe?fmt(a.roe,1)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)",fontWeight:600}}>{fmtBRL(a.preco)}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:600}}>{a.dy?fmt(a.dy,2)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pl?fmt(a.pl,2):"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pvp?fmt(a.pvp,2):"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:600}}>{a.roe?fmt(a.roe,1)+"%":"–"}</td>
                         <td style={{textAlign:"right",padding:"12px 8px"}}>
                           <span style={{
                             padding:"4px 10px",borderRadius:6,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
-                            background:a.score>=70?"#00e5a020":a.score>=50?"#ffd60a20":"#ff4d6d20",
-                            color:a.score>=70?"#00e5a0":a.score>=50?"#ffd60a":"#ff4d6d"
+                            background:a.score>=70?"rgba(0,229,160,0.12)":a.score>=50?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
+                            color:a.score>=70?"var(--ui-success)":a.score>=50?"var(--ui-warning)":"var(--ui-danger)"
                           }}>{a.score}</span>
                         </td>
                       </tr>
@@ -1639,16 +1639,16 @@ PASSO 3 — Retorne APENAS este JSON:
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
               {resultado.ativos.map((a,i) => (
                 <Card key={i}>
-                  <div style={{fontWeight:800,fontSize:15,color:"#fff",marginBottom:10}}>{a.ticker}</div>
+                  <div style={{fontWeight:800,fontSize:15,color:"var(--ui-text)",marginBottom:10}}>{a.ticker}</div>
                   {a.ponto_forte && (
-                    <div style={{marginBottom:8,fontSize:12,color:"#a8a8b8",display:"flex",gap:8}}>
-                      <CheckCircle2 size={14} color="#00e5a0" style={{flexShrink:0,marginTop:2}}/>
+                    <div style={{marginBottom:8,fontSize:12,color:"var(--ui-text-muted)",display:"flex",gap:8}}>
+                      <CheckCircle2 size={14} color="var(--ui-success)" style={{flexShrink:0,marginTop:2}}/>
                       <div>{a.ponto_forte}</div>
                     </div>
                   )}
                   {a.ponto_fraco && (
-                    <div style={{fontSize:12,color:"#a8a8b8",display:"flex",gap:8}}>
-                      <AlertCircle size={14} color="#ff4d6d" style={{flexShrink:0,marginTop:2}}/>
+                    <div style={{fontSize:12,color:"var(--ui-text-muted)",display:"flex",gap:8}}>
+                      <AlertCircle size={14} color="var(--ui-danger)" style={{flexShrink:0,marginTop:2}}/>
                       <div>{a.ponto_fraco}</div>
                     </div>
                   )}
@@ -1661,18 +1661,18 @@ PASSO 3 — Retorne APENAS este JSON:
           {resultado.comparativo && (
             <Card>
               <STitle>ANÁLISE COMPARATIVA</STitle>
-              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.comparativo}</div>
+              <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.comparativo}</div>
             </Card>
           )}
 
-          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid var(--ui-warning)18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
       {!resultado && !loading && (
-        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-          <GitCompare size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"#7a7a8a",fontSize:13}}>Compare ativos lado a lado e descubra a melhor escolha</div>
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <GitCompare size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Compare ativos lado a lado e descubra a melhor escolha</div>
         </Card>
       )}
     </div>
@@ -1718,13 +1718,13 @@ function TabHistorico({ userId, pedirConfirmacao }) {
     }
   };
 
-  if (loading) return <Card style={{textAlign:"center",padding:"40px"}}><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"0 auto"}}/></Card>;
+  if (loading) return <Card style={{textAlign:"center",padding:"40px"}}><Loader2 size={24} className="spin" color="var(--ui-accent)" style={{margin:"0 auto"}}/></Card>;
 
   if (!analises.length) return (
-    <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-      <History size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-      <div style={{color:"#7a7a8a",fontSize:13}}>Nenhuma análise no histórico ainda</div>
-      <div style={{color:"#5a5a6a",fontSize:12,marginTop:6}}>Rode uma análise IA e ela aparecerá aqui automaticamente</div>
+    <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+      <History size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+      <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Nenhuma análise no histórico ainda</div>
+      <div style={{color:"var(--ui-text-disabled)",fontSize:12,marginTop:6}}>Rode uma análise IA e ela aparecerá aqui automaticamente</div>
     </Card>
   );
 
@@ -1739,15 +1739,15 @@ function TabHistorico({ userId, pedirConfirmacao }) {
           <Card key={a.id} style={{cursor:"pointer"}} className="card-hover">
             <div onClick={() => setExpandido(isOpen ? null : a.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
               <div style={{display:"flex",alignItems:"center",gap:14,flex:1}}>
-                <div style={{width:42,height:42,borderRadius:10,background:a.tipo==="carteira"?"#7b61ff20":"#00e5a020",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  {a.tipo==="carteira" ? <Briefcase size={18} color="#7b61ff"/> : <Brain size={18} color="#00e5a0"/>}
+                <div style={{width:42,height:42,borderRadius:10,background:a.tipo==="carteira"?"rgba(123,97,255,0.12)":"rgba(0,229,160,0.12)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {a.tipo==="carteira" ? <Briefcase size={18} color="var(--ui-accent)"/> : <Brain size={18} color="var(--ui-success)"/>}
                 </div>
                 <div>
-                  <div style={{fontWeight:700,color:"#fff",fontSize:14,marginBottom:2}}>
+                  <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14,marginBottom:2}}>
                     Análise {a.tipo === "carteira" ? "de carteira" : "de mercado"}
-                    {a.aporte && <span style={{color:"#7a7a8a",fontWeight:500,fontSize:12,marginLeft:8}}>· {fmtBRL(a.aporte)}</span>}
+                    {a.aporte && <span style={{color:"var(--ui-text-faint)",fontWeight:500,fontSize:12,marginLeft:8}}>· {fmtBRL(a.aporte)}</span>}
                   </div>
-                  <div style={{fontSize:11,color:"#7a7a8a",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{fontSize:11,color:"var(--ui-text-faint)",display:"flex",alignItems:"center",gap:10}}>
                     <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Clock size={11}/>{data.toLocaleDateString("pt-BR")} {data.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
                     {a.perfil && <span>· {a.perfil}</span>}
                     {a.foco && <span>· {a.foco}</span>}
@@ -1755,44 +1755,44 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                   </div>
                 </div>
               </div>
-              <ChevronRight size={16} color="#7a7a8a" style={{transform:isOpen?"rotate(90deg)":"rotate(0)",transition:"transform .2s"}}/>
+              <ChevronRight size={16} color="var(--ui-text-faint)" style={{transform:isOpen?"rotate(90deg)":"rotate(0)",transition:"transform .2s"}}/>
             </div>
 
             {isOpen && (
-              <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1a1a25"}}>
+              <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid var(--ui-border-soft)"}}>
                 {a.resultado?.diagnostico && (
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:1,marginBottom:6}}>DIAGNÓSTICO</div>
-                    <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.6}}>{a.resultado.diagnostico}</div>
+                    <div style={{fontSize:10,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1,marginBottom:6}}>DIAGNÓSTICO</div>
+                    <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6}}>{a.resultado.diagnostico}</div>
                   </div>
                 )}
                 {a.resultado?.recomendacoes?.length > 0 && (
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:10,color:"#7b61ff",fontWeight:700,letterSpacing:1,marginBottom:8}}>RECOMENDAÇÕES</div>
+                    <div style={{fontSize:10,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1,marginBottom:8}}>RECOMENDAÇÕES</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
                       {a.resultado.recomendacoes.map((r,i) => (
-                        <div key={i} style={{background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:"10px 12px"}}>
+                        <div key={i} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:"10px 12px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                            <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{r.ticker}</span>
-                            <span style={{fontSize:11,color:"#7b61ff",fontWeight:700}}>{r.alocacao}%</span>
+                            <span style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{r.ticker}</span>
+                            <span style={{fontSize:11,color:"var(--ui-accent)",fontWeight:700}}>{r.alocacao}%</span>
                           </div>
-                          {r.precoReal && <div style={{fontSize:11,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(r.precoReal)}</div>}
-                          {r.dy && <div style={{fontSize:10,color:"#ffd60a"}}>DY {fmt(r.dy)}%</div>}
+                          {r.precoReal && <div style={{fontSize:11,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(r.precoReal)}</div>}
+                          {r.dy && <div style={{fontSize:10,color:"var(--ui-warning)"}}>DY {fmt(r.dy)}%</div>}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div style={{display:"flex",gap:8,paddingTop:12,borderTop:"1px solid #1a1a25"}}>
+                <div style={{display:"flex",gap:8,paddingTop:12,borderTop:"1px solid var(--ui-border-soft)"}}>
                   <button onClick={(e)=>{e.stopPropagation(); compartilhar(a);}} style={{
-                    background:"#7b61ff15",border:"1px solid #7b61ff35",borderRadius:6,
-                    padding:"7px 12px",color:"#7b61ff",fontSize:11,fontWeight:600,cursor:"pointer",
+                    background:"rgba(123,97,255,0.08)",border:"1px solid var(--ui-accent)35",borderRadius:6,
+                    padding:"7px 12px",color:"var(--ui-accent)",fontSize:11,fontWeight:600,cursor:"pointer",
                     display:"flex",alignItems:"center",gap:6
                   }}><ExternalLink size={12}/>Copiar link</button>
                   <button onClick={(e)=>{e.stopPropagation(); removerItem(a);}} style={{
-                    background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,
-                    padding:"7px 12px",color:"#ff4d6d",fontSize:11,fontWeight:600,cursor:"pointer",
+                    background:"rgba(255,77,109,0.08)",border:"1px solid var(--ui-danger)30",borderRadius:6,
+                    padding:"7px 12px",color:"var(--ui-danger)",fontSize:11,fontWeight:600,cursor:"pointer",
                     display:"flex",alignItems:"center",gap:6
                   }}><Trash2 size={12}/>Remover</button>
                 </div>
@@ -1896,21 +1896,21 @@ function TabProventos({ userId, pedirConfirmacao }) {
       {/* Coluna esquerda: registrar + stats */}
       <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
         <Card>
-          <STitle color="#ffd60a"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
+          <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <input type="text" placeholder="Ticker (ex: TAEE11)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}/>
-            <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}>
+            <input type="text" placeholder="Ticker (ex: TAEE11)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}/>
+            <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}>
               <option value="dividendo">Dividendo</option>
               <option value="jcp">JCP</option>
               <option value="rendimento">Rendimento (FII)</option>
               <option value="bonificacao">Bonificação</option>
             </select>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <input type="number" step="0.01" placeholder="Valor R$" value={valor} onChange={e=>setValor(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}/>
-              <input type="date" value={data} onChange={e=>setData(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}/>
+              <input type="number" step="0.01" placeholder="Valor R$" value={valor} onChange={e=>setValor(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}/>
+              <input type="date" value={data} onChange={e=>setData(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
             </div>
-            <input type="text" placeholder="Observação (opcional)" value={obs} onChange={e=>setObs(e.target.value)} style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff"}}/>
-            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"#1a1a25":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"#000",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <input type="text" placeholder="Observação (opcional)" value={obs} onChange={e=>setObs(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
+            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"var(--ui-bg-secondary)":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"var(--ui-bg-input)",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {salvando ? <Loader2 size={14} className="spin"/> : <Plus size={14} strokeWidth={2.5}/>}
               Registrar
             </button>
@@ -1920,9 +1920,9 @@ function TabProventos({ userId, pedirConfirmacao }) {
         <Card>
           <STitle>RESUMO</STitle>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <Stat label="ESTE MÊS" value={fmtBRL(totalMes)} color="#00e5a0" mono/>
-            <Stat label="ESTE ANO" value={fmtBRL(totalAno)} color="#ffd60a" mono/>
-            <Stat label="TOTAL ACUMULADO" value={fmtBRL(totalGeral)} color="#7b61ff" mono/>
+            <Stat label="ESTE MÊS" value={fmtBRL(totalMes)} color="var(--ui-success)" mono/>
+            <Stat label="ESTE ANO" value={fmtBRL(totalAno)} color="var(--ui-warning)" mono/>
+            <Stat label="TOTAL ACUMULADO" value={fmtBRL(totalGeral)} color="var(--ui-accent)" mono/>
             <Stat label="MÉDIA MENSAL (12M)" value={fmtBRL(meses.reduce((s,m)=>s+m.valor,0)/12)} mono/>
           </div>
         </Card>
@@ -1935,11 +1935,11 @@ function TabProventos({ userId, pedirConfirmacao }) {
             <STitle>RECEBIMENTOS — ÚLTIMOS 12 MESES</STitle>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={meses} margin={{left:0,right:0,top:5,bottom:5}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
-                <XAxis dataKey="mes" tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+                <XAxis dataKey="mes" tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
                 <Tooltip content={<TTip/>}/>
-                <Bar dataKey="valor" name="Proventos" fill="#ffd60a" radius={[4,4,0,0]}/>
+                <Bar dataKey="valor" name="Proventos" fill="var(--ui-warning)" radius={[4,4,0,0]}/>
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -1954,10 +1954,10 @@ function TabProventos({ userId, pedirConfirmacao }) {
                 return (
                   <div key={t}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                      <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{t}</span>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:"#ffd60a",fontWeight:700,fontSize:13}}>{fmtBRL(v)}</span>
+                      <span style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{t}</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:700,fontSize:13}}>{fmtBRL(v)}</span>
                     </div>
-                    <div style={{background:"#1a1a25",borderRadius:4,height:6,overflow:"hidden"}}>
+                    <div style={{background:"var(--ui-bg-secondary)",borderRadius:4,height:6,overflow:"hidden"}}>
                       <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#ffd60a,#f77f00)",borderRadius:4}}/>
                     </div>
                   </div>
@@ -1967,28 +1967,28 @@ function TabProventos({ userId, pedirConfirmacao }) {
           </Card>
         )}
 
-        {loading ? <Card><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"20px auto",display:"block"}}/></Card> : proventos.length === 0 ? (
-          <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-            <Coins size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-            <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>Nenhum provento registrado</div>
-            <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6}}>Adicione seus dividendos, JCP e rendimentos<br/>recebidos para acompanhar sua renda passiva.</div>
+        {loading ? <Card><Loader2 size={24} className="spin" color="var(--ui-accent)" style={{margin:"20px auto",display:"block"}}/></Card> : proventos.length === 0 ? (
+          <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+            <Coins size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+            <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:6}}>Nenhum provento registrado</div>
+            <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.6}}>Adicione seus dividendos, JCP e rendimentos<br/>recebidos para acompanhar sua renda passiva.</div>
           </Card>
         ) : (
           <Card>
             <STitle>HISTÓRICO ({proventos.length})</STitle>
             <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:500,overflowY:"auto"}}>
               {proventos.map(p => (
-                <div key={p.id} style={{background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div key={p.id} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:32,height:32,borderRadius:8,background:"#ffd60a15",display:"flex",alignItems:"center",justifyContent:"center"}}><Coins size={14} color="#ffd60a"/></div>
+                    <div style={{width:32,height:32,borderRadius:8,background:"rgba(255,214,10,0.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><Coins size={14} color="var(--ui-warning)"/></div>
                     <div>
-                      <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.ticker} <span style={{fontSize:10,color:"#7a7a8a",fontWeight:500,marginLeft:4,textTransform:"uppercase"}}>{p.tipo}</span></div>
-                      <div style={{fontSize:11,color:"#7a7a8a"}}>{new Date(p.data_pagamento).toLocaleDateString("pt-BR")}{p.observacao && ` · ${p.observacao}`}</div>
+                      <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{p.ticker} <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:500,marginLeft:4,textTransform:"uppercase"}}>{p.tipo}</span></div>
+                      <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{new Date(p.data_pagamento).toLocaleDateString("pt-BR")}{p.observacao && ` · ${p.observacao}`}</div>
                     </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"#ffd60a",fontSize:14}}>{fmtBRL(p.valor)}</span>
-                    <button onClick={()=>remover(p.id)} style={{background:"#ff4d6d15",border:"1px solid #ff4d6d30",borderRadius:6,padding:"5px 7px",color:"#ff4d6d",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-warning)",fontSize:14}}>{fmtBRL(p.valor)}</span>
+                    <button onClick={()=>remover(p.id)} style={{background:"rgba(255,77,109,0.08)",border:"1px solid var(--ui-danger)30",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
                   </div>
                 </div>
               ))}
@@ -2051,20 +2051,20 @@ function TabPatrimonio({ userId, dados }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
           <div>
             <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Activity size={12} strokeWidth={2.5}/>EVOLUÇÃO DO PATRIMÔNIO</span></STitle>
-            <div style={{fontSize:12,color:"#a8a8b8"}}>Acompanhe sua jornada patrimonial ao longo do tempo</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>Acompanhe sua jornada patrimonial ao longo do tempo</div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             {[30,90,180,365].map(d => (
               <button key={d} onClick={()=>setPeriodo(d)} style={{
-                background:periodo===d?"#7b61ff":"#0a0a0f",
-                border:`1px solid ${periodo===d?"#7b61ff":"#252535"}`,
-                borderRadius:6,padding:"6px 12px",color:periodo===d?"#fff":"#7a7a8a",
+                background:periodo===d?"var(--ui-accent)":"var(--ui-bg-card)",
+                border:`1px solid ${periodo===d?"var(--ui-accent)":"var(--ui-bg-tertiary)"}`,
+                borderRadius:6,padding:"6px 12px",color:periodo===d?"var(--ui-text)":"var(--ui-text-faint)",
                 fontSize:11,fontWeight:600,cursor:"pointer"
               }}>{d}d</button>
             ))}
             <button onClick={salvarHoje} style={{
               background:"linear-gradient(135deg,#00e5a0,#00b4d8)",border:"none",borderRadius:6,
-              padding:"7px 12px",color:"#000",fontSize:11,fontWeight:700,cursor:"pointer",
+              padding:"7px 12px",color:"var(--ui-bg-input)",fontSize:11,fontWeight:700,cursor:"pointer",
               display:"flex",alignItems:"center",gap:5,marginLeft:6
             }}><Save size={12}/>Snapshot</button>
           </div>
@@ -2073,26 +2073,26 @@ function TabPatrimonio({ userId, dados }) {
 
       {snapshots.length >= 2 && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
-          <Stat label="ATUAL" value={fmtBRL(ultimo.valor)} color="#00e5a0" mono/>
-          <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"#00e5a0":"#ff4d6d"} mono/>
-          <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"#00e5a0":"#ff4d6d"} mono/>
-          <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="#ffd60a" mono/>
+          <Stat label="ATUAL" value={fmtBRL(ultimo.valor)} color="var(--ui-success)" mono/>
+          <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+          <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+          <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="var(--ui-warning)" mono/>
         </div>
       )}
 
       {loading ? (
-        <Card><Loader2 size={24} className="spin" color="#7b61ff" style={{margin:"40px auto",display:"block"}}/></Card>
+        <Card><Loader2 size={24} className="spin" color="var(--ui-accent)" style={{margin:"40px auto",display:"block"}}/></Card>
       ) : snapshots.length < 2 ? (
-        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-          <Activity size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <Activity size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:6}}>
             {snapshots.length === 0 ? "Nenhum snapshot ainda" : "Apenas 1 snapshot — precisamos de pelo menos 2 para gerar o gráfico"}
           </div>
-          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6,marginBottom:14}}>
+          <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.6,marginBottom:14}}>
             Os snapshots são tirados manualmente. Rode uma análise da carteira<br/>
-            e clique em <b style={{color:"#00e5a0"}}>Snapshot</b> para registrar seu patrimônio do dia.
+            e clique em <b style={{color:"var(--ui-success)"}}>Snapshot</b> para registrar seu patrimônio do dia.
           </div>
-          <div style={{color:"#5a5a6a",fontSize:11,fontStyle:"italic"}}>
+          <div style={{color:"var(--ui-text-disabled)",fontSize:11,fontStyle:"italic"}}>
             Dica: tire 1 snapshot por semana para acompanhar a evolução.
           </div>
         </Card>
@@ -2103,15 +2103,15 @@ function TabPatrimonio({ userId, dados }) {
             <AreaChart data={dadosGrafico} margin={{left:0,right:0,top:10,bottom:5}}>
               <defs>
                 <linearGradient id="gradPatrimonio" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7b61ff" stopOpacity={0.4}/>
-                  <stop offset="100%" stopColor="#7b61ff" stopOpacity={0}/>
+                  <stop offset="0%" stopColor="var(--ui-accent)" stopOpacity={0.4}/>
+                  <stop offset="100%" stopColor="var(--ui-accent)" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a25"/>
-              <XAxis dataKey="data" tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#7a7a8a",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)}/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+              <XAxis dataKey="data" tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)}/>
               <Tooltip content={<TTip/>}/>
-              <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="#7b61ff" strokeWidth={2} fill="url(#gradPatrimonio)"/>
+              <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="var(--ui-accent)" strokeWidth={2} fill="url(#gradPatrimonio)"/>
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -2210,7 +2210,7 @@ Ordene por score (maior primeiro).`;
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
-        <div style={{fontSize:12,color:"#a8a8b8",marginBottom:14,lineHeight:1.6}}>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
           A IA escaneia a B3 buscando ativos que se encaixam no critério escolhido. Use como ponto de partida para suas próprias análises.
         </div>
 
@@ -2221,15 +2221,15 @@ Ordene por score (maior primeiro).`;
             const ativo = filtros.tipo === k;
             return (
               <button key={k} onClick={()=>setFiltros({...filtros,tipo:k})} style={{
-                background:ativo?"#7b61ff15":"#0a0a14",
-                border:`1px solid ${ativo?"#7b61ff60":"#1a1a25"}`,
-                borderRadius:10,padding:"12px 14px",color:"#fff",cursor:"pointer",
+                background:ativo?"rgba(123,97,255,0.08)":"var(--ui-bg-card-2)",
+                border:`1px solid ${ativo?"#7b61ff60":"var(--ui-bg-secondary)"}`,
+                borderRadius:10,padding:"12px 14px",color:"var(--ui-text)",cursor:"pointer",
                 textAlign:"left",display:"flex",alignItems:"flex-start",gap:10
               }}>
-                <Icon size={18} color={ativo?"#7b61ff":"#7a7a8a"} strokeWidth={2}/>
+                <Icon size={18} color={ativo?"var(--ui-accent)":"var(--ui-text-faint)"} strokeWidth={2}/>
                 <div>
-                  <div style={{fontSize:12,fontWeight:700,marginBottom:3,color:ativo?"#fff":"#c5c5d0"}}>{cfg.titulo}</div>
-                  <div style={{fontSize:10,color:"#7a7a8a",lineHeight:1.4}}>{cfg.descricao}</div>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:3,color:ativo?"var(--ui-text)":"var(--ui-text-secondary)"}}>{cfg.titulo}</div>
+                  <div style={{fontSize:10,color:"var(--ui-text-faint)",lineHeight:1.4}}>{cfg.descricao}</div>
                 </div>
               </button>
             );
@@ -2239,13 +2239,13 @@ Ordene por score (maior primeiro).`;
         {/* Filtros adicionais */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
           <select value={filtros.perfil} onChange={e=>setFiltros({...filtros,perfil:e.target.value})}
-            style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer"}}>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer"}}>
             <option value="conservador">Conservador</option>
             <option value="moderado">Moderado</option>
             <option value="arrojado">Arrojado</option>
           </select>
           <select value={filtros.setor} onChange={e=>setFiltros({...filtros,setor:e.target.value})}
-            style={{background:"#000",border:"1px solid #252535",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#fff",cursor:"pointer"}}>
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer"}}>
             <option value="qualquer">Qualquer setor</option>
             <option value="bancos">Bancos</option>
             <option value="energia eletrica">Energia Elétrica</option>
@@ -2259,15 +2259,15 @@ Ordene por score (maior primeiro).`;
             <option value="imobiliário">Imobiliário (FIIs)</option>
           </select>
           <button onClick={buscar} disabled={loading} style={{
-            background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,
-            padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
+            background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,
+            padding:"10px 18px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8
           }}>
             {loading ? <><Loader2 size={14} className="spin"/>{fase || "Buscando..."}</> : <><Sparkles size={14} strokeWidth={2.5}/>Buscar oportunidades</>}
           </button>
         </div>
 
-        {erro && <div style={{background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,padding:"10px 14px",color:"#ff6b85",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
+        {erro && <div style={{background:"rgba(255,77,109,0.06)",border:"1px solid var(--ui-danger)30",borderRadius:8,padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
       </Card>
 
       {resultado && (
@@ -2275,9 +2275,9 @@ Ordene por score (maior primeiro).`;
           {resultado.contexto_macro && (
             <Card accent>
               <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Activity size={12} strokeWidth={2.5}/>CONTEXTO DO MERCADO</span></STitle>
-              <div style={{fontSize:13,color:"#a8a8b8",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.contexto_macro}</div>
+              <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{resultado.contexto_macro}</div>
               {resultado.criterios_usados && (
-                <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #1a1a25",fontSize:11,color:"#7a7a8a",fontStyle:"italic"}}>
+                <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid var(--ui-border-soft)",fontSize:11,color:"var(--ui-text-faint)",fontStyle:"italic"}}>
                   Critérios: {resultado.criterios_usados}
                 </div>
               )}
@@ -2295,9 +2295,9 @@ Ordene por score (maior primeiro).`;
                       <div style={{
                         padding:"4px 10px",borderRadius:6,fontWeight:800,fontSize:13,
                         fontFamily:"'JetBrains Mono',monospace",
-                        background:o.score>=80?"#00e5a020":o.score>=65?"#ffd60a20":"#ff4d6d20",
-                        color:o.score>=80?"#00e5a0":o.score>=65?"#ffd60a":"#ff4d6d",
-                        border:`1px solid ${o.score>=80?"#00e5a040":o.score>=65?"#ffd60a40":"#ff4d6d40"}`
+                        background:o.score>=80?"rgba(0,229,160,0.12)":o.score>=65?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
+                        color:o.score>=80?"var(--ui-success)":o.score>=65?"var(--ui-warning)":"var(--ui-danger)",
+                        border:`1px solid ${o.score>=80?"rgba(0,229,160,0.25)":o.score>=65?"rgba(255,214,10,0.25)":"rgba(255,77,109,0.25)"}`
                       }}>{o.score}</div>
                     </div>
 
@@ -2305,62 +2305,62 @@ Ordene por score (maior primeiro).`;
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                       <div style={{
                         width:28,height:28,borderRadius:7,
-                        background:i<3?"linear-gradient(135deg,#ffd60a,#f77f00)":"#1a1a25",
+                        background:i<3?"linear-gradient(135deg,#ffd60a,#f77f00)":"var(--ui-bg-secondary)",
                         display:"flex",alignItems:"center",justifyContent:"center",
-                        fontSize:12,fontWeight:800,color:i<3?"#000":"#7a7a8a"
+                        fontSize:12,fontWeight:800,color:i<3?"var(--ui-bg-input)":"var(--ui-text-faint)"
                       }}>#{i+1}</div>
                       <div>
-                        <div style={{fontWeight:800,color:"#fff",fontSize:16}}>{o.ticker}</div>
-                        <div style={{fontSize:10,color:"#7a7a8a"}}>{o.setor}</div>
+                        <div style={{fontWeight:800,color:"var(--ui-text)",fontSize:16}}>{o.ticker}</div>
+                        <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{o.setor}</div>
                       </div>
                     </div>
 
-                    <div style={{fontSize:11,color:"#a8a8b8",marginBottom:12,lineHeight:1.5}}>{o.nome}</div>
+                    <div style={{fontSize:11,color:"var(--ui-text-muted)",marginBottom:12,lineHeight:1.5}}>{o.nome}</div>
 
                     <div style={{
-                      background:"#000",border:"1px solid #1a1a25",borderRadius:8,padding:10,
+                      background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:10,
                       display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12
                     }}>
                       <div>
-                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>PREÇO</div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(o.preco)}</div>
+                        <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>PREÇO</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(o.preco)}</div>
                       </div>
                       {o.dy != null && <div>
-                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>DY</div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#ffd60a",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.dy,1)}%</div>
+                        <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>DY</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.dy,1)}%</div>
                       </div>}
                       {o.pl != null && <div>
-                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>P/L</div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pl,1)}</div>
+                        <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>P/L</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pl,1)}</div>
                       </div>}
                       {o.pvp != null && <div>
-                        <div style={{fontSize:9,color:"#5a5a6a",fontWeight:700,letterSpacing:0.5}}>P/VP</div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#7b61ff",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pvp,2)}</div>
+                        <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>P/VP</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pvp,2)}</div>
                       </div>}
                     </div>
 
                     {o.destaque && (
                       <div style={{display:"flex",gap:8,marginBottom:8}}>
-                        <CheckCircle2 size={14} color="#00e5a0" style={{flexShrink:0,marginTop:1}}/>
-                        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.5}}>{o.destaque}</div>
+                        <CheckCircle2 size={14} color="var(--ui-success)" style={{flexShrink:0,marginTop:1}}/>
+                        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5}}>{o.destaque}</div>
                       </div>
                     )}
 
                     {o.risco_principal && (
                       <div style={{display:"flex",gap:8,marginBottom:o.potencial_upside?8:0}}>
-                        <AlertCircle size={14} color="#ff4d6d" style={{flexShrink:0,marginTop:1}}/>
-                        <div style={{fontSize:12,color:"#a8a8b8",lineHeight:1.5}}>{o.risco_principal}</div>
+                        <AlertCircle size={14} color="var(--ui-danger)" style={{flexShrink:0,marginTop:1}}/>
+                        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5}}>{o.risco_principal}</div>
                       </div>
                     )}
 
                     {o.potencial_upside != null && (
                       <div style={{
                         marginTop:10,padding:"6px 10px",borderRadius:6,
-                        background:"#7b61ff10",border:"1px solid #7b61ff30",
+                        background:"rgba(123,97,255,0.06)",border:"1px solid var(--ui-accent)30",
                         display:"flex",alignItems:"center",justifyContent:"space-between"
                       }}>
-                        <span style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1}}>POTENCIAL UPSIDE</span>
-                        <span style={{fontSize:14,fontWeight:800,color:"#00e5a0",fontFamily:"'JetBrains Mono',monospace"}}>+{o.potencial_upside}%</span>
+                        <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>POTENCIAL UPSIDE</span>
+                        <span style={{fontSize:14,fontWeight:800,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>+{o.potencial_upside}%</span>
                       </div>
                     )}
                   </Card>
@@ -2369,17 +2369,17 @@ Ordene por score (maior primeiro).`;
             </>
           )}
 
-          {resultado.aviso && <div style={{background:"#ffd60a08",border:"1px solid #ffd60a18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"#ffd60a99",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"#ffd60a"}}/>{resultado.aviso}</div>}
+          {resultado.aviso && <div style={{background:"rgba(255,214,10,0.03)",border:"1px solid var(--ui-warning)18",borderRadius:10,padding:"12px 14px",fontSize:11,color:"rgba(255,214,10,0.6)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
 
       {!resultado && !loading && (
-        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed #252535"}}>
-          <Lightbulb size={36} color="#3a3a4a" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"#7a7a8a",fontSize:13,marginBottom:6}}>Descubra novas oportunidades de investimento</div>
-          <div style={{color:"#5a5a6a",fontSize:12,lineHeight:1.6}}>
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <Lightbulb size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:6}}>Descubra novas oportunidades de investimento</div>
+          <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.6}}>
             Escolha o tipo de oportunidade que busca acima<br/>
-            e clique em <b style={{color:"#7b61ff"}}>Buscar oportunidades</b>.
+            e clique em <b style={{color:"var(--ui-accent)"}}>Buscar oportunidades</b>.
           </div>
         </Card>
       )}
@@ -2653,20 +2653,20 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   }, [carteira, watchlist, aporte, foco, perfil]);
 
   const TABS = [
-    {k:"carteira",icon:Briefcase,label:"Carteira",cor:"#00e5a0",grupo:"portfolio"},
-    {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"#00e5a0",grupo:"portfolio"},
-    {k:"graficos",icon:BarChart3,label:"Gráficos",cor:"#00e5a0",grupo:"portfolio"},
-    {k:"analise",icon:Brain,label:"Análise IA",cor:"#7b61ff",grupo:"analysis"},
-    {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"#7b61ff",grupo:"analysis"},
-    {k:"comparador",icon:GitCompare,label:"Comparador",cor:"#7b61ff",grupo:"analysis"},
-    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"#7b61ff",grupo:"analysis"},
-    {k:"historico",icon:History,label:"Histórico",cor:"#ffd60a",grupo:"control"},
-    {k:"proventos",icon:Coins,label:"Proventos",cor:"#ffd60a",grupo:"control"},
-    {k:"watchlist",icon:Eye,label:"Watchlist",cor:"#ffd60a",grupo:"control"},
-    {k:"universo",icon:Globe,label:"Universo",cor:"#ffd60a",grupo:"control"},
-    {k:"ir",icon:Receipt,label:"IR",cor:"#ffd60a",grupo:"control"},
-    {k:"meta",icon:Target,label:"1º Milhão",cor:"#00b4d8",grupo:"planning"},
-    {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"#00b4d8",grupo:"planning"},
+    {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
+    {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"var(--ui-success)",grupo:"portfolio"},
+    {k:"graficos",icon:BarChart3,label:"Gráficos",cor:"var(--ui-success)",grupo:"portfolio"},
+    {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
+    {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
+    {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
+    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"var(--ui-accent)",grupo:"analysis"},
+    {k:"historico",icon:History,label:"Histórico",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"proventos",icon:Coins,label:"Proventos",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"watchlist",icon:Eye,label:"Watchlist",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"meta",icon:Target,label:"1º Milhão",cor:"var(--ui-info)",grupo:"planning"},
+    {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
   ];
 
   // Métricas para a barra superior
@@ -2714,9 +2714,9 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         *{box-sizing:border-box;margin:0;padding:0}
         body{background:var(--ui-bg);transition:background .2s ease}
         ::-webkit-scrollbar{width:8px;height:8px}
-        ::-webkit-scrollbar-track{background:#000000}
-        ::-webkit-scrollbar-thumb{background:#252535;border-radius:4px}
-        ::-webkit-scrollbar-thumb:hover{background:#3a3a45}
+        ::-webkit-scrollbar-track{background:var(--ui-bg)}
+        ::-webkit-scrollbar-thumb{background:var(--ui-bg-tertiary);border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:var(--ui-bg-strong)}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideIn{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
@@ -2727,12 +2727,36 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
         input,select,button,textarea{outline:none;font-family:inherit}
-        input:focus,select:focus{border-color:#7b61ff!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
+        input:focus,select:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
         button:hover:not(:disabled){filter:brightness(1.1)}
         .tab-btn{transition:all .15s ease}
-        .tab-btn:hover{background:#1a1a25!important;color:#a0a0c0!important}
+        .tab-btn:hover{background:var(--ui-bg-secondary)!important;color:var(--ui-text-secondary)!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
-        .card-hover:hover{border-color:#3a3a45!important;transform:translateY(-1px)}
+        .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-1px)}
+
+        /* Inputs e selects respeitam tema globalmente */
+        input, select, textarea {
+          color: var(--ui-text);
+        }
+        input::placeholder, textarea::placeholder {
+          color: var(--ui-text-disabled);
+          opacity: 1;
+        }
+        /* No light mode, inputs com background preto ficam brancos */
+        [data-theme="light"] input[style*="background:var(--ui-bg-input)"],
+        [data-theme="light"] select[style*="background:var(--ui-bg-input)"],
+        [data-theme="light"] textarea[style*="background:var(--ui-bg-input)"] {
+          background: var(--ui-bg-input) !important;
+          color: var(--ui-text) !important;
+        }
+        /* Dropdowns */
+        select option {
+          background: var(--ui-bg-card);
+          color: var(--ui-text);
+        }
+        /* No light mode, recharts adapta */
+        [data-theme="light"] .recharts-cartesian-axis-tick-value { fill: var(--ui-text-faint) !important; }
+        [data-theme="light"] .recharts-cartesian-grid line { stroke: var(--ui-border) !important; }
       `}</style>
 
       {/* TOP BAR - Estilo TradingView */}
@@ -2753,7 +2777,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               width:36,height:36,borderRadius:8,
               background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
               display:"flex",alignItems:"center",justifyContent:"center",
-              color:"#000000"
+              color:"var(--ui-bg-input)"
             }}><Sparkles size={20} strokeWidth={2.5}/></div>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
@@ -2878,20 +2902,20 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       <div style={{padding:"20px 24px",maxWidth:1600,margin:"0 auto"}}>
         {/* PAINEL DE ANÁLISE - Horizontal */}
         <div className="anim" style={{
-          background:"#0a0a0f",border:"1px solid #252535",borderRadius:12,
+          background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:12,
           padding:"16px 20px",marginBottom:20,
           display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"
         }}>
           <div style={{flex:"1 1 200px",minWidth:160}}>
-            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
+            <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR DO APORTE</div>
             <input type="text" placeholder="R$ 0,00" value={aporte} onChange={handleAporte}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
-                padding:"10px 14px",fontSize:18,color:"#ffffff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,
+                padding:"10px 14px",fontSize:18,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
             <div style={{display:"flex",gap:5,marginTop:7}}>
               {[500,1000,2000,5000].map(vv => (
                 <button key={vv} onClick={()=>setAporte(vv.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}))}
-                  style={{flex:1,background:"#000000",border:"1px solid #252535",borderRadius:5,
-                    padding:"5px 0",fontSize:10,color:"#9090a0",cursor:"pointer",
+                  style={{flex:1,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:5,
+                    padding:"5px 0",fontSize:10,color:"var(--ui-text-muted)",cursor:"pointer",
                     fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>
                   {fmtK(vv)}
                 </button>
@@ -2899,13 +2923,13 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             </div>
           </div>
 
-          <div style={{width:1,alignSelf:"stretch",background:"#1a1a25"}}/>
+          <div style={{width:1,alignSelf:"stretch",background:"var(--ui-bg-secondary)"}}/>
 
           <div style={{flex:"1 1 160px",minWidth:140}}>
-            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
+            <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>PERFIL</div>
             <select value={perfil} onChange={e=>setPerfil(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
-                padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer",fontWeight:600}}>
               <option value="conservador">Conservador</option>
               <option value="moderado">Moderado</option>
               <option value="arrojado">Arrojado</option>
@@ -2913,10 +2937,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           </div>
 
           <div style={{flex:"1 1 160px",minWidth:140}}>
-            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>FOCO</div>
+            <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>FOCO</div>
             <select value={foco} onChange={e=>setFoco(e.target.value)}
-              style={{width:"100%",background:"#000000",border:"1px solid #252535",borderRadius:8,
-                padding:"10px 12px",fontSize:13,color:"#ffffff",cursor:"pointer",fontWeight:600}}>
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,
+                padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer",fontWeight:600}}>
               <option value="acoes">Ações</option>
               <option value="fiis">FIIs</option>
               <option value="misto">Misto</option>
@@ -2924,20 +2948,20 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
           </div>
 
           <div style={{flex:"2 1 280px",minWidth:240}}>
-            <div style={{fontSize:10,color:"#7a7a8a",fontWeight:700,letterSpacing:1,marginBottom:6}}>&nbsp;</div>
+            <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,marginBottom:6}}>&nbsp;</div>
             <button onClick={analisar} disabled={loading}
               style={{
                 width:"100%",
-                background:loading?"#1a1a25":"linear-gradient(135deg,#7b61ff,#5540dd)",
-                border:"none",borderRadius:8,padding:"12px 18px",color:"#ffffff",
+                background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",
+                border:"none",borderRadius:8,padding:"12px 18px",color:"var(--ui-text)",
                 fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
                 boxShadow:loading?"none":"0 4px 14px rgba(123,97,255,0.35)",
                 display:"flex",alignItems:"center",justifyContent:"center",gap:10
               }}>
               {loading
                 ? <>
-                    <span className="spin" style={{width:14,height:14,borderRadius:"50%",border:"2px solid #7b61ff44",borderTopColor:"#7b61ff",display:"inline-block"}}/>
-                    <span style={{fontSize:12,color:"#c5c5d0"}}>{fase||"Analisando..."}</span>
+                    <span className="spin" style={{width:14,height:14,borderRadius:"50%",border:"2px solid rgba(123,97,255,0.27)",borderTopColor:"var(--ui-accent)",display:"inline-block"}}/>
+                    <span style={{fontSize:12,color:"var(--ui-text-secondary)"}}>{fase||"Analisando..."}</span>
                   </>
                 : <><Sparkles size={16} strokeWidth={2.5}/> <span>Analisar{carteira.length>0?` carteira (${carteira.length})`:" mercado"}</span></>
               }
@@ -2947,8 +2971,8 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {erro && (
           <div style={{
-            background:"#ff4d6d10",border:"1px solid #ff4d6d30",borderRadius:8,
-            padding:"10px 14px",color:"#ff6b85",fontSize:12,marginBottom:16,
+            background:"rgba(255,77,109,0.06)",border:"1px solid var(--ui-danger)30",borderRadius:8,
+            padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,marginBottom:16,
             display:"flex",alignItems:"center",gap:8
           }}><AlertCircle size={14} strokeWidth={2.2}/>{erro}</div>
         )}
@@ -3022,10 +3046,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         {/* Footer */}
         <div style={{
-          marginTop:40,padding:"20px 0",borderTop:"1px solid #1a1a25",
-          textAlign:"center",fontSize:11,color:"#5a5a6a"
+          marginTop:40,padding:"20px 0",borderTop:"1px solid var(--ui-border-soft)",
+          textAlign:"center",fontSize:11,color:"var(--ui-text-disabled)"
         }}>
-          Powered by <span style={{color:"#7b61ff",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
+          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Pro</span> + Google Search · 
           Cotações em tempo real · Confirme preços na sua corretora antes de operar
         </div>
       </div>
@@ -3034,7 +3058,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 }
 
 // Componente Metric para a barra superior
-function Metric({ label, value, accent, sparkline, sparkColor = "#7b61ff" }) {
+function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)" }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
       <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:1.5}}>{label}</div>

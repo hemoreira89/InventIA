@@ -4,14 +4,14 @@ import { Loader2, CheckCircle2, Circle } from "lucide-react";
  * LoadingSteps - mostra etapas de uma operação longa com progresso visual
  * Substitui o "Carregando..." genérico
  */
-export default function LoadingSteps({ steps, currentStep = 0, accent = "#7b61ff" }) {
+export default function LoadingSteps({ steps, currentStep = 0, accent = "var(--ui-accent)" }) {
   return (
     <div style={{
       display: "flex",
       flexDirection: "column",
       gap: 10,
       padding: "20px 24px",
-      background: "#0a0a0f",
+      background: "var(--ui-bg-card)",
       border: `1px solid ${accent}30`,
       borderRadius: 12,
       maxWidth: 480,
@@ -37,9 +37,9 @@ export default function LoadingSteps({ steps, currentStep = 0, accent = "#7b61ff
           >
             {/* Ícone do step */}
             <div style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {isDone && <CheckCircle2 size={20} color="#00e5a0" strokeWidth={2.2}/>}
+              {isDone && <CheckCircle2 size={20} color="var(--ui-success)" strokeWidth={2.2}/>}
               {isActive && <Loader2 size={20} className="spin" color={accent} strokeWidth={2.2}/>}
-              {isPending && <Circle size={18} color="#3a3a4a" strokeWidth={1.5}/>}
+              {isPending && <Circle size={18} color="var(--ui-bg-strong)" strokeWidth={1.5}/>}
             </div>
 
             {/* Texto */}
@@ -47,11 +47,11 @@ export default function LoadingSteps({ steps, currentStep = 0, accent = "#7b61ff
               <div style={{
                 fontSize: 13,
                 fontWeight: isActive ? 700 : 500,
-                color: isDone ? "#00e5a0" : isActive ? "#ffffff" : "#7a7a8a",
+                color: isDone ? "var(--ui-success)" : isActive ? "var(--ui-text)" : "var(--ui-text-faint)",
                 transition: "color .3s ease"
               }}>{step.label}</div>
               {step.detail && isActive && (
-                <div style={{ fontSize: 11, color: "#7a7a8a", marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: "var(--ui-text-faint)", marginTop: 2 }}>
                   {step.detail}
                 </div>
               )}
@@ -60,7 +60,7 @@ export default function LoadingSteps({ steps, currentStep = 0, accent = "#7b61ff
             {/* Step badge */}
             <div style={{
               fontSize: 10,
-              color: "#5a5a6a",
+              color: "var(--ui-text-disabled)",
               fontFamily: "'JetBrains Mono', monospace",
               fontWeight: 700
             }}>
@@ -74,7 +74,7 @@ export default function LoadingSteps({ steps, currentStep = 0, accent = "#7b61ff
       <div style={{
         marginTop: 8,
         height: 3,
-        background: "#1a1a25",
+        background: "var(--ui-bg-secondary)",
         borderRadius: 2,
         overflow: "hidden"
       }}>

@@ -136,8 +136,8 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
         onClick={e => e.stopPropagation()}
         className="anim"
         style={{
-          background: "#0a0a0f",
-          border: "1px solid #252535",
+          background: "var(--ui-bg-card)",
+          border: "1px solid var(--ui-border)",
           borderRadius: 14,
           width: "100%",
           maxWidth: 580,
@@ -150,12 +150,12 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
         {/* Input de busca */}
         <div style={{
           padding: "16px 20px",
-          borderBottom: "1px solid #1a1a25",
+          borderBottom: "1px solid var(--ui-border-soft)",
           display: "flex",
           alignItems: "center",
           gap: 12
         }}>
-          <Search size={18} color="#7a7a8a"/>
+          <Search size={18} color="var(--ui-text-faint)"/>
           <input
             ref={inputRef}
             type="text"
@@ -167,18 +167,18 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
               background: "transparent",
               border: "none",
               outline: "none",
-              color: "#ffffff",
+              color: "var(--ui-text)",
               fontSize: 15,
               fontFamily: "'Inter', sans-serif"
             }}
           />
           <kbd style={{
-            background: "#1a1a25",
-            border: "1px solid #252535",
+            background: "var(--ui-bg-secondary)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 4,
             padding: "2px 8px",
             fontSize: 10,
-            color: "#7a7a8a",
+            color: "var(--ui-text-faint)",
             fontFamily: "'JetBrains Mono', monospace"
           }}>ESC</kbd>
         </div>
@@ -189,7 +189,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
             <div style={{
               padding: "40px 20px",
               textAlign: "center",
-              color: "#7a7a8a",
+              color: "var(--ui-text-faint)",
               fontSize: 13
             }}>
               Nenhum resultado para "{query}"
@@ -200,7 +200,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
                 <div style={{
                   padding: "10px 20px 6px",
                   fontSize: 10,
-                  color: "#5a5a6a",
+                  color: "var(--ui-text-disabled)",
                   fontWeight: 700,
                   letterSpacing: 1.5,
                   textTransform: "uppercase"
@@ -215,27 +215,27 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
                       onMouseEnter={() => setSelectedIndex(item.originalIndex)}
                       style={{
                         width: "100%",
-                        background: isSelected ? "#7b61ff15" : "transparent",
+                        background: isSelected ? "rgba(123,97,255,0.08)" : "transparent",
                         border: "none",
                         padding: "10px 20px",
                         display: "flex",
                         alignItems: "center",
                         gap: 12,
                         cursor: "pointer",
-                        borderLeft: `2px solid ${isSelected ? "#7b61ff" : "transparent"}`,
+                        borderLeft: `2px solid ${isSelected ? "var(--ui-accent)" : "transparent"}`,
                         textAlign: "left",
                         transition: "background .1s"
                       }}
                     >
-                      <Icon size={16} color={isSelected ? "#7b61ff" : "#a8a8b8"} strokeWidth={2}/>
+                      <Icon size={16} color={isSelected ? "var(--ui-accent)" : "var(--ui-text-muted)"} strokeWidth={2}/>
                       <span style={{
                         flex: 1,
-                        color: isSelected ? "#ffffff" : "#c5c5d0",
+                        color: isSelected ? "var(--ui-text)" : "var(--ui-text-secondary)",
                         fontSize: 13,
                         fontWeight: isSelected ? 600 : 500
                       }}>{item.label}</span>
                       {isSelected && (
-                        <ArrowRight size={14} color="#7b61ff"/>
+                        <ArrowRight size={14} color="var(--ui-accent)"/>
                       )}
                     </button>
                   );
@@ -248,22 +248,22 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
         {/* Footer com atalhos */}
         <div style={{
           padding: "10px 20px",
-          borderTop: "1px solid #1a1a25",
+          borderTop: "1px solid var(--ui-border-soft)",
           display: "flex",
           gap: 16,
           fontSize: 10,
-          color: "#5a5a6a"
+          color: "var(--ui-text-disabled)"
         }}>
           <span style={{display:"flex",alignItems:"center",gap:5}}>
-            <kbd style={{background:"#1a1a25",border:"1px solid #252535",borderRadius:3,padding:"1px 5px",fontFamily:"'JetBrains Mono',monospace"}}>↑↓</kbd>
+            <kbd style={{background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:3,padding:"1px 5px",fontFamily:"'JetBrains Mono',monospace"}}>↑↓</kbd>
             navegar
           </span>
           <span style={{display:"flex",alignItems:"center",gap:5}}>
-            <kbd style={{background:"#1a1a25",border:"1px solid #252535",borderRadius:3,padding:"1px 5px",fontFamily:"'JetBrains Mono',monospace"}}>↵</kbd>
+            <kbd style={{background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:3,padding:"1px 5px",fontFamily:"'JetBrains Mono',monospace"}}>↵</kbd>
             selecionar
           </span>
           <span style={{flex:1, textAlign:"right"}}>
-            Dica: digite um ticker (ex: <b style={{color:"#7b61ff"}}>PETR4</b>) para análise rápida
+            Dica: digite um ticker (ex: <b style={{color:"var(--ui-accent)"}}>PETR4</b>) para análise rápida
           </span>
         </div>
       </div>

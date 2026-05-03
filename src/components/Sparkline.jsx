@@ -6,7 +6,7 @@ export default function Sparkline({
   data = [],
   width = 80,
   height = 24,
-  color = "#7b61ff",
+  color = "var(--ui-accent)",
   strokeWidth = 1.5,
   showArea = true
 }) {
@@ -17,7 +17,7 @@ export default function Sparkline({
         <line
           x1={0} y1={height/2}
           x2={width} y2={height/2}
-          stroke="#252535"
+          stroke="var(--ui-bg-tertiary)"
           strokeWidth={1}
           strokeDasharray="2 3"
         />
@@ -45,7 +45,7 @@ export default function Sparkline({
   // Detecta tendência
   const isUp = data[data.length - 1] >= data[0];
   const finalColor = color === "auto"
-    ? (isUp ? "#00e5a0" : "#ff4d6d")
+    ? (isUp ? "var(--ui-success)" : "var(--ui-danger)")
     : color;
 
   const gradId = `spark-${Math.random().toString(36).slice(2, 9)}`;
