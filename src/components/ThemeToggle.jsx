@@ -66,26 +66,28 @@ export const THEME_CSS = `
     --ui-bg-elevated: #ffffff;
     --ui-bg-secondary: #f0f2f5;
     --ui-bg-tertiary: #e8eaed;
-    --ui-bg-strong: #d1d5db;
+    --ui-bg-strong: #cbd5e0;
 
+    /* Texto - escurecido para melhor contraste no light */
     --ui-text: #0f1419;
-    --ui-text-secondary: #2d3748;
-    --ui-text-muted: #4a5568;
-    --ui-text-faint: #718096;
-    --ui-text-disabled: #a0aec0;
+    --ui-text-secondary: #1a202c;
+    --ui-text-muted: #2d3748;
+    --ui-text-faint: #4a5568;
+    --ui-text-disabled: #718096;
 
-    --ui-border: #e2e8f0;
-    --ui-border-strong: #cbd5e0;
-    --ui-border-soft: #f0f2f5;
+    --ui-border: #d1d5db;
+    --ui-border-strong: #9ca3af;
+    --ui-border-soft: #e5e7eb;
 
+    /* Accent - mais escuro para contraste no fundo claro */
     --ui-accent: #5b3df5;
-    --ui-success: #00a878;
+    --ui-success: #059669;
     --ui-warning: #d97706;
     --ui-danger: #dc2626;
     --ui-info: #0284c7;
 
-    --ui-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-    --ui-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --ui-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
 
     color-scheme: light;
   }

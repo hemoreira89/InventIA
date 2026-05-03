@@ -225,7 +225,7 @@ function ToastContainer() {
           <div key={t.id} className="anim" style={{
             background:"var(--ui-bg-card)",border:`1px solid ${cor}50`,borderRadius:10,
             padding:"12px 16px",display:"flex",alignItems:"center",gap:10,
-            boxShadow:`0 8px 24px ${cor}20, 0 0 0 1px #000`,
+            boxShadow:`0 8px 24px ${cor}20, var(--ui-shadow-md)`,
             minWidth:240
           }}>
             <Icon size={18} color={cor} strokeWidth={2.2}/>
@@ -276,7 +276,7 @@ function ConfirmModal({ open, titulo, mensagem, onConfirm, onCancel, perigoso = 
 }
 
 function STitle({ children, color="var(--ui-accent)" }) {
-  return <div style={{fontSize:10,color,fontWeight:700,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>{children}</div>;
+  return <div style={{fontSize:11,color,fontWeight:800,letterSpacing:1.2,marginBottom:12,textTransform:"uppercase"}}>{children}</div>;
 }
 
 function Stat({ label, value, color, mono=false }) {
@@ -489,7 +489,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           <input type="date" value={data} onChange={e=>setData(e.target.value)}
             style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Registrar Compra</>
         </button>
       </Card>
@@ -775,7 +775,7 @@ function TabMeta({ dados }) {
           </div>
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:10}}>Patrimônio atual: <span style={{color:"var(--ui-success)",fontWeight:700}}>{fmtBRL(pv)}</span> incluído</div>}
-        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"var(--ui-bg-input)",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"13px",color:"#1a1a25",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Calcular Minha Meta</>
         </button>
       </Card>
@@ -847,7 +847,7 @@ function TabCenarios({ dados }) {
           </div>
         </div>
         {pv > 0 && <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:10}}>Ponto de partida: <span style={{color:"var(--ui-success)",fontWeight:700}}>{fmtBRL(pv)}</span></div>}
-        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"var(--ui-text)",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+        <button onClick={simular} style={{width:"100%",background:"linear-gradient(135deg,#00b4d8,#0077a8)",border:"none",borderRadius:9,padding:"13px",color:"#ffffff",fontWeight:800,fontSize:14,cursor:"pointer"}}>
           <><Sparkles size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Cenários</>
         </button>
       </Card>
@@ -953,7 +953,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
           <input placeholder="Nota (opcional)" value={nota} onChange={e=>setNota(e.target.value)}
             style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
-        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={add} style={{width:"100%",background:"linear-gradient(135deg,#e040fb,#9c27b0)",border:"none",borderRadius:9,padding:"12px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Adicionar à Watchlist</>
         </button>
       </Card>
@@ -1033,7 +1033,7 @@ function TabIR({ dados }) {
               style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           ))}
         </div>
-        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"var(--ui-bg-input)",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+        <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:9,padding:"11px",color:"#1a1a25",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
         </button>
       </Card>
@@ -1329,7 +1329,7 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
             onKeyDown={e=>e.key==="Enter"&&analisar()}
             style={{flex:1,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"12px 16px",fontSize:16,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
           />
-          <button onClick={analisar} disabled={loading} style={{background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"var(--ui-text)",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={analisar} disabled={loading} style={{background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
             {loading ? <Loader2 size={15} className="spin"/> : <Sparkles size={15} strokeWidth={2.5}/>}
             {loading ? fase || "Analisando..." : "Analisar"}
           </button>
@@ -1568,7 +1568,7 @@ PASSO 3 — Retorne APENAS este JSON:
             />
           ))}
         </div>
-        <button onClick={comparar} disabled={loading} style={{width:"100%",background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"13px",color:"var(--ui-text)",fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <button onClick={comparar} disabled={loading} style={{width:"100%",background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"13px",color:"#ffffff",fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {loading ? <><Loader2 size={15} className="spin"/>{fase || "Comparando..."}</> : <><GitCompare size={15} strokeWidth={2.5}/>Comparar Ativos</>}
         </button>
         {erro && <div style={{marginTop:10,background:"rgba(255,77,109,0.06)",border:"1px solid var(--ui-danger)30",borderRadius:8,padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,display:"flex",alignItems:"center",gap:8}}><AlertCircle size={14}/>{erro}</div>}
@@ -1910,7 +1910,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
               <input type="date" value={data} onChange={e=>setData(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
             </div>
             <input type="text" placeholder="Observação (opcional)" value={obs} onChange={e=>setObs(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}/>
-            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"var(--ui-bg-secondary)":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"var(--ui-bg-input)",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <button onClick={adicionar} disabled={salvando || !ticker || !valor || !data} style={{background:salvando?"var(--ui-bg-secondary)":"linear-gradient(135deg,#ffd60a,#f77f00)",border:"none",borderRadius:8,padding:"11px",color:"#1a1a25",fontWeight:700,fontSize:13,cursor:salvando?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {salvando ? <Loader2 size={14} className="spin"/> : <Plus size={14} strokeWidth={2.5}/>}
               Registrar
             </button>
@@ -2762,9 +2762,10 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
       {/* TOP BAR - Estilo TradingView */}
       <div style={{
         position:"sticky",top:0,zIndex:100,
-        background: themeApi.isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.92)",
+        background: themeApi.isLight ? "rgba(255,255,255,0.96)" : "rgba(0,0,0,0.92)",
         backdropFilter:"blur(20px)",
-        borderBottom:"1px solid var(--ui-border)"
+        borderBottom:"1px solid var(--ui-border)",
+        boxShadow: themeApi.isLight ? "0 1px 3px rgba(0,0,0,0.04)" : "none"
       }}>
         {/* Linha 1: Brand + Métricas + Status */}
         <div style={{
@@ -2953,7 +2954,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               style={{
                 width:"100%",
                 background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",
-                border:"none",borderRadius:8,padding:"12px 18px",color:"var(--ui-text)",
+                border:"none",borderRadius:8,padding:"12px 18px",color:"#ffffff",
                 fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
                 boxShadow:loading?"none":"0 4px 14px rgba(123,97,255,0.35)",
                 display:"flex",alignItems:"center",justifyContent:"center",gap:10
@@ -3061,7 +3062,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)" }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
-      <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:1.5}}>{label}</div>
+      <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{
           fontSize:14,fontWeight:700,
