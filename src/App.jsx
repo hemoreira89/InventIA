@@ -669,7 +669,8 @@ function detectarSetorPorPalavraChave(s) {
   if (/banc|financ/.test(lower)) return "Financeiro";
   if (/petr[óo]leo|miner|gás|gas|combust/.test(lower)) return "Petróleo & Mineração";
   if (/energia|el[eé]trica|distribu/.test(lower)) return "Energia";
-  if (/imobili|fii|log[íi]stica|shopping|lajes|h[íi]brido|papel/.test(lower)) return "Fundos Imobiliários";
+  // FIIs: logístico/logística, papel/papéis, shopping, galpões, lajes, híbrido, indústria
+  if (/imobili|fii|log[íi]stic[oa]|shopping|lajes|h[íi]brido|pap[eé]is|pap[eé]l|galp[ãa]o|galp[õo]es|ind[úu]stria/.test(lower)) return "Fundos Imobiliários";
   if (/sane|[áa]gua/.test(lower)) return "Saneamento";
   if (/sa[úu]de|hospital|farma/.test(lower)) return "Saúde";
   if (/varejo|consumo|aliment/.test(lower)) return "Consumo";
