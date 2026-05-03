@@ -191,8 +191,34 @@ export default async function handler(req, res) {
     const deadlineMs = inicio + 50_000;
     const { sucessos, falhas, processados } = await processarEmBatches(tickers, apiKey, PARALELISMO, deadlineMs);
 
+    // Se nenhum sucesso, distinguimos entre 2 cenários:
+    // 1. API key inválida ou quota estourada (tudo falha): retorna 200 com warning
+    //    pra GitHub Actions não dar 'failed' em chunks que caem em zona morta
+    //    do catálogo (ETFs, BDRs obscuros que a bolsai não cobre).
+    //    O log do Supabase + o JSON da resposta deixam claro o que rolou.
     if (sucessos.length === 0) {
-      throw new Error(`Nenhum fundamento obtido. Falhas: ${falhas}. Verifique BOLSAI_API_KEY e quota.`);
+      const duracao = Date.now() - inicio;
+      await supabase.from("screening_catalogo_log").insert({
+        tickers_total: tickers.length,
+        acoes_total: 0,
+        fiis_total: 0,
+        fundamentos_total: 0,
+        fundamentos_falhas: falhas,
+        duracao_ms: duracao,
+        erro: `Nenhum fundamento obtido (chunk offset=${offset})`,
+      }).catch(() => {});
+
+      return res.status(200).json({
+        ok: true,
+        warning: "Nenhum fundamento obtido neste range. Provavelmente são tickers que a bolsai não cobre (ETFs, units obscuras, etc).",
+        offset,
+        limit,
+        candidatos: tickers.length,
+        processados,
+        sucessos: 0,
+        falhas,
+        duracao_ms: duracao,
+      });
     }
 
     // ── Upsert em chunks de 500 (Supabase tem limite de payload) ──

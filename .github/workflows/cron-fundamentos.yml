@@ -18,15 +18,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
-    # Estratégia: 7 chunks de 200 tickers cada.
+    # Estratégia: 5 chunks de 200 tickers cada (cobre os 1000 mais líquidos).
     # 200 tickers × 2 reqs (fundamentals + companies) = 400 reqs paralelas
     # Em paralelismo 50 = 8 batches sequenciais × ~3s = ~25s total
     # Cabe folgado nos 60s de timeout do Vercel Hobby.
-    # 7 chunks × 200 = 1400 tickers cobertos (mais que o catálogo todo).
+    #
+    # Por que parar em offset=800 (e não cobrir 1000+):
+    # - A bolsai cobre ~750 tickers úteis (ações + FIIs com fundamentos).
+    # - Acima do offset ~800 começa zona morta (units obscuras, ETFs sem
+    #   fundamentos na bolsai), e tickers líquidos com volume alto que
+    #   simplesmente não estão na base da bolsai.
+    # - Cobrir offset 0-999 já pega os ativos mais relevantes pra screening.
     strategy:
       fail-fast: false
       matrix:
-        offset: [0, 200, 400, 600, 800, 1000, 1200]
+        offset: [0, 200, 400, 600, 800]
 
     steps:
       - name: Disparar chunk
