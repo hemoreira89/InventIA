@@ -44,6 +44,7 @@ import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes } from "./lib/cotacoes";
+import { buscarFundamentos } from "./lib/fundamentos";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
@@ -3110,11 +3111,11 @@ export default function App({ session, onLogout }) {
   const privacy = usePrivacyMode();
   const themeApi = useTheme();
 
-  // Cotações ao vivo + fundamentos (usado para alimentar prompts e validações de critérios)
+  // Cotações ao vivo da carteira (preço/variação via brapi)
+  // Fundamentos vêm da bolsai via buscarFundamentos quando necessário
   const tickersCarteira = carteira.map(a => a.ticker);
   const { cotacoes: cotacoesGlobais } = useCotacoes(tickersCarteira, {
     intervalMs: 60000,
-    comFundamentos: true,
   });
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
@@ -3360,39 +3361,74 @@ Regras:
       setFase("🧠 Gemini 2.5 Pro analisando...");
       const analise = await chamarIAComSearch(prompt);
 
-      // Busca fundamentos reais para os tickers recomendados (sobrescreve chutes da IA)
+      // Busca cotação atual (brapi) E fundamentos reais (bolsai) em paralelo
       const tickersRecs = (analise.recomendacoes || []).map(r => r.ticker).filter(Boolean);
+      let cotacoesReais = {};
       let fundamentosReais = {};
       if (tickersRecs.length > 0) {
-        setFase("📊 Buscando fundamentos reais...");
+        setFase("📊 Buscando cotações e fundamentos reais...");
         try {
-          const dadosBrapi = await buscarCotacoes(tickersRecs, { comFundamentos: true });
-          fundamentosReais = dadosBrapi;
+          // Paraleliza: brapi para preço/variação + bolsai para indicadores fundamentalistas
+          const [dadosCotacoes, dadosFundamentos] = await Promise.all([
+            buscarCotacoes(tickersRecs).catch(e => {
+              console.warn("brapi falhou:", e.message);
+              return {};
+            }),
+            buscarFundamentos(tickersRecs).catch(e => {
+              console.warn("bolsai falhou:", e.message);
+              return {};
+            })
+          ]);
+          cotacoesReais = dadosCotacoes;
+          fundamentosReais = dadosFundamentos;
         } catch (e) {
-          console.warn("Falhou ao buscar fundamentos reais:", e.message);
+          console.warn("Falhou ao buscar dados externos:", e.message);
         }
       }
 
       // Enriquecer recomendações com unidades calculadas + fundamentos reais
       const recsEnriquecidas = (analise.recomendacoes || []).map(r => {
-        const dadosReais = fundamentosReais[r.ticker];
-        const fund = dadosReais?.fundamentos;
+        const cot = cotacoesReais[r.ticker];
+        const fund = fundamentosReais[r.ticker];
+        const ehFII = fund?.tipo === "FII" || /11$/.test(r.ticker || "");
 
         // Sobrescreve chutes da IA com dados reais quando disponíveis
-        // Mantém valor da IA como fallback se brapi não retornou
+        // Mantém valor da IA como fallback se nenhuma fonte externa retornou
         const enriquecido = {
           ...r,
           // Preço real da brapi (tem prioridade sobre o que a IA disse)
-          precoReal: dadosReais?.preco ?? r.precoReal ?? r.precoEstimado,
-          // Indicadores fundamentalistas reais (sobrescrevem só se brapi tiver dado)
-          dy: fund?.dy ?? r.dy,
+          precoReal: cot?.preco ?? r.precoReal ?? r.precoEstimado,
+
+          // Indicadores fundamentalistas reais da bolsai (sobrescrevem chutes da IA)
+          // P/L, P/VP funcionam para ações e FIIs
           pl: fund?.pl ?? r.pl,
           pvp: fund?.pvp ?? r.pvp,
-          roe: fund?.roe ?? r.roe,
-          margemLiquida: fund?.margemLiquida ?? r.margemLiquida,
-          divEbitda: fund?.divEbitda ?? r.divEbitda,
-          // Marca origem dos dados (útil para debug/UI futura)
-          fonteDados: fund ? "brapi" : "ia",
+
+          // Específicos por tipo
+          ...(ehFII ? {
+            // FII: DY do bolsai é dividend_yield_ttm (12 meses)
+            dy: fund?.dy ?? r.dy,
+            // vacancia e liquidez não vêm do bolsai - mantém o que a IA chutou
+            vacancia: r.vacancia ?? null,
+            liquidez: r.liquidez ?? null,
+          } : {
+            // Ação: indicadores fundamentalistas reais
+            dy: r.dy, // bolsai não retorna DY direto pra ações
+            roe: fund?.roe ?? r.roe,
+            margemLiquida: fund?.margemLiquida ?? r.margemLiquida,
+            divEbitda: fund?.divEbitda ?? r.divEbitda,
+            // Bonus: lucros consistentes derivado do CAGR 5 anos
+            lucrosConsistentes: fund?.lucrosConsistentes ?? r.lucrosConsistentes,
+          }),
+
+          // Marca origem para debug/UI
+          fonteDados: fund ? "bolsai+brapi" : (cot ? "brapi" : "ia"),
+          // Bônus disponíveis (não usados nos critérios atuais, mas úteis para futuras features)
+          ...(fund && !ehFII ? {
+            roic: fund.roic,
+            cagrLucro5y: fund.cagrLucro5y,
+            evEbitda: fund.evEbitda,
+          } : {}),
         };
 
         return {

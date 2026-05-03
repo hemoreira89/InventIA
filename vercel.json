@@ -12,6 +12,9 @@
     },
     "api/cotacoes.js": {
       "maxDuration": 10
+    },
+    "api/fundamentos.js": {
+      "maxDuration": 10
     }
   }
 }
