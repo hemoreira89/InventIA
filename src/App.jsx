@@ -9,7 +9,7 @@ import {
   Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
   Sparkles, Save, FileDown, Plus, X, Trash2, Calendar, AlertTriangle,
   CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
-  Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, Loader2,
+  Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
   RefreshCw, FileUp, TrendingDown, Award, Globe
@@ -605,39 +605,10 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   );
 }
 
-// ─── Tab: Gráficos ────────────────────────────────────────────────────────────
-function TabGraficos({ dados, onIrParaAnalise }) {
+// ─── Seção: Visualizações da Carteira (usado dentro de TabAnalise) ────────────
+function VisualizacoesCarteira({ dados }) {
   const [g, setG] = useState("pizza");
-  if (!dados) return (
-    <Card>
-      <div style={{textAlign:"center",padding:"48px 24px"}}>
-        <div style={{
-          width:56,height:56,borderRadius:14,
-          background:"rgba(123,97,255,0.12)",
-          display:"inline-flex",alignItems:"center",justifyContent:"center",
-          marginBottom:14
-        }}>
-          <BarChart3 size={26} color="var(--ui-accent)" strokeWidth={2}/>
-        </div>
-        <div style={{fontSize:16,fontWeight:700,color:"var(--ui-text)",marginBottom:6}}>
-          Sem dados para visualizar
-        </div>
-        <div style={{fontSize:13,color:"var(--ui-text-muted)",marginBottom:18,maxWidth:380,margin:"0 auto 18px"}}>
-          Os gráficos são gerados a partir da análise da sua carteira pela IA. Rode uma análise para ver os insights visuais.
-        </div>
-        <button onClick={onIrParaAnalise} style={{
-          background:"linear-gradient(135deg,#7b61ff,#5540dd)",
-          border:"none",borderRadius:8,padding:"11px 22px",
-          color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer",
-          boxShadow:"0 4px 14px rgba(123,97,255,0.3)",
-          display:"inline-flex",alignItems:"center",gap:8
-        }}>
-          <Sparkles size={14} strokeWidth={2.5}/>
-          Ir para Análise IA
-        </button>
-      </div>
-    </Card>
-  );
+  if (!dados || !dados.posicoes || dados.posicoes.length === 0) return null;
 
   const pos = dados.posicoes || [];
   const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
@@ -1237,8 +1208,66 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
         ))}
       </>}
 
+      {/* Seção colapsável: Visualizações da Carteira */}
+      {temCarteira && <VisualizacoesColapsavel dados={dados}/>}
+
       {a.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{a.aviso}</div>}
     </div>
+  );
+}
+
+// ─── Wrapper colapsável para as visualizações da carteira ─────────────────────
+function VisualizacoesColapsavel({ dados }) {
+  const [aberto, setAberto] = useState(false);
+
+  return (
+    <Card style={{padding:0,overflow:"hidden"}}>
+      <button onClick={() => setAberto(v => !v)} style={{
+        width:"100%",
+        background:"transparent",
+        border:"none",
+        padding:"14px 18px",
+        cursor:"pointer",
+        display:"flex",
+        alignItems:"center",
+        justifyContent:"space-between",
+        textAlign:"left"
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{
+            width:32,height:32,borderRadius:8,
+            background:"rgba(123,97,255,0.12)",
+            display:"flex",alignItems:"center",justifyContent:"center"
+          }}>
+            <BarChart3 size={16} color="var(--ui-accent)" strokeWidth={2.2}/>
+          </div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--ui-text)"}}>Visualizações da Carteira</div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>
+              Alocação, setores, performance, projeção de dividendos
+            </div>
+          </div>
+        </div>
+        <ChevronDown
+          size={18}
+          color="var(--ui-text-muted)"
+          style={{
+            transition:"transform 0.2s",
+            transform: aberto ? "rotate(180deg)" : "rotate(0)"
+          }}
+        />
+      </button>
+
+      {aberto && (
+        <div style={{
+          padding:"0 18px 18px",
+          borderTop:"1px solid var(--ui-border-soft)",
+          paddingTop:18
+        }}>
+          <VisualizacoesCarteira dados={dados}/>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -2700,7 +2729,6 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
   const TABS = [
     {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
     {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"var(--ui-success)",grupo:"portfolio"},
-    {k:"graficos",icon:BarChart3,label:"Gráficos",cor:"var(--ui-success)",grupo:"portfolio"},
     {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
     {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
     {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
@@ -3050,7 +3078,6 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
-          {tab==="graficos" && <TabGraficos dados={dados} onIrParaAnalise={() => setTab("analise")}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
