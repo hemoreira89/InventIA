@@ -3181,7 +3181,11 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         return {
           ticker: cat.ticker,
           nome: fund?.nome || cat.nome || cat.ticker,
-          setor: fund?.setorCVM || cat.setor || null,
+          // Pra FII, prefere o segmento ('Logística', 'Recebíveis', ...) ao
+          // setor genérico, que costuma ser null ou 'Miscellaneous' da brapi.
+          setor: ehFII
+            ? (fund?.segmento || fund?.setorCVM || "Fundo Imobiliário")
+            : (fund?.setorCVM || cat.setor || null),
           tipo: fund?.tipo || (ehFII ? "FII" : "Ação"),
           preco: cot?.preco ?? cat.preco ?? null,
           dy: dy ?? null,
