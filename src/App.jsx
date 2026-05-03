@@ -66,23 +66,31 @@ const API_URL = "/api/analyze";
 
 async function chamarIAComSearch(prompt, autoRetry = true) {
   const tentar = async () => {
+    const tStart = Date.now();
+    console.log(`[IA] POST /api/analyze (prompt ${prompt?.length || 0} chars)`);
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // 'flash' começa pelo 2.5-flash que é 5x mais rápido que pro
       body: JSON.stringify({ prompt, useSearch: true, model: "flash" })
     });
+    const elapsed = Date.now() - tStart;
+    console.log(`[IA] resposta HTTP ${res.status} em ${elapsed}ms`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      console.warn(`[IA] erro do backend:`, err);
       if (res.status === 504 || res.status === 502) {
         const e = new Error("TIMEOUT");
         e.isTimeout = true;
         throw e;
       }
+      // Inclui detalhe técnico no console (mas não na UI) para diagnóstico
+      if (err._debug) console.warn(`[IA] _debug:`, err._debug);
       throw new Error(err.error || `Erro ${res.status} na API`);
     }
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    console.log(`[IA] sucesso: modelo ${data.modelUsado}, texto ${data.text?.length || 0} chars`);
     return extrairJSON(data.text);
   };
 
