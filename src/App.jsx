@@ -2224,8 +2224,8 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
           <FileSearch size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
           <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:8}}>Análise profunda de qualquer ticker da B3</div>
           <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.7}}>
-            Digite um ticker acima e o Gemini busca preço atual,<br/>
-            indicadores, fundamentos e gera tese de investimento completa.
+            Digite um ticker e o app puxa cotação ao vivo (brapi),<br/>
+            fundamentos oficiais (bolsai/CVM) e gera tese com Gemini.
           </div>
         </Card>
       )}
@@ -2246,46 +2246,106 @@ function TabComparador({ chamarIAComSearch }) {
     if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers"); return; }
     setErro(""); setLoading(true); setResultado(null);
     try {
-      setFase("🔍 Comparando " + ts.join(", "));
-      const prompt = `Você é analista financeiro do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+      // ── PASSO 1: dados quantitativos via APIs (paralelo) ──
+      setFase(`📊 Buscando dados de ${ts.length} ativos (B3/CVM)...`);
 
-PASSO 1 — Use Google Search para buscar dados atuais de cada ticker:
-${ts.map(t => `- "${t} cotação dividend yield P/L ROE fundamentos"`).join("\\n")}
+      const [cotacoes, fundamentos] = await Promise.all([
+        buscarCotacoes(ts).catch(() => ({})),
+        buscarFundamentos(ts).catch(() => ({})),
+      ]);
 
-PASSO 2 — Faça comparação completa lado a lado.
+      // Verifica se conseguiu pelo menos algum dado
+      const tickersComDados = ts.filter(t => cotacoes[t] || fundamentos[t]);
+      if (tickersComDados.length < 2) {
+        throw new Error("Não foi possível obter dados de pelo menos 2 dos tickers fornecidos. Verifique se os tickers existem na B3.");
+      }
 
-PASSO 3 — Retorne APENAS este JSON:
+      // Monta os ativos com dados reais
+      const ativosReais = ts.map(t => {
+        const cot = cotacoes[t];
+        const fund = fundamentos[t];
+        const ehFII = fund?.tipo === "FII" || /11$/.test(t);
+        return {
+          ticker: t,
+          nome: fund?.nome || cot?.nome || t,
+          setor: fund?.setorCVM || (ehFII ? "Fundo Imobiliário" : null),
+          tipo: fund?.tipo || (ehFII ? "FII" : "Ação"),
+          preco: cot?.preco ?? null,
+          variacaoDia: cot?.variacaoPct ?? null,
+          canal52: cot?.canal52 ?? null,
+          // Fundamentos (depende do tipo)
+          ...(ehFII ? {
+            dy: fund?.dy ?? null,
+            pvp: fund?.pvp ?? null,
+            pl: null,
+            roe: null,
+          } : {
+            pl: fund?.pl ?? null,
+            pvp: fund?.pvp ?? null,
+            roe: fund?.roe ?? null,
+            roic: fund?.roic ?? null,
+            margemLiquida: fund?.margemLiquida ?? null,
+            divEbitda: fund?.divEbitda ?? null,
+          }),
+        };
+      });
+
+      // ── PASSO 2: IA só para análise comparativa qualitativa ──
+      setFase("🧠 Gerando análise comparativa...");
+
+      const promptIA = `Você é analista financeiro brasileiro. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
+
+DADOS REAIS DOS ATIVOS (já consultei B3/CVM, NÃO precisa buscar):
+${JSON.stringify(ativosReais, null, 2)}
+
+Sua tarefa: comparação qualitativa baseada nesses números.
+
+Responda APENAS este JSON (sem markdown, sem inventar números):
 {
-  "tickers": ["${ts.join('","')}"],
-  "ativos": [
+  "ativos_extra": [
     {
       "ticker": "${ts[0]}",
-      "nome": "Nome",
-      "setor": "Setor",
-      "preco": 49.08,
-      "dy": 5.18,
-      "pl": 5.5,
-      "pvp": 1.2,
-      "roe": 18.5,
-      "score": 80,
-      "ponto_forte": "principal vantagem em uma frase curta",
-      "ponto_fraco": "principal risco em uma frase curta"
+      "ponto_forte": "principal vantagem em uma frase curta baseada nos dados",
+      "ponto_fraco": "principal risco em uma frase curta",
+      "score": 80
     }
   ],
-  "comparativo": "Análise comparativa em 2-3 parágrafos: quem é melhor para renda, quem é melhor para crescimento, qual o trade-off de cada um",
+  "comparativo": "Análise em 2-3 parágrafos: quem é melhor para RENDA, quem é melhor para CRESCIMENTO, qual o trade-off de cada um. Use os números fornecidos para justificar.",
   "vencedor": {
     "ticker": "TICKER",
     "motivo": "Por que esse é a melhor opção considerando o conjunto"
   },
   "ranking": [
-    {"ticker":"TICKER","posicao":1,"justificativa":"motivo"}
-  ],
-  "aviso": "Análise comparativa via Google Search."
-}`;
+    {"ticker":"TICKER","posicao":1,"justificativa":"motivo curto baseado nos números"}
+  ]
+}
 
-      setFase("🧠 Comparando ativos...");
-      const r = await chamarIAComSearch(prompt);
-      setResultado(r);
+Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem que recebeu.`;
+
+      const teseIA = await chamarIAComSearch(promptIA).catch(() => ({}));
+
+      // ── PASSO 3: monta resultado final ──
+      // Combina dados reais (ativosReais) com análise qualitativa da IA (ativos_extra)
+      const ativosFinais = ativosReais.map((a, i) => {
+        const extra = teseIA?.ativos_extra?.find(e => e.ticker === a.ticker)
+                  || teseIA?.ativos_extra?.[i]
+                  || {};
+        return {
+          ...a,
+          ponto_forte: extra.ponto_forte || "—",
+          ponto_fraco: extra.ponto_fraco || "—",
+          score: extra.score ?? null,
+        };
+      });
+
+      setResultado({
+        tickers: ts,
+        ativos: ativosFinais,
+        comparativo: teseIA?.comparativo || "Análise comparativa indisponível.",
+        vencedor: teseIA?.vencedor || null,
+        ranking: teseIA?.ranking || [],
+        aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Comparação gerada por IA. Confirme antes de operar.",
+      });
     } catch (e) {
       setErro(e.message || "Erro");
     } finally {
