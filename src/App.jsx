@@ -44,6 +44,7 @@ import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { analisarRisco, classificarHHI } from "./lib/risco";
+import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -430,6 +431,97 @@ function MetricaRisco({ icone: Icone, label, valor, cor = "default", detalhe, to
           {detalhe}
         </div>
       )}
+    </div>
+  );
+}
+
+// Componente de badges dos critérios fundamentalistas
+// Mostra ✅/⚠️/❌ por critério, com pontuação e tooltip explicativo
+function CriteriosBadges({ avaliacao, classificacao }) {
+  if (!avaliacao || !avaliacao.criterios?.length) return null;
+
+  // Mapeia status para ícone + cor
+  const getStatus = (status) => {
+    if (status === "aprovado") return { icone: "✓", cor: "var(--ui-success)", bg: "rgba(0,229,160,0.10)", borda: "rgba(0,229,160,0.25)" };
+    if (status === "reprovado") return { icone: "✗", cor: "var(--ui-danger)", bg: "rgba(255,77,109,0.10)", borda: "rgba(255,77,109,0.25)" };
+    return { icone: "−", cor: "var(--ui-text-faint)", bg: "var(--ui-bg-secondary)", borda: "var(--ui-border)" };
+  };
+
+  // Cor do header baseado na classificação
+  const corHeader =
+    classificacao?.cor === "success" ? "var(--ui-success)"
+    : classificacao?.cor === "warning" ? "var(--ui-warning)"
+    : classificacao?.cor === "danger" ? "var(--ui-danger)"
+    : "var(--ui-text-faint)";
+
+  return (
+    <div style={{
+      marginTop: 10,
+      padding: "8px 10px",
+      background: "var(--ui-bg-secondary)",
+      borderRadius: 7,
+      border: "1px solid var(--ui-border-soft)"
+    }}>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 6,
+        flexWrap: "wrap",
+        gap: 4
+      }}>
+        <span style={{
+          fontSize: 9,
+          fontWeight: 800,
+          letterSpacing: 1,
+          color: "var(--ui-text-faint)"
+        }}>CRITÉRIOS FUNDAMENTALISTAS</span>
+        {classificacao && (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: corHeader
+          }} title={classificacao.descricao}>
+            {classificacao.nivel}
+          </span>
+        )}
+      </div>
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 4
+      }}>
+        {avaliacao.criterios.map(c => {
+          const s = getStatus(c.status);
+          return (
+            <span
+              key={c.chave}
+              title={`${c.descricao} — ${c.mensagem}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "2px 7px",
+                background: s.bg,
+                border: `1px solid ${s.borda}`,
+                borderRadius: 5,
+                fontSize: 10,
+                fontWeight: 600,
+                color: s.cor,
+                cursor: "help"
+              }}
+            >
+              <span style={{ fontWeight: 800 }}>{s.icone}</span>
+              <span>{c.label.replace(/[≥≤<>]\s*\d+\.?\d*%?\s*x?$/, "").trim()}</span>
+              {c.status !== "indisponivel" && (
+                <span style={{ opacity: 0.85, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {c.mensagem}
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1645,7 +1737,11 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
       {a.recomendacoes?.length > 0 && <>
         <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
-        {a.recomendacoes.map((r,i) => (
+        {a.recomendacoes.map((r,i) => {
+          // Usa avaliação pré-calculada (enriquecimento) ou calcula se for análise antiga
+          const avaliacao = r.avaliacaoCriterios || avaliarRecomendacao(r);
+          const classificacao = classificarAderencia(avaliacao);
+          return (
           <Card key={i} style={{
             borderColor: r.score>=80 ? "rgba(0,229,160,0.31)" : r.score>=60 ? "rgba(255,214,10,0.25)" : r.nova ? "rgba(0,229,160,0.18)" : "var(--ui-bg-tertiary)",
             position: "relative",
@@ -1686,13 +1782,17 @@ function TabAnalise({ dados, aporte, perfil, loading, fase }) {
 
             <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
 
+            {/* Critérios fundamentalistas validados */}
+            <CriteriosBadges avaliacao={avaliacao} classificacao={classificacao}/>
+
             {r.unidades > 0 && (
               <div style={{marginTop:8,fontSize:11,color:"var(--ui-text-muted)"}}>
                 ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
               </div>
             )}
           </Card>
-        ))}
+          );
+        })}
         </div>
       </>}
 
@@ -3226,18 +3326,32 @@ ${contextoRisco}
 
 Use APENAS estes tickers: ${universoFiltrado.slice(0, 20).join(", ")}.
 
+CRITÉRIOS FUNDAMENTALISTAS — busque e retorne TODOS os indicadores possíveis:
+- AÇÕES: ROE (preferir ≥15%), Dívida Líquida/EBITDA (preferir ≤3), Margem Líquida (preferir ≥5%), DY, P/L, P/VP
+- FIIs: DY (preferir ≥7%), P/VP (preferir 0.7-1.15), vacância, liquidez diária
+
+Priorize ativos que ATENDEM aos critérios. Se recomendar algo que não atende, justifique o porquê.
+
 Responda APENAS com JSON (sem markdown):
 {
   "diagnostico": "1-2 frases sobre o mercado E sobre o risco da carteira atual",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
-    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"score":82,"canal52":35,"justificativa":"breve, mencionando impacto no risco quando relevante"}
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"canal52":35,"justificativa":"breve, mencionando impacto no risco e aderência aos critérios"}
   ],
   "vender": ${temCarteira ? `[]` : "[]"},
   "aviso": "Confirme na sua corretora."
 }
 
-Regras: 3 a 5 recomendações, alocação soma 100, SOMENTE JSON.`;
+INDICADORES por tipo de ativo (busque no Google):
+- AÇÕES: dy, pl, pvp, roe (% retorno sobre PL), divEbitda (Dívida Líquida/EBITDA), margemLiquida (% lucro líquido), lucrosConsistentes (true se lucros positivos nos últimos 5 anos), score, canal52
+- FIIs: dy, pvp, vacancia (% vacância física/financeira), diversificado (true se >5 imóveis OU >10 inquilinos), score, canal52
+
+Regras:
+- 3 a 5 recomendações, alocação soma 100
+- Se um indicador for desconhecido, retorne null (NÃO invente)
+- Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
+- SOMENTE JSON, sem markdown`;
 
       setFase("🧠 Gemini 2.5 Pro analisando...");
       const analise = await chamarIAComSearch(prompt);
@@ -3245,7 +3359,9 @@ Regras: 3 a 5 recomendações, alocação soma 100, SOMENTE JSON.`;
       // Enriquecer recomendações com unidades calculadas
       const recsEnriquecidas = (analise.recomendacoes || []).map(r => ({
         ...r,
-        unidades: r.precoEstimado ? Math.floor(v * (r.alocacao/100) / r.precoEstimado) : null
+        unidades: r.precoEstimado ? Math.floor(v * (r.alocacao/100) / r.precoEstimado) : null,
+        // Avalia critérios fundamentalistas (validação Nível 2)
+        avaliacaoCriterios: avaliarRecomendacao(r),
       }));
 
       // Montar posições da carteira com dados da IA
