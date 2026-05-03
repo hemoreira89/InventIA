@@ -18,6 +18,15 @@
     },
     "api/historico.js": {
       "maxDuration": 8
+    },
+    "api/cron-screening.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron-screening",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

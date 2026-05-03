@@ -46,6 +46,7 @@ import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
 import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
 import { buscarHistorico, buscarHistoricos } from "./lib/historico";
+import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
@@ -3013,88 +3014,87 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     }
   };
 
+  // Mapeia setor da brapi (em inglês, ex: "Banks") → nosso filtro (português)
+  // Quando filtros.setor é "qualquer", retorna null (sem filtro de setor)
+  const mapearSetorBrapi = (setorPt) => {
+    const map = {
+      "Bancos": "Banks",
+      "Energia Elétrica": "Electric Utilities",
+      "Saneamento": "Water Utilities",
+      "Petróleo & Gás": "Oil, Gas & Consumable Fuels",
+      "Siderurgia": "Metals & Mining",
+      "Varejo": "Specialty Retail",
+      "Tecnologia": "Software",
+      "Saúde": "Health Care Providers & Services",
+      "Agronegócio": "Food Products",
+      "Imobiliário (FIIs)": null, // FIIs filtrados por tipo, não setor
+    };
+    return map[setorPt] || null;
+  };
+
   const buscar = async () => {
     setErro(""); setLoading(true); setResultado(null);
     try {
       const cfg = TIPOS[filtros.tipo];
-      const setorTxt = filtros.setor !== "qualquer" ? `Foque em empresas do setor ${filtros.setor}.` : "";
 
-      const universoTxt = universoTickers.length > 0
-        ? `\nIMPORTANTE: Considere APENAS estes tickers: ${universoTickers.slice(0, 50).join(", ")}.`
-        : "";
+      // ── PASSO 1: filtra catálogo local (Supabase) por critérios objetivos ──
+      // O catálogo tem ~750 ativos atualizados diariamente via cron.
+      // Filtramos por tipo (stock|fund) e volume mínimo (descarta ilíquidos).
+      setFase("📋 Filtrando catálogo B3...");
 
-      // ── PASSO 1: IA gera lista de CANDIDATOS (sem buscar dados de mercado) ──
-      // A IA usa o conhecimento prévio dela para sugerir 8-12 tickers que se
-      // encaixam no critério escolhido. Sem Google Search → rápido.
-      setFase("🧠 IA selecionando candidatos...");
+      const ehFiltroFII = filtros.tipo === "fiis_alto_dy";
+      const tipoCatalogo = ehFiltroFII ? "fund" : "stock";
+      const setorBrapi = filtros.setor !== "qualquer" ? mapearSetorBrapi(filtros.setor) : null;
 
-      const promptCandidatos = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
+      // Volume mínimo descarta ilíquidos (R$ 100k diários)
+      // Limit 30 = pegamos os 30 mais líquidos do filtro pra rodar fundamentos
+      let candidatosCatalogo = await filtrarCatalogo({
+        tipo: tipoCatalogo,
+        setor: setorBrapi,
+        minVolume: 100_000,
+        limit: 30,
+      });
 
-Tipo: ${cfg.titulo} — ${cfg.descricao}
-Perfil: ${filtros.perfil}
-${setorTxt}${universoTxt}
-
-Sua tarefa: sugerir 8-12 tickers da B3 que SE ENCAIXAM neste critério, baseado no seu conhecimento de mercado.
-
-NÃO precisa retornar dados quantitativos (preço, DY, P/L, P/VP, ROE) — o sistema buscará via API B3/CVM oficial. Você só sugere os tickers e justifica brevemente cada um.
-
-Responda APENAS com este JSON (sem markdown):
-{
-  "tipo": "${filtros.tipo}",
-  "criterios_usados": "1 frase dos critérios objetivos que serão validados via API",
-  "candidatos": [
-    {"ticker":"TICKER","destaque":"motivo em 1 frase","risco_principal":"risco em 1 frase"}
-  ],
-  "contexto_macro": "1 parágrafo sobre o mercado atual e por que esse tipo de oportunidade faz sentido AGORA"
-}`;
-
-      let analise;
-      try {
-        analise = await chamarIAComSearch(promptCandidatos);
-      } catch (e1) {
-        if (e1.message && e1.message.includes("JSON")) {
-          await sleep(1500);
-          analise = await chamarIAComSearch(promptCandidatos + "\n\nIMPORTANTE: Retorne APENAS o objeto JSON válido.");
-        } else {
-          throw e1;
-        }
+      // Se universo do usuário foi configurado, intersecciona com o catálogo
+      if (universoTickers.length > 0) {
+        const universoSet = new Set(universoTickers.map(t => t.toUpperCase()));
+        candidatosCatalogo = candidatosCatalogo.filter(c => universoSet.has(c.ticker));
       }
 
-      const candidatos = analise.candidatos || [];
-      if (candidatos.length === 0) {
-        throw new Error("IA não retornou candidatos. Tente outro filtro.");
+      if (candidatosCatalogo.length === 0) {
+        throw new Error(
+          universoTickers.length > 0
+            ? "Nenhum ativo do seu universo casa com este filtro."
+            : "Nenhum ativo encontrado no catálogo. O cron diário pode não ter rodado ainda."
+        );
       }
 
-      // ── PASSO 2: enriquece com dados REAIS via brapi+bolsai (paralelo) ──
-      setFase(`📊 Buscando dados B3/CVM de ${candidatos.length} candidatos...`);
+      // ── PASSO 2: busca fundamentos REAIS dos top 30 (bolsai paralelo) ──
+      setFase(`📊 Analisando fundamentos de ${candidatosCatalogo.length} ativos...`);
 
-      const tickersCandidatos = candidatos.map(c => c.ticker).filter(Boolean);
+      const tickers = candidatosCatalogo.map(c => c.ticker);
       const [cotacoes, fundamentos] = await Promise.all([
-        buscarCotacoes(tickersCandidatos).catch(() => ({})),
-        buscarFundamentos(tickersCandidatos).catch(() => ({})),
+        buscarCotacoes(tickers).catch(() => ({})),
+        buscarFundamentos(tickers).catch(() => ({})),
       ]);
 
-      // ── PASSO 3: monta oportunidades com dados reais + score derivado ──
-      // Cada tipo tem critérios MÍNIMOS (filtros eliminatórios) e SCORE (ranking dos que passam).
-      // Se a IA sugeriu um candidato que não bate o critério mínimo, ele é descartado.
-      const oportunidades = candidatos.map(c => {
-        const cot = cotacoes[c.ticker];
-        const fund = fundamentos[c.ticker];
-        const ehFII = fund?.tipo === "FII" || /11$/.test(c.ticker);
+      // ── PASSO 3: critérios eliminatórios + score local ──
+      // Cada tipo tem critérios MÍNIMOS (filtros eliminatórios) e SCORE (ranking).
+      const oportunidades = candidatosCatalogo.map(cat => {
+        const cot = cotacoes[cat.ticker];
+        const fund = fundamentos[cat.ticker];
+        const ehFII = fund?.tipo === "FII" || /11$/.test(cat.ticker);
 
-        const dy = ehFII ? fund?.dy : null; // bolsai não retorna DY de ações
+        const dy = ehFII ? fund?.dy : null;
         const pl = fund?.pl;
         const pvp = fund?.pvp;
         const roe = fund?.roe;
         const canal52 = cot?.canal52;
 
-        // ── Critérios MÍNIMOS por tipo (descarta quem não passa) ──
         let passa = false;
         let score = null;
 
         if (filtros.tipo === "acoes_subprecificadas") {
-          // P/L < 12 E P/VP < 1.5 (mais realista que P/VP < 1, que é raríssimo)
-          // Bancos com P/VP entre 0.7-1.2 são clássicos value plays brasileiros
           passa = !ehFII && pl != null && pvp != null && pl < 12 && pvp < 1.5;
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
@@ -3104,7 +3104,6 @@ Responda APENAS com este JSON (sem markdown):
             )));
           }
         } else if (filtros.tipo === "fiis_alto_dy") {
-          // FII com DY >= 8% E P/VP <= 1.1
           passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1;
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
@@ -3114,7 +3113,6 @@ Responda APENAS com este JSON (sem markdown):
             )));
           }
         } else if (filtros.tipo === "blue_chips_baratas") {
-          // P/L < 15 E (canal52 < 60 OU P/VP < 2)
           passa = !ehFII && pl != null && pl < 15 && (
             (canal52 != null && canal52 < 60) || (pvp != null && pvp < 2)
           );
@@ -3127,7 +3125,6 @@ Responda APENAS com este JSON (sem markdown):
             )));
           }
         } else if (filtros.tipo === "crescimento") {
-          // Crescimento de receita > 10% OU lucro > 15% (CAGR 5y) E ROE > 12%
           const cresceReceita = fund?.cagrReceita5y != null && fund.cagrReceita5y > 10;
           const cresceLucro = fund?.cagrLucro5y != null && fund.cagrLucro5y > 15;
           passa = !ehFII && (cresceReceita || cresceLucro) && roe != null && roe > 12;
@@ -3140,8 +3137,6 @@ Responda APENAS com este JSON (sem markdown):
             )));
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
-          // ROE > 10% E divEbitda < 4 (descarta empresas saudáveis)
-          // Lucros consistentes é bonus, não obrigatório (nem sempre temos esse dado)
           passa = !ehFII && roe != null && roe > 10 && (
             fund?.divEbitda == null || fund.divEbitda < 4
           );
@@ -3156,29 +3151,23 @@ Responda APENAS com este JSON (sem markdown):
         }
 
         return {
-          ticker: c.ticker,
-          nome: fund?.nome || c.ticker,
-          setor: fund?.setorCVM || null,
+          ticker: cat.ticker,
+          nome: fund?.nome || cat.nome || cat.ticker,
+          setor: fund?.setorCVM || cat.setor || null,
           tipo: fund?.tipo || (ehFII ? "FII" : "Ação"),
-          // Dados quantitativos REAIS (B3 + CVM)
-          preco: cot?.preco ?? null,
+          preco: cot?.preco ?? cat.preco ?? null,
           dy: dy ?? null,
           pl: pl ?? null,
           pvp: pvp ?? null,
           roe: roe ?? null,
           canal52: canal52 != null ? Math.round(canal52) : null,
           score,
-          // Análise qualitativa da IA
-          destaque: c.destaque,
-          risco_principal: c.risco_principal,
-          // Metadados
           temDados: !!(cot || fund),
           passaCriterio: passa,
         };
       });
 
-      // Ordena por score (mais alto primeiro), depois por ticker (estabilidade)
-      // Filtra: precisa ter dados E ter passado no critério mínimo do tipo
+      // Ordena por score (mais alto primeiro), depois por ticker
       const ordenados = oportunidades
         .filter(o => o.temDados && o.passaCriterio)
         .sort((a, b) => {
@@ -3187,24 +3176,65 @@ Responda APENAS com este JSON (sem markdown):
           if (sb !== sa) return sb - sa;
           return a.ticker.localeCompare(b.ticker);
         })
-        .slice(0, 8); // Mostra top 8
+        .slice(0, 8);
 
-      // Métricas de transparência: quantos candidatos a IA sugeriu, quantos
-      // passaram no filtro objetivo, quantos foram descartados
+      // ── PASSO 4 (opcional): IA gera contexto macro + tese para os aprovados ──
+      // Se nenhum aprovado, pula a IA pra economizar
+      let contextoMacro = null;
+      let tesePorTicker = {};
+
+      if (ordenados.length > 0) {
+        setFase("🧠 IA gerando análise qualitativa...");
+        try {
+          const tickersStr = ordenados.map(o => `${o.ticker} (${o.nome}, P/L ${o.pl?.toFixed(1) || "?"}, P/VP ${o.pvp?.toFixed(2) || "?"}${o.dy ? `, DY ${o.dy.toFixed(1)}%` : ""})`).join("; ");
+          const promptIA = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
+Tipo de oportunidade: ${cfg.titulo} — ${cfg.descricao}
+Perfil: ${filtros.perfil}
+
+Estes ${ordenados.length} ativos PASSARAM nos critérios objetivos via API B3/CVM:
+${tickersStr}
+
+Sua tarefa: análise qualitativa.
+
+Responda APENAS este JSON (sem markdown):
+{
+  "contexto_macro": "1 parágrafo sobre o cenário atual e porque esse tipo de oportunidade faz sentido agora",
+  "teses": [
+    {"ticker":"TICKER","destaque":"vantagem em 1 frase","risco_principal":"risco em 1 frase"}
+  ]
+}`;
+          const r = await chamarIAComSearch(promptIA);
+          contextoMacro = r.contexto_macro;
+          for (const t of (r.teses || [])) {
+            if (t.ticker) tesePorTicker[t.ticker] = t;
+          }
+        } catch (e) {
+          console.warn("IA contexto qualitativo falhou:", e.message);
+          // Não é fatal, continua sem o contexto
+        }
+      }
+
+      // Anexa tese qualitativa nos resultados
+      const finais = ordenados.map(o => ({
+        ...o,
+        destaque: tesePorTicker[o.ticker]?.destaque || null,
+        risco_principal: tesePorTicker[o.ticker]?.risco_principal || null,
+      }));
+
       const reprovados = oportunidades.filter(o => o.temDados && !o.passaCriterio).length;
       const semDados = oportunidades.filter(o => !o.temDados).length;
 
       setResultado({
         tipo: filtros.tipo,
-        criterios_usados: analise.criterios_usados,
-        oportunidades: ordenados,
-        contexto_macro: analise.contexto_macro,
-        aviso: ordenados.length === 0
-          ? `IA sugeriu ${candidatos.length} candidatos mas nenhum passou nos critérios objetivos do filtro. Tente outro tipo ou perfil.`
-          : `Candidatos sugeridos pela IA, ${ordenados.length} passaram no filtro objetivo (${reprovados} descartados por não atenderem aos critérios). Dados via B3/CVM oficial. Confirme antes de operar.`,
+        criterios_usados: cfg.descricao,
+        oportunidades: finais,
+        contexto_macro: contextoMacro,
+        aviso: finais.length === 0
+          ? `Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez). Nenhum passou nos critérios objetivos. Tente outro tipo ou setor.`
+          : `Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez), ${finais.length} passaram nos critérios (${reprovados} descartados). Dados via B3/CVM oficial.`,
         _stats: {
-          candidatos: candidatos.length,
-          aprovados: ordenados.length,
+          total_catalogo: candidatosCatalogo.length,
+          aprovados: finais.length,
           reprovados,
           semDados,
         }
@@ -3224,7 +3254,7 @@ Responda APENAS com este JSON (sem markdown):
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
-          A IA sugere candidatos e os dados são validados via B3/CVM oficial. Apenas ativos que passam nos critérios objetivos aparecem listados.
+          Filtra os ~750 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
         </div>
 
         {/* Tipo de oportunidade */}
