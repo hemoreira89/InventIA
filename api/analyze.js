@@ -4,13 +4,106 @@
 // LOGGING: cada etapa imprime prefixo [GEMINI] para facilitar grep nos logs.
 // Para diagnosticar: na UI do Vercel, em Logs, filtra por "GEMINI" ou clica
 // na linha do POST /api/analyze para ver a sequência completa.
+//
+// ESTRATÉGIA DE FALLBACK (em ordem):
+//   1. gemini-2.5-flash + Google Search (qualidade alta, lento)
+//   2. gemini-2.5-flash-lite + Google Search (rápido, ocasionalmente vazio com STOP)
+//   3. gemini-2.5-flash SEM search (sem grounding, mais confiável)
+//   4. gemini-2.5-flash-lite SEM search (último recurso)
+//
+// Sem search é mais confiável mas IA não consulta cotações reais. Tudo bem
+// porque o frontend já enriquece com dados reais do bolsai/brapi depois.
 
 export const config = {
   maxDuration: 60
 };
 
+const TIMEOUT_MS = 55000; // 55s - margem de 5s sobre o limite do Vercel Hobby
+
+async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
+  const tStart = Date.now();
+  log(`>>> Tentando ${modelId} (search=${useSearch})`);
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: 8192,
+      temperature: 0.3,
+      responseMimeType: 'text/plain'
+    }
+  };
+  if (useSearch) body.tools = [{ googleSearch: {} }];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    const elapsed = Date.now() - tStart;
+    log(`<<< ${modelId} respondeu HTTP ${geminiRes.status} em ${elapsed}ms`);
+
+    if (geminiRes.status === 429 || geminiRes.status === 503) {
+      const errBody = await geminiRes.json().catch(() => ({}));
+      const detail = errBody?.error?.message || JSON.stringify(errBody).slice(0, 300);
+      return { ok: false, error: `${modelId} indisponível (${geminiRes.status})`, detail, retryable: true };
+    }
+
+    if (!geminiRes.ok) {
+      const err = await geminiRes.json().catch(() => ({}));
+      const errMsg = err?.error?.message || `Erro ${geminiRes.status}`;
+      const detail = JSON.stringify(err).slice(0, 500);
+      return { ok: false, error: `${modelId}: ${errMsg}`, detail, retryable: false };
+    }
+
+    const data = await geminiRes.json();
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason || 'unknown';
+    const text = candidate?.content?.parts?.map(p => p.text || '').join('') || '';
+
+    log(`${modelId} parseou`, { finishReason, textLength: text.length, hasText: !!text.trim() });
+
+    if (!text.trim()) {
+      // Bug conhecido: gemini-2.5-flash-lite com Search às vezes retorna texto
+      // vazio com finishReason=STOP (não é erro, mas inútil para nós).
+      // SAFETY/RECITATION também produzem texto vazio mas com finishReason diferente.
+      const detail = JSON.stringify({
+        finishReason,
+        safetyRatings: candidate?.safetyRatings,
+        promptFeedback: data.promptFeedback
+      }).slice(0, 500);
+      return {
+        ok: false,
+        error: `${modelId} retornou vazio (finishReason=${finishReason})`,
+        detail,
+        retryable: true
+      };
+    }
+
+    log(`SUCCESS ${modelId} (${text.length} chars, ${Date.now() - tStart}ms total)`);
+    return { ok: true, text, modelId };
+
+  } catch (e) {
+    clearTimeout(timeoutId);
+    const elapsed = Date.now() - tStart;
+    if (e.name === 'AbortError') {
+      log(`TIMEOUT ${modelId} após ${elapsed}ms`);
+      return { ok: false, error: `${modelId} timeout (>${TIMEOUT_MS / 1000}s)`, detail: `aborted após ${elapsed}ms`, retryable: true };
+    }
+    log(`EXCEPTION ${modelId}: ${e.message}`);
+    return { ok: false, error: `${modelId}: ${e.message}`, detail: e.stack?.split('\n').slice(0, 3).join(' | ') || '', retryable: false };
+  }
+}
+
 export default async function handler(req, res) {
-  const reqId = Math.random().toString(36).slice(2, 8); // pequeno id pra correlacionar logs
+  const reqId = Math.random().toString(36).slice(2, 8);
   const log = (msg, extra) => {
     if (extra !== undefined) {
       console.log(`[GEMINI ${reqId}] ${msg}`, JSON.stringify(extra).slice(0, 500));
@@ -46,113 +139,54 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API key não configurada' });
     }
 
-    // Tenta modelos em ordem de preferência
-    // 2025-05: gemini-2.0-flash foi descontinuado (shutdown 1/junho/2026 mas
-    // já bloqueia usuários novos). Migramos para 2.5-flash + 2.5-flash-lite
-    // (este último é GA, mais rápido e custa 4x menos que o flash).
-    const modelos = model === 'pro'
-      ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
-      : ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    // Estratégia: tenta com search primeiro (melhor resultado), depois sem
+    // search como fallback (se modelo travar com STOP+vazio ou der timeout).
+    // Cada item: [modelId, useSearch]
+    const tentativas = model === 'pro'
+      ? [
+          ['gemini-2.5-flash', true],
+          ['gemini-2.5-pro', true],
+          ['gemini-2.5-flash', false],
+          ['gemini-2.5-flash-lite', false]
+        ]
+      : [
+          ['gemini-2.5-flash', useSearch],
+          ['gemini-2.5-flash-lite', useSearch],
+          // Fallbacks SEM search (mais confiáveis quando os outros falham)
+          ['gemini-2.5-flash', false],
+          ['gemini-2.5-flash-lite', false]
+        ];
 
-    log('Modelos a tentar (ordem)', modelos);
+    log('Sequência de tentativas', tentativas.map(([m, s]) => `${m}${s ? '+search' : ''}`));
 
     let lastError = null;
-    let lastErrorDetail = null;
+    let lastDetail = null;
 
-    for (const modelId of modelos) {
-      const tStart = Date.now();
-      log(`>>> Tentando ${modelId} (search=${useSearch})`);
+    for (const [modelId, comSearch] of tentativas) {
+      const r = await chamarGemini(modelId, prompt, comSearch, apiKey, log);
 
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
-        const body = {
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 8192,
-            temperature: 0.3,
-            responseMimeType: 'text/plain'
-          }
-        };
-        if (useSearch) body.tools = [{ googleSearch: {} }];
-
-        // Timeout de 50s por modelo (deixa 10s de margem para o Vercel)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 50000);
-
-        const geminiRes = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: controller.signal
+      if (r.ok) {
+        return res.status(200).json({
+          text: r.text,
+          modelUsado: r.modelId,
+          searchUsado: comSearch
         });
-        clearTimeout(timeoutId);
+      }
 
-        const elapsed = Date.now() - tStart;
-        log(`<<< ${modelId} respondeu HTTP ${geminiRes.status} em ${elapsed}ms`);
+      lastError = r.error;
+      lastDetail = r.detail;
 
-        if (geminiRes.status === 429 || geminiRes.status === 503) {
-          // Tenta ler corpo do erro pra detalhar (quota? overload?)
-          const errBody = await geminiRes.json().catch(() => ({}));
-          lastError = `${modelId} indisponível (${geminiRes.status})`;
-          lastErrorDetail = errBody?.error?.message || JSON.stringify(errBody).slice(0, 300);
-          log(`SKIP ${modelId} → ${lastError}`, { detail: lastErrorDetail });
-          continue;
-        }
-
-        if (!geminiRes.ok) {
-          const err = await geminiRes.json().catch(() => ({}));
-          lastError = err?.error?.message || `Erro ${geminiRes.status}`;
-          lastErrorDetail = JSON.stringify(err).slice(0, 500);
-          log(`FAIL ${modelId} → ${lastError}`, { detail: lastErrorDetail });
-          continue;
-        }
-
-        const data = await geminiRes.json();
-        const candidate = data.candidates?.[0];
-        const finishReason = candidate?.finishReason || 'unknown';
-        const text = candidate?.content?.parts?.map(p => p.text || '').join('') || '';
-
-        log(`${modelId} parseou resposta`, {
-          finishReason,
-          textLength: text.length,
-          hasText: !!text.trim()
-        });
-
-        if (!text.trim()) {
-          // Pode ser SAFETY filter, output truncado, etc
-          lastError = `${modelId} retornou vazio (finishReason=${finishReason})`;
-          lastErrorDetail = JSON.stringify({
-            finishReason,
-            safetyRatings: candidate?.safetyRatings,
-            promptFeedback: data.promptFeedback
-          }).slice(0, 500);
-          log(`EMPTY ${modelId} → ${lastError}`, { detail: lastErrorDetail });
-          continue;
-        }
-
-        log(`SUCCESS ${modelId} (${text.length} chars, ${Date.now() - tStart}ms total)`);
-        return res.status(200).json({ text, modelUsado: modelId });
-
-      } catch (e) {
-        const elapsed = Date.now() - tStart;
-        if (e.name === 'AbortError') {
-          lastError = `${modelId} timeout (>50s)`;
-          lastErrorDetail = `aborted após ${elapsed}ms`;
-          log(`TIMEOUT ${modelId} após ${elapsed}ms`);
-        } else {
-          lastError = e.message;
-          lastErrorDetail = e.stack?.split('\n').slice(0, 3).join(' | ') || '';
-          log(`EXCEPTION ${modelId}: ${e.message}`, { stack: lastErrorDetail });
-        }
-        continue;
+      // Erros não-retentáveis (auth, prompt malformado): para imediatamente
+      if (!r.retryable) {
+        log(`STOP: erro não-retentável em ${modelId}`);
+        break;
       }
     }
 
-    log(`ALL_FAILED → último erro: ${lastError}`, { detail: lastErrorDetail });
+    log(`ALL_FAILED → último erro: ${lastError}`, { detail: lastDetail });
     return res.status(503).json({
       error: `IA temporariamente indisponível. ${lastError}. Tente novamente em alguns segundos.`,
-      // Inclui detalhe técnico no response para debug (frontend pode logar)
-      _debug: lastErrorDetail
+      _debug: lastDetail
     });
 
   } catch (err) {
