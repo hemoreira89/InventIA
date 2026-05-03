@@ -27,7 +27,15 @@ const SETOR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const cacheFundamentos = new Map(); // ticker → { data, ts }
 const cacheSetor = new Map();        // ticker → { setorCVM, ts }
 
-function isFII(ticker) {
+// Heurística inicial. Tickers terminados em 11 podem ser:
+// - FIIs (HGLG11, MXRF11)
+// - Units (TAEE11, SAPR11, KLBN11) - combo PN+ON, são AÇÕES
+// - ETFs (BOVA11, IVVB11) - não suportados, vão dar 404
+// Não dá para distinguir só pelo sufixo, então tentamos action endpoint primeiro
+// e caímos para FII se voltar 404. Cache evita repetir tentativas.
+const cacheTipoTicker = new Map(); // ticker → 'acao' | 'fii' | 'desconhecido'
+
+function isPossivelFII(ticker) {
   return /11$/.test(ticker || "");
 }
 
@@ -198,29 +206,75 @@ export default async function handler(req, res) {
     // bolsai não suporta múltiplos tickers em 1 request → paraleliza
     // Para cada ticker, busca FUNDAMENTOS + SETOR em paralelo (2 reqs por ticker)
     const promessas = tickersParaBuscar.map(async (t) => {
-      const ehFII = isFII(t);
-      const path = ehFII ? `/fiis/${t}` : `/fundamentals/${t}`;
-
       try {
-        // Paraleliza fundamentos + setor (cache 7 dias evita maior parte das chamadas)
-        const [respFund, setorCVM] = await Promise.all([
-          fetch(`${BOLSAI_BASE}${path}`, {
+        // Estratégia para descobrir se é ação ou FII:
+        // - Se já sabemos pelo cacheTipoTicker, usa direto
+        // - Senão, para tickers *11: tenta ação primeiro (units como TAEE11/SAPR11/KLBN11),
+        //   se 404 cai para FII. Cache evita repetir.
+        // - Para tickers *3/*4: vai direto para ação.
+        const tipoCache = cacheTipoTicker.get(t);
+        const podeSerFII = isPossivelFII(t);
+
+        // Função que busca em um path específico
+        const tentar = async (path) => {
+          const r = await fetch(`${BOLSAI_BASE}${path}`, {
             headers: { 'X-API-Key': apiKey },
             signal: AbortSignal.timeout(8000)
-          }),
+          });
+          return r;
+        };
+
+        // Decide ordem de tentativa
+        let pathPrincipal, pathFallback, ehFIIInicial;
+        if (tipoCache === "fii") {
+          pathPrincipal = `/fiis/${t}`;
+          ehFIIInicial = true;
+        } else if (tipoCache === "acao") {
+          pathPrincipal = `/fundamentals/${t}`;
+          ehFIIInicial = false;
+        } else {
+          // Sem cache: tenta ação primeiro
+          // Se ticker *11, prepara fallback para FII
+          pathPrincipal = `/fundamentals/${t}`;
+          ehFIIInicial = false;
+          if (podeSerFII) pathFallback = `/fiis/${t}`;
+        }
+
+        // Paraleliza fundamentos + setor
+        const [respFund, setorCVM] = await Promise.all([
+          tentar(pathPrincipal),
           buscarSetor(t, apiKey)
         ]);
 
-        if (!respFund.ok) {
-          const errBody = await respFund.json().catch(() => ({}));
+        let respFinal = respFund;
+        let ehFII = ehFIIInicial;
+
+        // Se principal falhou com 404 e tem fallback, tenta o outro endpoint
+        if (!respFund.ok && respFund.status === 404 && pathFallback) {
+          const respFallback = await tentar(pathFallback);
+          if (respFallback.ok) {
+            respFinal = respFallback;
+            ehFII = !ehFIIInicial;
+          }
+        }
+
+        if (!respFinal.ok) {
+          const errBody = await respFinal.json().catch(() => ({}));
+          // Se 404 final, cacheia como desconhecido (evita re-tentar)
+          if (respFinal.status === 404) {
+            cacheTipoTicker.set(t, "desconhecido");
+          }
           return {
             ticker: t,
-            erro: errBody.error || errBody.detail || `HTTP ${respFund.status}`,
-            status: respFund.status
+            erro: errBody.error || errBody.detail || `HTTP ${respFinal.status}`,
+            status: respFinal.status
           };
         }
 
-        const raw = await respFund.json();
+        // Sucesso - cacheia o tipo descoberto
+        cacheTipoTicker.set(t, ehFII ? "fii" : "acao");
+
+        const raw = await respFinal.json();
         const mapeado = ehFII ? mapearFII(raw, setorCVM) : mapearAcao(raw, setorCVM);
         return { ticker: t, data: mapeado };
 
