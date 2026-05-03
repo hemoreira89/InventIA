@@ -3014,19 +3014,23 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     }
   };
 
-  // Mapeia setor da brapi (em inglês, ex: "Banks") → nosso filtro (português)
-  // Quando filtros.setor é "qualquer", retorna null (sem filtro de setor)
+  // Mapeia setor PT → setor da brapi (taxonomia TRBC).
+  // Valores reais validados em produção via SQL:
+  //   SELECT setor, COUNT(*) FROM screening_catalogo GROUP BY setor;
+  // Nota: Energia Elétrica e Saneamento ambos viram "Utilities" na brapi
+  // (não há subsetor pra distinguir). Mantemos os filtros separados na UI
+  // mas eles retornam o mesmo conjunto.
   const mapearSetorBrapi = (setorPt) => {
     const map = {
-      "Bancos": "Banks",
-      "Energia Elétrica": "Electric Utilities",
-      "Saneamento": "Water Utilities",
-      "Petróleo & Gás": "Oil, Gas & Consumable Fuels",
-      "Siderurgia": "Metals & Mining",
-      "Varejo": "Specialty Retail",
-      "Tecnologia": "Software",
-      "Saúde": "Health Care Providers & Services",
-      "Agronegócio": "Food Products",
+      "Bancos": "Finance",
+      "Energia Elétrica": "Utilities",
+      "Saneamento": "Utilities",
+      "Petróleo & Gás": "Energy Minerals",
+      "Siderurgia": "Non-Energy Minerals",
+      "Varejo": "Retail Trade",
+      "Tecnologia": "Technology Services",
+      "Saúde": "Health Services",
+      "Agronegócio": "Consumer Non-Durables",
       "Imobiliário (FIIs)": null, // FIIs filtrados por tipo, não setor
     };
     return map[setorPt] || null;
