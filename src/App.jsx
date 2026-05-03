@@ -45,6 +45,7 @@ import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
 import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
+import { buscarFundamentosCached } from "./lib/fundamentosCached";
 import { buscarHistorico, buscarHistoricos } from "./lib/historico";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
@@ -3073,24 +3074,29 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       setFase(`📊 Analisando fundamentos de ${candidatosCatalogo.length} ativos...`);
 
       const tickers = candidatosCatalogo.map(c => c.ticker);
+
+      // PRINCIPAL: lê fundamentos do cache Supabase (instantâneo, 1 query).
+      // Cotações continuam vindo da brapi em runtime (mais frescas).
       const [cotacoes, fundamentos] = await Promise.all([
         buscarCotacoes(tickers).catch(e => {
           console.error("[Oportunidades] buscarCotacoes falhou:", e.message);
           return {};
         }),
-        buscarFundamentos(tickers).catch(e => {
-          console.error("[Oportunidades] buscarFundamentos falhou:", e.message);
+        buscarFundamentosCached(tickers).catch(e => {
+          console.error("[Oportunidades] buscarFundamentosCached falhou:", e.message);
           return {};
         }),
       ]);
 
-      // Diagnóstico: quantos tickers temos com dados vs sem
       const comCotacao = Object.keys(cotacoes).length;
       const comFundamentos = Object.keys(fundamentos).length;
-      console.log(`[Oportunidades] ${tickers.length} candidatos → ${comCotacao} com cotação, ${comFundamentos} com fundamentos`);
+      console.log(`[Oportunidades] ${tickers.length} candidatos → ${comCotacao} com cotação, ${comFundamentos} com fundamentos (cache)`);
 
-      if (comFundamentos === 0 && comCotacao === 0) {
-        throw new Error("APIs de cotação e fundamentos não responderam. Recarregue a página e tente de novo. Se persistir, abra o Console (F12) e veja o erro.");
+      if (comFundamentos === 0) {
+        throw new Error(
+          "Cache de fundamentos vazio. Aguarde a primeira execução do cron-fundamentos " +
+          "ou dispare manualmente via /api/cron-fundamentos."
+        );
       }
 
       // ── PASSO 3: critérios eliminatórios + score local ──
