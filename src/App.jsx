@@ -38,6 +38,7 @@ import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
+import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso } from "./lib/catalogoB3";
@@ -2409,6 +2410,7 @@ export default function App({ session, onLogout }) {
     catch { return true; }
   });
   const privacy = usePrivacyMode();
+  const themeApi = useTheme();
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
@@ -2706,6 +2708,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
   return (
     <div style={{minHeight:"100vh",background:"#000000",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#ffffff"}}>
+      <style>{THEME_CSS}</style>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -2799,6 +2802,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
+            <ThemeToggle theme={themeApi.theme} toggle={themeApi.toggle}/>
 
             {/* User badge */}
             <div style={{
