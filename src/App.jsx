@@ -3052,13 +3052,19 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       const setorBrapi = filtros.setor !== "qualquer" ? mapearSetorBrapi(filtros.setor) : null;
 
       // Volume mínimo descarta ilíquidos. FIIs operam em volumes menores que
-      // ações (R$ 50k é razoável pra FII, R$ 100k pra ação).
-      // Limit 30 = pegamos os 30 mais líquidos do filtro pra rodar fundamentos
+      // ── PASSO 1: filtra catálogo por tipo/setor/volume mínimo ──
+      // Volume mínimo elimina ativos ilíquidos. Volume é número de cotas, não R$,
+      // então 100k é razoável pra ação líquida e 50k pra FII.
+      //
+      // Limit alto (300) porque agora os fundamentos vêm do CACHE Supabase em
+      // uma query só (zero hits na bolsai em runtime). Antes era 30 porque cada
+      // ticker custava 2 reqs bolsai. Agora podemos analisar quase todo o
+      // universo coberto pela bolsai (~750 ativos no cache).
       let candidatosCatalogo = await filtrarCatalogo({
         tipo: tipoCatalogo,
         setor: setorBrapi,
         minVolume: ehFiltroFII ? 50_000 : 100_000,
-        limit: 30,
+        limit: 300,
       });
 
       // Tab Oportunidades intencionalmente IGNORA o universoTickers do usuário.
