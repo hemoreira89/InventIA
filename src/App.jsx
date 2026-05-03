@@ -43,8 +43,9 @@ import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
-import { buscarCotacoes } from "./lib/cotacoes";
-import { buscarFundamentos } from "./lib/fundamentos";
+import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
+import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
+import { buscarHistorico, buscarHistoricos } from "./lib/historico";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
@@ -1926,39 +1927,65 @@ function TabTicker({ userId, chamarIAComSearch }) {
     if (!t) { setErro("Digite um ticker"); return; }
     setErro(""); setLoading(true); setResultado(null); setStep(0);
     try {
+      // ── PASSO 1-2: dados quantitativos via APIs (paralelo, ~1-2s total) ──
       setStep(1);
-      setFase("Buscando cotação atual...");
-      const prompt = `Você é analista financeiro do mercado brasileiro. Hoje é ${new Date().toLocaleDateString("pt-BR")}.
+      setFase("Buscando dados B3 e fundamentos CVM...");
 
-PASSO 1 — Use Google Search para buscar dados atuais de ${t} na B3:
-- Pesquise: "${t} cotação hoje preço"
-- Pesquise: "${t} dividend yield P/L ROE fundamentos"
-- Pesquise: "${t} resultado trimestral receita lucro"
+      const [cotacao, fundamentos, historico] = await Promise.all([
+        buscarCotacao(t).catch(() => null),
+        buscarFundamento(t).catch(() => null),
+        buscarHistorico(t, "1mo").catch(() => null),
+      ]);
 
-PASSO 2 — Faça análise fundamentalista completa do ativo.
+      // Se nenhuma API achou o ticker, aborta antes de gastar tempo da IA
+      if (!cotacao && !fundamentos) {
+        throw new Error(`Ticker ${t} não encontrado. Verifique se é um ticker válido da B3.`);
+      }
 
-PASSO 3 — Retorne APENAS este JSON (sem markdown):
+      const ehFII = fundamentos?.tipo === "FII" || /11$/.test(t);
+      const nomeAtivo = fundamentos?.nome || cotacao?.nome || t;
+
+      // ── PASSO 3: IA só para a parte qualitativa (tese + argumentos) ──
+      // Passa os dados reais como contexto para a IA gerar análise embasada
+      setStep(2);
+      setStep(3);
+      setFase("Gemini gerando tese de investimento...");
+
+      const dadosParaIA = {
+        ticker: t,
+        nome: nomeAtivo,
+        tipo: fundamentos?.tipo || (ehFII ? "FII" : "Ação"),
+        setor: fundamentos?.setorCVM || null,
+        preco: cotacao?.preco,
+        variacaoDia: cotacao?.variacaoPct,
+        canal52: cotacao?.canal52,
+        ...(ehFII ? {
+          dy: fundamentos?.dy,
+          pvp: fundamentos?.pvp,
+          nav: fundamentos?.nav,
+          segmento: fundamentos?.segmento,
+        } : {
+          pl: fundamentos?.pl,
+          pvp: fundamentos?.pvp,
+          roe: fundamentos?.roe,
+          roic: fundamentos?.roic,
+          margemLiquida: fundamentos?.margemLiquida,
+          divEbitda: fundamentos?.divEbitda,
+          cagrLucro5y: fundamentos?.cagrLucro5y,
+          cagrReceita5y: fundamentos?.cagrReceita5y,
+        }),
+      };
+
+      const promptIA = `Você é analista financeiro brasileiro. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
+
+DADOS REAIS DE ${t} (já consultei B3/CVM, NÃO precisa buscar de novo):
+${JSON.stringify(dadosParaIA, null, 2)}
+
+Sua tarefa: gerar a TESE DE INVESTIMENTO baseada nesses números.
+
+Responda APENAS este JSON (sem markdown, sem inventar números além dos fornecidos):
 {
-  "ticker": "${t}",
-  "nome": "Nome completo da empresa",
-  "tipo": "Ação|FII|ETF|BDR",
-  "setor": "Setor principal",
-  "preco": 49.08,
-  "fontePreco": "Status Invest / Investing.com / etc",
-  "variacaoDia": 1.2,
-  "variacaoAno": 60.5,
-  "indicadores": {
-    "dy": 5.18,
-    "pl": 5.5,
-    "pvp": 1.2,
-    "roe": 18.5,
-    "margemLiquida": 22.3,
-    "divEbitda": 0.8,
-    "min52": 30.71,
-    "max52": 51.20,
-    "canal52": 72
-  },
-  "fundamentos": "Análise dos fundamentos em 2-3 parágrafos: receita, lucro, dívida, geração de caixa, vantagens competitivas",
+  "fundamentos": "Análise dos fundamentos em 2-3 parágrafos: contexto da empresa, vantagens competitivas, riscos do setor. SEM repetir os números — eles já estão visíveis na UI",
   "tese": {
     "tipo": "comprar|aguardar|evitar",
     "score": 80,
@@ -1968,24 +1995,49 @@ PASSO 3 — Retorne APENAS este JSON (sem markdown):
     "horizonte": "12 meses"
   },
   "comparaveis": ["TICKER1", "TICKER2", "TICKER3"],
-  "ultimoDividendo": {
-    "valor": 0.48,
-    "data": "2026-03-15"
-  },
-  "resumo": "Resumo final em 2 frases sobre se vale a pena ou não no momento atual",
-  "aviso": "Análise gerada com dados públicos via Google Search. Não é recomendação financeira profissional."
+  "resumo": "1-2 frases finais: vale a pena ou não, agora"
 }
 
-Use APENAS números reais encontrados na busca. Se não encontrar algum dado, omita o campo.`;
+Use os dados quantitativos para JUSTIFICAR a tese. Se ROE ou DY estiver baixo,
+mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está caro.`;
 
-      setStep(2);
-      setFase("Analisando indicadores fundamentalistas...");
-      await sleep(300);
-      setStep(3);
-      setFase("Gemini gerando tese de investimento...");
-      const r = await chamarIAComSearch(prompt);
+      const teseIA = await chamarIAComSearch(promptIA);
+
       setStep(4);
-      setResultado(r);
+
+      // ── PASSO 4: monta resultado final unindo dados reais + tese da IA ──
+      const resultadoFinal = {
+        ticker: t,
+        nome: nomeAtivo,
+        tipo: dadosParaIA.tipo,
+        setor: dadosParaIA.setor,
+        preco: cotacao?.preco,
+        fontePreco: "brapi.dev (B3 oficial)",
+        variacaoDia: cotacao?.variacaoPct,
+        indicadores: {
+          dy: ehFII ? fundamentos?.dy : null, // Ações só têm DY se vier da brapi
+          pl: fundamentos?.pl,
+          pvp: fundamentos?.pvp,
+          roe: ehFII ? null : fundamentos?.roe,
+          roic: ehFII ? null : fundamentos?.roic,
+          margemLiquida: ehFII ? null : fundamentos?.margemLiquida,
+          divEbitda: ehFII ? null : fundamentos?.divEbitda,
+          cagrLucro5y: ehFII ? null : fundamentos?.cagrLucro5y,
+          min52: cotacao?.min52,
+          max52: cotacao?.max52,
+          canal52: cotacao?.canal52,
+        },
+        // Sparkline com últimos 30 dias
+        historico: historico?.pontos || [],
+        // Texto qualitativo da IA
+        fundamentos: teseIA?.fundamentos,
+        tese: teseIA?.tese,
+        comparaveis: teseIA?.comparaveis || [],
+        resumo: teseIA?.resumo,
+        aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Tese gerada por IA. Confirme antes de operar.",
+      };
+
+      setResultado(resultadoFinal);
     } catch (e) {
       setErro(e.message || "Erro na análise");
     } finally {
@@ -1997,9 +2049,9 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
 
   // Steps para o LoadingSteps
   const steps = [
-    { label: "Buscando cotação atual" },
-    { label: "Coletando indicadores fundamentalistas", detail: "DY, P/L, ROE, P/VP..." },
-    { label: "Gemini gerando tese de investimento", detail: "Pode levar 10-20 segundos" },
+    { label: "Buscando cotação na brapi (B3)" },
+    { label: "Buscando fundamentos na bolsai (CVM)", detail: "DY, P/L, ROE, P/VP, margens..." },
+    { label: "Gemini gerando tese de investimento", detail: "Pode levar 5-15 segundos" },
   ];
 
   return (
@@ -2046,6 +2098,12 @@ Use APENAS números reais encontrados na busca. Se não encontrar algum dado, om
                   {resultado.variacaoDia != null && <Badge val={resultado.variacaoDia}/>}
                   {resultado.variacaoAno != null && <span style={{fontSize:11,color:resultado.variacaoAno>=0?"var(--ui-success)":"var(--ui-danger)",fontWeight:600}}>Ano: {resultado.variacaoAno>=0?"+":""}{fmt(resultado.variacaoAno,1)}%</span>}
                 </div>
+                {/* Mini gráfico dos últimos 30 dias */}
+                {resultado.historico && resultado.historico.length > 1 && (
+                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+                    <Sparkline data={resultado.historico.map(p => p.c)} width={140} height={36} color="auto" strokeWidth={1.8}/>
+                  </div>
+                )}
                 {resultado.fontePreco && <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:4}}>Fonte: {resultado.fontePreco}</div>}
               </div>
             </div>
