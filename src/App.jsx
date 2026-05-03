@@ -12,7 +12,7 @@ import {
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award, Globe
+  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
@@ -42,6 +42,7 @@ import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
+import { useCotacoes } from "./hooks/useCotacoes";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SK = "investia_v4";
@@ -211,39 +212,102 @@ export function showToast(msg, tipo = "success") {
   toastListeners.forEach(fn => fn({ id: Date.now() + Math.random(), msg, tipo }));
 }
 
+// Toast com botão "Desfazer". Retorna uma promessa que resolve true se desfeito, false se expirou.
+export function showToastUndo(msg, onUndo, duracaoMs = 6000) {
+  return new Promise((resolve) => {
+    const id = Date.now() + Math.random();
+    let resolvido = false;
+
+    const handleUndo = () => {
+      if (resolvido) return;
+      resolvido = true;
+      try { onUndo(); } catch(e) { console.error("Erro ao desfazer:", e); }
+      resolve(true);
+    };
+
+    const handleExpire = () => {
+      if (resolvido) return;
+      resolvido = true;
+      resolve(false);
+    };
+
+    toastListeners.forEach(fn => fn({
+      id, msg, tipo: "undo",
+      onUndo: handleUndo,
+      onExpire: handleExpire,
+      duracao: duracaoMs
+    }));
+  });
+}
+
 function ToastContainer() {
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
     const handler = (toast) => {
       setToasts(prev => [...prev, toast]);
+      const duracao = toast.duracao || 3500;
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== toast.id));
-      }, 3500);
+        if (toast.onExpire) toast.onExpire();
+      }, duracao);
     };
     toastListeners.push(handler);
     return () => { toastListeners = toastListeners.filter(h => h !== handler); };
   }, []);
+
+  const fecharToast = (toast) => {
+    setToasts(prev => prev.filter(t => t.id !== toast.id));
+  };
 
   if (!toasts.length) return null;
 
   return (
     <div style={{
       position:"fixed",bottom:24,right:24,zIndex:9999,
-      display:"flex",flexDirection:"column",gap:8,maxWidth:380
+      display:"flex",flexDirection:"column",gap:8,maxWidth:420
     }}>
       {toasts.map(t => {
-        const cor = t.tipo === "success" ? "var(--ui-success)" : t.tipo === "error" ? "var(--ui-danger)" : t.tipo === "warning" ? "var(--ui-warning)" : "var(--ui-accent)";
-        const Icon = t.tipo === "success" ? CheckCircle2 : t.tipo === "error" ? AlertCircle : t.tipo === "warning" ? AlertTriangle : Sparkles;
+        const cor = t.tipo === "success" ? "var(--ui-success)"
+          : t.tipo === "error" ? "var(--ui-danger)"
+          : t.tipo === "warning" ? "var(--ui-warning)"
+          : t.tipo === "undo" ? "var(--ui-accent)"
+          : "var(--ui-accent)";
+        const Icon = t.tipo === "success" ? CheckCircle2
+          : t.tipo === "error" ? AlertCircle
+          : t.tipo === "warning" ? AlertTriangle
+          : t.tipo === "undo" ? Trash2
+          : Sparkles;
         return (
           <div key={t.id} className="anim" style={{
             background:"var(--ui-bg-card)",border:`1px solid ${cor}50`,borderRadius:10,
             padding:"12px 16px",display:"flex",alignItems:"center",gap:10,
             boxShadow:`0 8px 24px ${cor}20, var(--ui-shadow-md)`,
-            minWidth:240
+            minWidth:280
           }}>
             <Icon size={18} color={cor} strokeWidth={2.2}/>
             <span style={{fontSize:13,color:"var(--ui-text)",fontWeight:500,flex:1}}>{t.msg}</span>
+            {t.onUndo && (
+              <button
+                onClick={() => { t.onUndo(); fecharToast(t); }}
+                style={{
+                  background:"transparent",
+                  border:`1px solid ${cor}`,
+                  color: cor,
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
+              >
+                <Undo2 size={11} strokeWidth={2.5}/>
+                Desfazer
+              </button>
+            )}
           </div>
         );
       })}
@@ -303,6 +367,41 @@ function Stat({ label, value, color, mono=false }) {
   );
 }
 
+// Estilo padrão de tecla (kbd)
+const kbdStyle = {
+  display:"inline-flex",
+  alignItems:"center",
+  justifyContent:"center",
+  minWidth:22,
+  height:22,
+  padding:"0 6px",
+  background:"var(--ui-bg-secondary)",
+  border:"1px solid var(--ui-border)",
+  borderRadius:5,
+  fontSize:11,
+  fontWeight:600,
+  fontFamily:"'JetBrains Mono',monospace",
+  color:"var(--ui-text-secondary)",
+  boxShadow:"0 1px 2px rgba(0,0,0,0.05)"
+};
+
+// Linha "tecla(s) → descrição" do modal de atalhos
+function KeyRow({ keys, desc }) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:10,fontSize:12}}>
+      <div style={{display:"flex",gap:4,alignItems:"center",minWidth:80}}>
+        {keys.map((k, i) => (
+          <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
+            <kbd style={kbdStyle}>{k}</kbd>
+            {i < keys.length - 1 && <span style={{fontSize:10,color:"var(--ui-text-faint)"}}>+</span>}
+          </span>
+        ))}
+      </div>
+      <span style={{color:"var(--ui-text-muted)"}}>{desc}</span>
+    </div>
+  );
+}
+
 const TTip = ({active,payload,label}) => {
   if (!active||!payload?.length) return null;
   return (
@@ -340,6 +439,10 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
   const [salvando,setSalvando]=useState(false);
+
+  // Cotações em tempo real (atualiza a cada 60s)
+  const tickersCarteira = carteira.map(a => a.ticker);
+  const { cotacoes, atualizadoEm } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
 
   const add = async () => {
     const t = ticker.toUpperCase().trim();
@@ -381,27 +484,62 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
     }
   };
 
-  const removerAtivoCarteira = (ativo) => {
-    pedirConfirmacao({
-      titulo: `Remover ${ativo.ticker}?`,
-      mensagem: `Tem certeza que deseja remover ${ativo.ticker} (${ativo.qtd} cotas) da sua carteira? Esta ação não pode ser desfeita.`,
-      perigoso: true,
-      onConfirm: async () => {
-        if (!ativo.id) {
-          setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
-          showToast(`${ativo.ticker} removido`, "success");
-          return;
-        }
+  const removerAtivoCarteira = async (ativo) => {
+    // UX moderna: remove direto + toast com 6s pra desfazer
+    const ativoRemovido = { ...ativo };
+    const indiceOriginal = carteira.findIndex(x => x.ticker === ativo.ticker);
+
+    // Remove imediatamente da UI
+    setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
+
+    // Se tem id, deleta no Supabase em paralelo
+    let promessaDelete = null;
+    if (ativo.id) {
+      promessaDelete = removerAtivo(ativo.id).catch(e => {
+        console.error("Erro ao remover do Supabase:", e);
+      });
+    }
+
+    // Mostra toast com Desfazer
+    const desfez = await showToastUndo(
+      `${ativo.ticker} removido`,
+      () => {
+        // Restaura na UI no índice original
+        setCarteira(p => {
+          const novo = [...p];
+          novo.splice(indiceOriginal, 0, ativoRemovido);
+          return novo;
+        });
+      }
+    );
+
+    if (desfez) {
+      // Usuário desfez. Se já foi salvo no Supabase, precisa re-criar.
+      if (ativo.id) {
         try {
-          await removerAtivo(ativo.id);
-          setCarteira(p => p.filter(x => x.ticker !== ativo.ticker));
-          onSave();
-          showToast(`${ativo.ticker} removido com sucesso`, "success");
+          await promessaDelete;
+          // Re-salva no Supabase (cria novo registro)
+          const novo = await salvarAtivo(userId, carteiraId, {
+            ticker: ativoRemovido.ticker,
+            qtd: ativoRemovido.qtd,
+            pm: ativoRemovido.pm,
+            peso_alvo: ativoRemovido.peso_alvo
+          });
+          // Atualiza id no estado
+          setCarteira(p => p.map(x =>
+            x.ticker === ativoRemovido.ticker ? { ...x, id: novo.id } : x
+          ));
         } catch (e) {
-          showToast("Erro ao remover: " + e.message, "error");
+          showToast("Erro ao restaurar: " + e.message, "error");
         }
       }
-    });
+    } else {
+      // Toast expirou — confirma o save no Supabase
+      if (promessaDelete) {
+        await promessaDelete;
+        onSave();
+      }
+    }
   };
 
   const alertasReb = dados?.posicoes?.filter(p => {
@@ -535,7 +673,15 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 
       {carteira.length > 0 ? <>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-          <STitle>ATIVOS ({carteira.length})</STitle>
+          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <STitle>ATIVOS ({carteira.length})</STitle>
+            {atualizadoEm && (
+              <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"var(--ui-text-faint)"}}>
+                <span className="blink" style={{width:5,height:5,borderRadius:"50%",background:"var(--ui-success)"}}/>
+                <span>Cotações ao vivo · {atualizadoEm.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
+              </div>
+            )}
+          </div>
           <div style={{display:"flex",gap:6}}>
             <button onClick={exportarCSV} title="Exportar carteira em CSV" style={{
               background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:6,padding:"6px 10px",
@@ -553,6 +699,12 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
         {carteira.map((a,i) => {
           const pos = dados?.posicoes?.find(p => p.ticker === a.ticker);
+          const cotacao = cotacoes[a.ticker];
+          // Usa preço da análise IA se houver, senão da cotação em tempo real
+          const precoAtual = pos?.preco || cotacao?.preco;
+          const valorTotal = precoAtual ? precoAtual * a.qtd : null;
+          const variacaoPctPM = a.pm && precoAtual ? (precoAtual - a.pm) / a.pm * 100 : null;
+          const variacaoDia = cotacao?.variacaoPct;
           return (
             <Card key={a.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -566,16 +718,43 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                   </div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  {pos && (
+                  {valorTotal != null && (
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(pos.valorAtual)}</div>
-                      {pos.pm && <Badge val={(pos.preco-pos.pm)/pos.pm*100}/>}
+                      <div style={{fontWeight:700,color:"var(--ui-text)",fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(valorTotal)}</div>
+                      {variacaoPctPM != null && <Badge val={variacaoPctPM}/>}
                     </div>
                   )}
                   <button onClick={() => removerAtivoCarteira(a)}
                     style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
                 </div>
               </div>
+
+              {/* Cotação em tempo real (visível mesmo sem análise IA) */}
+              {cotacao && precoAtual && (
+                <div style={{
+                  display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"6px 10px",borderRadius:7,
+                  background:"var(--ui-bg-secondary)",
+                  marginBottom:6,marginTop:2
+                }}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"var(--ui-success)"}}/>
+                    <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:0.5}}>AO VIVO</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(precoAtual)}</span>
+                    {variacaoDia != null && (
+                      <span style={{
+                        fontSize:10,fontWeight:700,
+                        color: variacaoDia >= 0 ? "var(--ui-success)" : "var(--ui-danger)"
+                      }}>
+                        {variacaoDia >= 0 ? "▲" : "▼"} {fmt(Math.abs(variacaoDia),2)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {pos && (
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
                   {pos.dy>0 && <span style={{fontSize:10,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
@@ -1047,20 +1226,49 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
     }
   };
 
-  const remover = (item) => {
-    pedirConfirmacao({
-      titulo: `Remover ${item.ticker} da watchlist?`,
-      mensagem: `Esta ação removerá ${item.ticker} da sua watchlist. Você pode adicionar novamente depois se quiser.`,
-      perigoso: true,
-      onConfirm: async () => {
-        if (item.id) {
-          try { await removerWatchlist(item.id); } catch(_) {}
-        }
-        setWatchlist(p => p.filter(x => x.ticker !== item.ticker));
-        onSave();
-        showToast(`${item.ticker} removido da watchlist`, "success");
+  const remover = async (item) => {
+    const indiceOriginal = watchlist.findIndex(x => x.ticker === item.ticker);
+    const itemBackup = { ...item };
+
+    setWatchlist(p => p.filter(x => x.ticker !== item.ticker));
+
+    let promessaDelete = null;
+    if (item.id) {
+      promessaDelete = removerWatchlist(item.id).catch(e => {
+        console.error("Erro ao remover watchlist:", e);
+      });
+    }
+
+    const desfez = await showToastUndo(
+      `${item.ticker} removido da watchlist`,
+      () => {
+        setWatchlist(p => {
+          const novo = [...p];
+          novo.splice(indiceOriginal, 0, itemBackup);
+          return novo;
+        });
       }
-    });
+    );
+
+    if (desfez && item.id) {
+      try {
+        await promessaDelete;
+        const novo = await salvarWatchlist(userId, {
+          ticker: itemBackup.ticker,
+          alvo: itemBackup.alvo,
+          nota: itemBackup.nota,
+          precoIA: itemBackup.precoIA
+        });
+        setWatchlist(p => p.map(x =>
+          x.ticker === itemBackup.ticker ? { ...x, id: novo.id } : x
+        ));
+      } catch (e) {
+        showToast("Erro ao restaurar: " + e.message, "error");
+      }
+    } else if (!desfez && promessaDelete) {
+      await promessaDelete;
+      onSave();
+    }
   };
 
   const enriched = watchlist.map(w => {
@@ -2033,20 +2241,44 @@ function TabProventos({ userId, pedirConfirmacao }) {
     }
   };
 
-  const remover = (id) => {
+  const remover = async (id) => {
     const prov = proventos.find(p => p.id === id);
-    pedirConfirmacao({
-      titulo: "Remover provento?",
-      mensagem: `Remover ${prov?.tipo} de ${prov?.ticker} (${fmtBRL(prov?.valor)}) do histórico?`,
-      perigoso: true,
-      onConfirm: async () => {
-        try {
-          await removerProvento(id);
-          setProventos(p => p.filter(x => x.id !== id));
-          showToast("Provento removido", "success");
-        } catch (e) { showToast("Erro: " + e.message, "error"); }
-      }
+    if (!prov) return;
+    const indiceOriginal = proventos.findIndex(p => p.id === id);
+
+    setProventos(p => p.filter(x => x.id !== id));
+    const promessaDelete = removerProvento(id).catch(e => {
+      console.error("Erro ao remover provento:", e);
     });
+
+    const desfez = await showToastUndo(
+      `Provento de ${prov.ticker} removido`,
+      () => {
+        setProventos(p => {
+          const novo = [...p];
+          novo.splice(indiceOriginal, 0, prov);
+          return novo;
+        });
+      }
+    );
+
+    if (desfez) {
+      try {
+        await promessaDelete;
+        const novo = await registrarProvento(userId, {
+          ticker: prov.ticker,
+          tipo: prov.tipo,
+          valor: prov.valor,
+          data_pagamento: prov.data_pagamento,
+          observacao: prov.observacao
+        });
+        setProventos(p => p.map(x => x.id === id ? novo : x));
+      } catch (e) {
+        showToast("Erro ao restaurar: " + e.message, "error");
+      }
+    } else {
+      await promessaDelete;
+    }
   };
 
   // Estatísticas
@@ -2617,17 +2849,84 @@ export default function App({ session, onLogout }) {
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
-  // Atalho global Ctrl+K / Cmd+K
+  // Atalhos globais de teclado
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   useEffect(() => {
+    let lastKey = null;
+    let lastKeyTime = 0;
+
     const handler = (e) => {
+      // Ignora se está em input/textarea (exceto Escape)
+      const tag = e.target.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || tag === "select";
+
+      // Ctrl/Cmd + K → Paleta de comandos
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+        return;
       }
+
+      // Escape → fecha modais
+      if (e.key === "Escape") {
+        if (paletteOpen) setPaletteOpen(false);
+        if (showShortcutsHelp) setShowShortcutsHelp(false);
+        return;
+      }
+
+      // Resto dos atalhos não funcionam quando em inputs
+      if (isInput) return;
+
+      // ? → mostra ajuda de atalhos
+      if (e.key === "?" && !e.shiftKey) {
+        e.preventDefault();
+        setShowShortcutsHelp(prev => !prev);
+        return;
+      }
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setShowShortcutsHelp(prev => !prev);
+        return;
+      }
+
+      // / → abre paleta (alternativa ao Ctrl+K)
+      if (e.key === "/") {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+
+      // Sequência "g + tecla" para navegação rápida (estilo Vim/GitHub)
+      const now = Date.now();
+      if (lastKey === "g" && (now - lastKeyTime) < 1000) {
+        const navMap = {
+          "c": "carteira",
+          "p": "patrimonio",
+          "a": "analise",
+          "t": "ticker",
+          "o": "oportunidades",
+          "h": "historico",
+          "d": "proventos", // d de Dividendos
+          "w": "watchlist",
+          "u": "universo",
+          "m": "meta",
+          "i": "ir",
+          "x": "cenarios",
+        };
+        if (navMap[e.key]) {
+          e.preventDefault();
+          setTab(navMap[e.key]);
+          lastKey = null;
+          return;
+        }
+      }
+      lastKey = e.key;
+      lastKeyTime = now;
     };
+
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [paletteOpen, showShortcutsHelp]);
 
   const fecharOnboarding = () => {
     setShowOnboarding(false);
@@ -3047,6 +3346,19 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
               }}>⌘K</kbd>
             </button>
 
+            {/* Botão de ajuda de atalhos */}
+            <button onClick={() => setShowShortcutsHelp(true)} title="Atalhos de teclado (?)" style={{
+              background:"var(--ui-bg-secondary)",
+              border:"1px solid var(--ui-border)",
+              borderRadius:6,
+              padding:"7px 10px",
+              color:"var(--ui-text-secondary)",
+              cursor:"pointer",
+              display:"flex",alignItems:"center",fontSize:13,fontWeight:700
+            }}>
+              ?
+            </button>
+
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
             <ThemeToggle theme={themeApi.theme} toggle={themeApi.toggle}/>
@@ -3260,6 +3572,80 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
             }, 100);
           }}
         />
+
+        {/* Modal de ajuda dos atalhos (?) */}
+        {showShortcutsHelp && (
+          <div onClick={() => setShowShortcutsHelp(false)} style={{
+            position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",
+            zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:20
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:14,
+              padding:"24px 28px",maxWidth:520,width:"100%",
+              boxShadow:"0 20px 60px rgba(0,0,0,0.3)"
+            }}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{
+                    width:36,height:36,borderRadius:9,
+                    background:"rgba(123,97,255,0.12)",
+                    display:"flex",alignItems:"center",justifyContent:"center"
+                  }}>
+                    <Command size={18} color="var(--ui-accent)" strokeWidth={2.2}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:700,color:"var(--ui-text)"}}>Atalhos de Teclado</div>
+                    <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>Pressione <kbd style={kbdStyle}>?</kbd> para abrir/fechar</div>
+                  </div>
+                </div>
+                <button onClick={() => setShowShortcutsHelp(false)} style={{
+                  background:"transparent",border:"none",cursor:"pointer",
+                  color:"var(--ui-text-muted)",padding:4
+                }}><X size={20}/></button>
+              </div>
+
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"var(--ui-text-faint)",marginBottom:8}}>GERAIS</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <KeyRow keys={["⌘","K"]} desc="Abrir paleta de comandos"/>
+                    <KeyRow keys={["/"]} desc="Buscar (alternativa ao ⌘K)"/>
+                    <KeyRow keys={["?"]} desc="Mostrar/ocultar este painel"/>
+                    <KeyRow keys={["Esc"]} desc="Fechar modais e paleta"/>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"var(--ui-text-faint)",marginBottom:8}}>NAVEGAÇÃO RÁPIDA (g + tecla)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    <KeyRow keys={["g","c"]} desc="Carteira"/>
+                    <KeyRow keys={["g","p"]} desc="Patrimônio"/>
+                    <KeyRow keys={["g","a"]} desc="Análise IA"/>
+                    <KeyRow keys={["g","t"]} desc="Analisar Ticker"/>
+                    <KeyRow keys={["g","o"]} desc="Oportunidades"/>
+                    <KeyRow keys={["g","h"]} desc="Histórico"/>
+                    <KeyRow keys={["g","d"]} desc="Proventos (Dividendos)"/>
+                    <KeyRow keys={["g","w"]} desc="Watchlist"/>
+                    <KeyRow keys={["g","u"]} desc="Universo"/>
+                    <KeyRow keys={["g","m"]} desc="1º Milhão"/>
+                    <KeyRow keys={["g","i"]} desc="Calculadora IR"/>
+                    <KeyRow keys={["g","x"]} desc="Cenários"/>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding:"10px 12px",
+                  background:"rgba(123,97,255,0.08)",
+                  border:"1px solid rgba(123,97,255,0.2)",
+                  borderRadius:8,
+                  fontSize:11,color:"var(--ui-text-muted)",lineHeight:1.5
+                }}>
+                  💡 <b>Dica:</b> dentro da paleta de comandos (<kbd style={kbdStyle}>⌘K</kbd>), digite um ticker (ex: PETR4) para analisar diretamente.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{

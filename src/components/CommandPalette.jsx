@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, Briefcase, BarChart3, Brain, FileSearch, GitCompare,
   Lightbulb, History, Coins, Eye, Target, TrendingUp, Receipt,
-  Activity, ArrowRight, Command
+  Activity, ArrowRight, Command, Globe
 } from "lucide-react";
 
 /**
@@ -18,7 +18,6 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
   const allCommands = useMemo(() => [
     { id: "tab-carteira", group: "Navegação", icon: Briefcase, label: "Ir para Carteira", action: "navigate", target: "carteira" },
     { id: "tab-patrimonio", group: "Navegação", icon: Activity, label: "Ir para Patrimônio", action: "navigate", target: "patrimonio" },
-    { id: "tab-graficos", group: "Navegação", icon: BarChart3, label: "Ir para Gráficos", action: "navigate", target: "graficos" },
     { id: "tab-analise", group: "Navegação", icon: Brain, label: "Ir para Análise IA", action: "navigate", target: "analise" },
     { id: "tab-ticker", group: "Navegação", icon: FileSearch, label: "Ir para Analisar Ticker", action: "navigate", target: "ticker" },
     { id: "tab-comparador", group: "Navegação", icon: GitCompare, label: "Ir para Comparador", action: "navigate", target: "comparador" },
@@ -26,6 +25,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
     { id: "tab-historico", group: "Navegação", icon: History, label: "Ir para Histórico", action: "navigate", target: "historico" },
     { id: "tab-proventos", group: "Navegação", icon: Coins, label: "Ir para Proventos", action: "navigate", target: "proventos" },
     { id: "tab-watchlist", group: "Navegação", icon: Eye, label: "Ir para Watchlist", action: "navigate", target: "watchlist" },
+    { id: "tab-universo", group: "Navegação", icon: Globe, label: "Ir para Universo", action: "navigate", target: "universo" },
     { id: "tab-meta", group: "Navegação", icon: Target, label: "Ir para 1º Milhão", action: "navigate", target: "meta" },
     { id: "tab-cenarios", group: "Navegação", icon: TrendingUp, label: "Ir para Cenários", action: "navigate", target: "cenarios" },
     { id: "tab-ir", group: "Navegação", icon: Receipt, label: "Ir para Calculadora IR", action: "navigate", target: "ir" },
