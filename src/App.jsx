@@ -3050,12 +3050,13 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       const tipoCatalogo = ehFiltroFII ? "fund" : "stock";
       const setorBrapi = filtros.setor !== "qualquer" ? mapearSetorBrapi(filtros.setor) : null;
 
-      // Volume mínimo descarta ilíquidos (R$ 100k diários)
+      // Volume mínimo descarta ilíquidos. FIIs operam em volumes menores que
+      // ações (R$ 50k é razoável pra FII, R$ 100k pra ação).
       // Limit 30 = pegamos os 30 mais líquidos do filtro pra rodar fundamentos
       let candidatosCatalogo = await filtrarCatalogo({
         tipo: tipoCatalogo,
         setor: setorBrapi,
-        minVolume: 100_000,
+        minVolume: ehFiltroFII ? 50_000 : 100_000,
         limit: 30,
       });
 

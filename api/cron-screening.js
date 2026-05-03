@@ -60,14 +60,37 @@ async function buscarTodos(token, tipo) {
 }
 
 /**
+ * Lista de ETFs brasileiros conhecidos.
+ * A brapi retorna tudo terminado em "11" como type=fund, sem distinguir
+ * FIIs (fundos imobiliários) de ETFs (fundos de índice). Como ETFs não
+ * pagam DY (são fundos de índice) e não têm os mesmos fundamentos de FIIs,
+ * precisamos separar.
+ *
+ * Lista mantida manualmente. Se faltar algum, basta adicionar aqui.
+ * Fonte: lista de ETFs negociados na B3 (B3 → Listados → ETF).
+ */
+const ETFS_B3 = new Set([
+  "BOVA11", "IVVB11", "SMAL11", "NASD11", "GOLD11", "SMAC11", "BOVB11",
+  "ECOO11", "SPXI11", "MATB11", "DIVO11", "ISUS11", "BBSD11", "PIBB11",
+  "GOVE11", "FIND11", "MOAT11", "HASH11", "ESGB11", "FIXA11", "BBOV11",
+  "BBSB11", "ETHE11", "QBTC11", "ACWI11", "EURP11", "JPN11", "WRLD11",
+  "BDRX11", "USTK11", "DEFI11", "BLOK11", "5GTK11", "TECK11", "SPACE11",
+  "WGBL11", "FIIB11", "BCFF11", "USDB11", "GOLD11"
+]);
+
+/**
  * Mapeia o objeto da brapi pro schema da nossa tabela.
+ * Se o "fund" for ETF conhecido, marca tipo='etf' (em vez de 'fund').
  */
 function mapearParaCatalogo(stock, tipo) {
+  // ETFs vem como type=fund da brapi mas não são FIIs de verdade
+  const tipoFinal = (tipo === "fund" && ETFS_B3.has(stock.stock)) ? "etf" : tipo;
+
   return {
     ticker: stock.stock,
     nome: stock.name || null,
     setor: stock.sector || null,
-    tipo,
+    tipo: tipoFinal,
     preco: stock.close ?? null,
     market_cap: stock.market_cap_basic != null ? Math.round(stock.market_cap_basic) : null,
     volume: stock.volume != null ? Math.round(stock.volume) : null,

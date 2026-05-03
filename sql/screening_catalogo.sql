@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS screening_catalogo (
   ticker         TEXT PRIMARY KEY,
   nome           TEXT,
   setor          TEXT,
-  tipo           TEXT NOT NULL CHECK (tipo IN ('stock', 'fund', 'bdr')),
+  tipo           TEXT NOT NULL CHECK (tipo IN ('stock', 'fund', 'bdr', 'etf')),
   preco          NUMERIC(12, 2),
   market_cap     BIGINT,
   volume         BIGINT,
