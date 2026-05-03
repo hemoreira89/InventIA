@@ -78,5 +78,56 @@ export default async function handler(req, res) {
     diag.bolsai_test = { erro: e.message };
   }
 
+  // Inspeção dos campos retornados (pra mapear corretamente)
+  // Mostra TODAS as chaves do JSON da bolsai pra entender o schema real
+  if (req.query?.inspect === "true") {
+    diag.inspect = {};
+
+    // Ação (PETR4)
+    try {
+      const r = await fetch("https://api.usebolsai.com/api/v1/fundamentals/PETR4", {
+        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        diag.inspect.acao_PETR4 = {
+          chaves: Object.keys(j).sort(),
+          amostra: j, // payload completo (pode ser grande, ok pra debug)
+        };
+      }
+    } catch (e) { diag.inspect.acao_PETR4 = { erro: e.message }; }
+
+    // FII (MXRF11)
+    try {
+      const r = await fetch("https://api.usebolsai.com/api/v1/fiis/MXRF11", {
+        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        diag.inspect.fii_MXRF11 = {
+          chaves: Object.keys(j).sort(),
+          amostra: j,
+        };
+      }
+    } catch (e) { diag.inspect.fii_MXRF11 = { erro: e.message }; }
+
+    // Companies (PETR4 — pra setor)
+    try {
+      const r = await fetch("https://api.usebolsai.com/api/v1/companies/PETR4", {
+        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        diag.inspect.companies_PETR4 = {
+          chaves: Object.keys(j).sort(),
+          amostra: j,
+        };
+      }
+    } catch (e) { diag.inspect.companies_PETR4 = { erro: e.message }; }
+  }
+
   return res.status(200).json(diag);
 }
