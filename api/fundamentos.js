@@ -38,7 +38,8 @@ function getFromCache(cache, key, ttlMs) {
     cache.delete(key);
     return null;
   }
-  return item.data ?? item.setorCVM;
+  // cacheFundamentos guarda em .data, cacheSetor guarda em .setorCVM
+  return item.data !== undefined ? item.data : item.setorCVM;
 }
 
 function setFundamentosCache(key, data) {
@@ -125,9 +126,11 @@ function mapearFII(raw, setorCVM) {
  * Para FIIs geralmente retorna null (e tudo bem - critérios de FII não usam setor).
  */
 async function buscarSetor(ticker, apiKey) {
-  // Cache 7 dias
-  const cached = getFromCache(cacheSetor, ticker, SETOR_TTL_MS);
-  if (cached !== null && cached !== undefined) return cached;
+  // Cache 7 dias - cacheia inclusive null (significa "tentei e não tem setor")
+  const item = cacheSetor.get(ticker);
+  if (item && (Date.now() - item.ts) <= SETOR_TTL_MS) {
+    return item.setorCVM;
+  }
 
   try {
     const r = await fetch(`${BOLSAI_BASE}/companies/${ticker}`, {
