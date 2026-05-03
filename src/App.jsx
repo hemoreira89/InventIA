@@ -606,9 +606,38 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
 }
 
 // ─── Tab: Gráficos ────────────────────────────────────────────────────────────
-function TabGraficos({ dados }) {
+function TabGraficos({ dados, onIrParaAnalise }) {
   const [g, setG] = useState("pizza");
-  if (!dados) return <div style={{textAlign:"center",padding:"48px 0",color:"var(--ui-text-disabled)",fontSize:13}}>Rode a análise primeiro ↑</div>;
+  if (!dados) return (
+    <Card>
+      <div style={{textAlign:"center",padding:"48px 24px"}}>
+        <div style={{
+          width:56,height:56,borderRadius:14,
+          background:"rgba(123,97,255,0.12)",
+          display:"inline-flex",alignItems:"center",justifyContent:"center",
+          marginBottom:14
+        }}>
+          <BarChart3 size={26} color="var(--ui-accent)" strokeWidth={2}/>
+        </div>
+        <div style={{fontSize:16,fontWeight:700,color:"var(--ui-text)",marginBottom:6}}>
+          Sem dados para visualizar
+        </div>
+        <div style={{fontSize:13,color:"var(--ui-text-muted)",marginBottom:18,maxWidth:380,margin:"0 auto 18px"}}>
+          Os gráficos são gerados a partir da análise da sua carteira pela IA. Rode uma análise para ver os insights visuais.
+        </div>
+        <button onClick={onIrParaAnalise} style={{
+          background:"linear-gradient(135deg,#7b61ff,#5540dd)",
+          border:"none",borderRadius:8,padding:"11px 22px",
+          color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer",
+          boxShadow:"0 4px 14px rgba(123,97,255,0.3)",
+          display:"inline-flex",alignItems:"center",gap:8
+        }}>
+          <Sparkles size={14} strokeWidth={2.5}/>
+          Ir para Análise IA
+        </button>
+      </div>
+    </Card>
+  );
 
   const pos = dados.posicoes || [];
   const pizza = pos.map((p,i) => ({ name:p.ticker, value:+p.peso.toFixed(1), fill:PALETTE[i%PALETTE.length] }));
@@ -3021,7 +3050,7 @@ Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
 
         <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
-          {tab==="graficos" && <TabGraficos dados={dados}/>}
+          {tab==="graficos" && <TabGraficos dados={dados} onIrParaAnalise={() => setTab("analise")}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
