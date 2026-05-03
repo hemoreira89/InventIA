@@ -59,3 +59,14 @@ CREATE POLICY "Log público para leitura"
   ON screening_catalogo_log
   FOR SELECT
   USING (true);
+
+-- ─── Permissões explícitas ──────────────────────────────────────────────────
+-- service_role precisa de GRANT pra ler/escrever (mesmo bypassando RLS).
+-- anon/authenticated só leem (RLS já restringe escrita por padrão).
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON screening_catalogo TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON screening_catalogo_log TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE screening_catalogo_log_id_seq TO service_role;
+
+GRANT SELECT ON screening_catalogo TO anon, authenticated;
+GRANT SELECT ON screening_catalogo_log TO anon, authenticated;
