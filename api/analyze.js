@@ -18,7 +18,7 @@ export const config = {
   maxDuration: 60
 };
 
-const TIMEOUT_MS = 55000; // 55s - margem de 5s sobre o limite do Vercel Hobby
+const TIMEOUT_MS = 30000; // 30s - sem Google Search, Gemini responde em 5-15s normalmente
 
 async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
   const tStart = Date.now();
@@ -139,22 +139,22 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API key não configurada' });
     }
 
-    // Estratégia: tenta com search primeiro (melhor resultado), depois sem
-    // search como fallback (se modelo travar com STOP+vazio ou der timeout).
+    // Estratégia: tenta com search se pedido, depois sem search.
+    // Sem search é rápido (5-15s), então cabem várias tentativas em 60s.
+    // Com search é lento (30-50s), então só 1 tentativa.
     // Cada item: [modelId, useSearch]
-    const tentativas = model === 'pro'
+    const tentativas = useSearch
       ? [
+          // Search: tentamos só uma vez (lento). Se falhar, cai pra sem search.
           ['gemini-2.5-flash', true],
-          ['gemini-2.5-pro', true],
           ['gemini-2.5-flash', false],
           ['gemini-2.5-flash-lite', false]
         ]
       : [
-          ['gemini-2.5-flash', useSearch],
-          ['gemini-2.5-flash-lite', useSearch],
-          // Fallbacks SEM search (mais confiáveis quando os outros falham)
+          // Sem search: ordem rápida → boa, fallback se quota
           ['gemini-2.5-flash', false],
-          ['gemini-2.5-flash-lite', false]
+          ['gemini-2.5-flash-lite', false],
+          ['gemini-2.5-pro', false] // pro é lento mas é fallback final
         ];
 
     log('Sequência de tentativas', tentativas.map(([m, s]) => `${m}${s ? '+search' : ''}`));

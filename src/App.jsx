@@ -71,8 +71,15 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // 'flash' começa pelo 2.5-flash que é 5x mais rápido que pro
-      body: JSON.stringify({ prompt, useSearch: true, model: "flash" })
+      // useSearch=false: NÃO usa Google Search grounding.
+      // Antes a IA fazia web_search pra buscar cotações/fundamentos, mas:
+      //  - Levava 30-50s (estourava timeout do Vercel Hobby)
+      //  - Bug do Gemini com search ocasionalmente retornava texto vazio
+      //  - Cotação real vem da brapi (em outra chamada paralela)
+      //  - Fundamentos reais vêm da bolsai (em outra chamada paralela)
+      // A IA só precisa montar a TESE de investimento (qual ticker, % alocação,
+      // por quê) - números reais são preenchidos pelo enriquecimento depois.
+      body: JSON.stringify({ prompt, useSearch: false, model: "flash" })
     });
     const elapsed = Date.now() - tStart;
     console.log(`[IA] resposta HTTP ${res.status} em ${elapsed}ms`);
@@ -121,7 +128,7 @@ async function chamarIA(prompt) {
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, useSearch: true, model: "flash" })
+    body: JSON.stringify({ prompt, useSearch: false, model: "flash" })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -3380,9 +3387,14 @@ Responda APENAS com JSON (sem markdown):
   "aviso": "Confirme na sua corretora."
 }
 
-INDICADORES por tipo de ativo (busque no Google):
+INDICADORES por tipo de ativo (use seu conhecimento de mercado, retorne null se não souber):
 - AÇÕES: dy, pl, pvp, roe (% retorno sobre PL), divEbitda (Dívida Líquida/EBITDA), margemLiquida (% lucro líquido), lucrosConsistentes (true se lucros positivos nos últimos 5 anos), score, canal52
 - FIIs: dy, pvp, vacancia (% vacância física/financeira), diversificado (true se >5 imóveis OU >10 inquilinos), score, canal52
+
+IMPORTANTE: O sistema enriquece os indicadores DEPOIS com dados oficiais (B3, CVM).
+Sua função é montar a TESE: qual ticker, % alocação, justificativa. Os números
+exatos serão sobrescritos pelo backend. Se não tiver certeza de um indicador,
+retorne null - é mais seguro que inventar.
 
 Regras:
 - 3 a 5 recomendações, alocação soma 100
@@ -3394,19 +3406,25 @@ Regras:
       const analise = await chamarIAComSearch(prompt);
 
       // Busca cotação atual (brapi) E fundamentos reais (bolsai) em paralelo
+      // Inclui tickers das recomendações E da carteira atual (pra montar `posicoes`
+      // com dados reais sem precisar pedir pra IA via web_search).
       const tickersRecs = (analise.recomendacoes || []).map(r => r.ticker).filter(Boolean);
+      const tickersCarteiraSet = new Set([
+        ...tickersRecs,
+        ...carteira.map(a => a.ticker),
+      ]);
+      const tickersParaBuscar = Array.from(tickersCarteiraSet);
       let cotacoesReais = {};
       let fundamentosReais = {};
-      if (tickersRecs.length > 0) {
+      if (tickersParaBuscar.length > 0) {
         setFase("📊 Buscando cotações e fundamentos reais...");
         try {
-          // Paraleliza: brapi para preço/variação + bolsai para indicadores fundamentalistas
           const [dadosCotacoes, dadosFundamentos] = await Promise.all([
-            buscarCotacoes(tickersRecs).catch(e => {
+            buscarCotacoes(tickersParaBuscar).catch(e => {
               console.warn("brapi falhou:", e.message);
               return {};
             }),
-            buscarFundamentos(tickersRecs).catch(e => {
+            buscarFundamentos(tickersParaBuscar).catch(e => {
               console.warn("bolsai falhou:", e.message);
               return {};
             })
@@ -3474,53 +3492,37 @@ Regras:
         };
       });
 
-      // Montar posições da carteira com dados da IA
+      // Montar posições da carteira COM dados reais (sem precisar de IA)
+      // Antes pedíamos pra IA buscar via web_search, mas:
+      //  - Já temos cotações ao vivo via brapi em cotacoesGlobais
+      //  - Já temos fundamentos via bolsai em fundamentosReais (acima)
+      //  - Faltava só montar - sem custo de tempo da IA
       let posicoes = [];
       if (temCarteira) {
         setFase("📊 Calculando posições...");
-        const tickersCarteira = carteira.map(a => a.ticker).join(",");
 
-        const promptPosicoes = `Use web_search para buscar as cotações atuais de hoje na B3 para: ${tickersCarteira}
-Pesquise "cotações B3 hoje ${tickersCarteira}" e retorne os preços reais encontrados.
-
-Para cada ativo, calcule "canal52" como a posição percentual no canal de 52 semanas:
-canal52 = (preco_atual - minima_52sem) / (maxima_52sem - minima_52sem) * 100
-- 0% = preço próximo da mínima anual (oportunidade)
-- 50% = no meio do canal
-- 100% = próximo da máxima anual (caro)
-Se você não conseguir descobrir min/max das 52 semanas, retorne canal52: null (NÃO invente o valor 50).
-
-Retorne APENAS JSON (sem markdown):
-{"ativos":[{"ticker":"PETR4","preco":48.50,"dy":12.5,"pl":4.2,"setor":"Petróleo","tipo":"Ação","canal52":35}]}`;
-
-        try {
-          setFase("📈 Buscando cotações reais da carteira...");
-          const dadosAtivos = await chamarIAComSearch(promptPosicoes, 1000);
-          const mapa = {};
-          (dadosAtivos.ativos || []).forEach(a => { mapa[a.ticker] = a; });
-
-          posicoes = carteira.map(a => {
-            const info = mapa[a.ticker] || {};
-            const preco = info.preco || a.pm || 0;
-            const valorAtual = preco * a.qtd;
-            return {
-              ticker: a.ticker, qtd: a.qtd, pm: a.pm, preco,
-              valorAtual, dy: info.dy || 0, pl: info.pl || null,
-              setor: info.setor || getSetorPorTicker(a.ticker),
-              tipo: info.tipo || (/11$/.test(a.ticker) ? "FII" : "Ação"),
-              canal52: info.canal52 || null, historico: [],
-            };
-          });
-        } catch(_) {
-          posicoes = carteira.map(a => ({
-            ticker: a.ticker, qtd: a.qtd, pm: a.pm,
-            preco: a.pm || 0, valorAtual: (a.pm||0) * a.qtd,
-            dy: 0,
-            setor: getSetorPorTicker(a.ticker),
-            tipo: /11$/.test(a.ticker) ? "FII" : "Ação",
-            canal52: null,
-          }));
-        }
+        // Para canal52 precisamos do range 52 semanas (max/min). brapi free só
+        // retorna o dia atual, então canal52 fica null por enquanto. Não é
+        // crítico - é só uma referência de "caro vs barato no ano".
+        posicoes = carteira.map(a => {
+          const cot = cotacoesReais[a.ticker] || cotacoesGlobais[a.ticker] || {};
+          const fund = fundamentosReais[a.ticker] || {};
+          const preco = cot.preco || a.pm || 0;
+          const valorAtual = preco * a.qtd;
+          return {
+            ticker: a.ticker,
+            qtd: a.qtd,
+            pm: a.pm,
+            preco,
+            valorAtual,
+            dy: fund.dy || 0,
+            pl: fund.pl || null,
+            setor: fund.setorCVM || getSetorPorTicker(a.ticker),
+            tipo: fund.tipo || (/11$/.test(a.ticker) ? "FII" : "Ação"),
+            canal52: null, // brapi free não retorna 52w range; não inventar
+            historico: [],
+          };
+        });
       }
 
       const totalCarteira = posicoes.reduce((s,p) => s + p.valorAtual, 0);
@@ -3528,16 +3530,15 @@ Retorne APENAS JSON (sem markdown):
         ...p, peso: totalCarteira > 0 ? (p.valorAtual/totalCarteira)*100 : 0
       }));
 
-      // Atualizar watchlist com preços estimados da IA
+      // Atualizar watchlist com cotações reais via brapi (não precisa de IA)
       if (watchlist.length > 0) {
-        const wTickers = watchlist.map(w => w.ticker).join(",");
         try {
-          const promptWatch = `Use web_search para buscar cotações reais de hoje na B3 para: ${wTickers}
-Retorne APENAS JSON: {"ativos":[{"ticker":"XXXX3","preco":10.50}]}`;
-          const wData = await chamarIAComSearch(promptWatch, 600);
-          const wMapa = {};
-          (wData.ativos||[]).forEach(a => { wMapa[a.ticker] = a.preco; });
-          setWatchlist(prev => prev.map(w => ({ ...w, precoIA: wMapa[w.ticker] || w.precoIA })));
+          const wTickers = watchlist.map(w => w.ticker);
+          const wCotacoes = await buscarCotacoes(wTickers).catch(() => ({}));
+          setWatchlist(prev => prev.map(w => ({
+            ...w,
+            precoIA: wCotacoes[w.ticker]?.preco || w.precoIA
+          })));
         } catch(_) {}
       }
 
