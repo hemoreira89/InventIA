@@ -114,8 +114,8 @@ export default async function handler(req, res) {
   }
 
   // Limita a 20 tickers por request (proteção)
-  if (tickers.length > 20) {
-    return res.status(400).json({ error: 'Máximo de 20 tickers por requisição' });
+  if (tickers.length > 50) {
+    return res.status(400).json({ error: 'Máximo de 50 tickers por requisição' });
   }
 
   try {

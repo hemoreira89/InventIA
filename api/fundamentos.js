@@ -181,8 +181,8 @@ export default async function handler(req, res) {
   }
 
   const tickers = tickersParam.split(',').map(t => t.trim()).filter(Boolean);
-  if (tickers.length === 0 || tickers.length > 20) {
-    return res.status(400).json({ error: 'Forneça 1 a 20 tickers' });
+  if (tickers.length === 0 || tickers.length > 50) {
+    return res.status(400).json({ error: 'Forneça 1 a 50 tickers' });
   }
 
   try {
