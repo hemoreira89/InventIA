@@ -65,6 +65,96 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Modo explore_dividends: testa vários paths plausíveis pra DY de ações ──
+  // A bolsai não retorna DY no /fundamentals/{ticker} pra ações. Mas tem
+  // mensão na docs sobre "histórico de dividendos com dividend yield 12m".
+  // Esse modo testa N candidatos de URL pra descobrir qual responde.
+  // Custo: até 6 reqs bolsai (4-5 retornam 404 rápido, 1-2 sucessos).
+  const exploreTicker = req.query?.explore_dividends;
+  if (exploreTicker) {
+    const apiKey = process.env.BOLSAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "BOLSAI_API_KEY não configurado" });
+    }
+
+    const ticker = String(exploreTicker).toUpperCase().trim();
+    const BOLSAI = "https://api.usebolsai.com/api/v1";
+
+    // Candidatos: do mais provável (singular, padrão dos outros endpoints)
+    // ao menos provável. /dividends/{t} é o palpite mais forte.
+    const candidatos = [
+      `/dividends/${ticker}`,
+      `/dividends/${ticker}?years=2`,
+      `/stocks/${ticker}/dividends`,
+      `/companies/${ticker}/dividends`,
+      `/fundamentals/${ticker}/dividends`,
+      `/proventos/${ticker}`,
+    ];
+
+    const tentar = async (path) => {
+      const inicio = Date.now();
+      try {
+        const r = await fetch(`${BOLSAI}${path}`, {
+          headers: { "X-API-Key": apiKey },
+          signal: AbortSignal.timeout(8000),
+        });
+        const duracao_ms = Date.now() - inicio;
+
+        let body = null;
+        let bodyKeys = null;
+        if (r.ok) {
+          body = await r.json().catch(() => null);
+          if (body && typeof body === "object") {
+            bodyKeys = Object.keys(body).slice(0, 30);
+          }
+        } else {
+          // Lê o erro pra distinguir 404 "not found" de 401/403/500
+          const txt = await r.text().catch(() => "");
+          body = txt.slice(0, 200);
+        }
+
+        return {
+          path,
+          status: r.status,
+          ok: r.ok,
+          duracao_ms,
+          body_keys: bodyKeys,
+          // Procura especificamente por chaves que pareçam DY
+          dy_candidates: bodyKeys
+            ? bodyKeys.filter(k => /yield|dy|dividend/i.test(k))
+            : null,
+          // Se for objeto pequeno, mostra o body completo pra inspeção
+          body_preview: r.ok && body && JSON.stringify(body).length < 2000
+            ? body
+            : (typeof body === "string" ? body : null),
+        };
+      } catch (e) {
+        return {
+          path,
+          erro: e.message,
+          duracao_ms: Date.now() - inicio,
+        };
+      }
+    };
+
+    const resultados = await Promise.all(candidatos.map(tentar));
+
+    return res.status(200).json({
+      ok: true,
+      ticker,
+      objetivo: "Descobrir endpoint da bolsai que retorna DY pra ações",
+      // Lista ordenada: sucessos primeiro, depois falhas
+      resultados: resultados.sort((a, b) => {
+        if (a.ok && !b.ok) return -1;
+        if (!a.ok && b.ok) return 1;
+        return 0;
+      }),
+      proximo_passo: "Procure no array 'resultados' o primeiro item com ok:true. " +
+        "Os campos em 'body_keys' (especialmente 'dy_candidates') mostram quais nomes " +
+        "de campo existem. Use o 'body_preview' pra ver o valor real do DY.",
+    });
+  }
+
   const diag = {
     env: {
       BRAPI_TOKEN: !!process.env.BRAPI_TOKEN,
