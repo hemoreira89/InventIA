@@ -3010,7 +3010,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     dividendos_estaveis: {
       titulo: "Pagadoras consistentes",
-      descricao: "ROE > 10%, Dív/EBITDA < 4, DY > 4% e P/VP < 3",
+      descricao: "ROE > 10%, Dív/EBITDA < 4, DY entre 4 e 25%, P/VP < 3",
       icon: DollarSign
     }
   };
@@ -3175,26 +3175,37 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
           // Pagadora de dividendos precisa ter lucro positivo, dividendo
-          // distribuído e não estar absurdamente cara.
-          // Antes apareciam BBSE3 (P/VP 6.33) e CURY3 (P/VP 6.70) que são
-          // empresas excelentes mas estão sendo negociadas a múltiplos
-          // estratosféricos — não são "pagadoras baratas".
-          // Critérios:
-          //   - ROE > 10% (lucratividade real)
-          //   - Dív/EBITDA < 4 (alavancagem controlada)
-          //   - DY > 4% (precisa pagar dividendo de fato)
-          //   - P/VP < 3 (deixa passar bancos/seguradoras premium mas barra
-          //     casos como P/VP > 6 que distorciam a tela)
+          // distribuído sustentável e não estar absurdamente cara.
+          //
+          // Histórico de filtragens:
+          //   1. Antes do dy>4: apareciam BBSE3 (P/VP 6.33) e CURY3 (P/VP 6.70)
+          //      → adicionado pvp<3 pra cortar premiums absurdos
+          //   2. Antes do dy<25: apareciam SYNE3 (DY 65%), ALLD3/GRND3 (~30-50%)
+          //      → DY tão alto sinaliza dividendo extraordinário ou preço caindo,
+          //        não é "consistente". Tem 95 candidatas com DY 4-25% (faixa
+          //        saudável), versus 5 outliers acima — ganho líquido de cortar.
+          //
+          // Critérios finais:
+          //   - ROE > 10%             (lucratividade real)
+          //   - Dív/EBITDA < 4        (alavancagem controlada)
+          //   - DY entre 4 e 25%      (paga dividendo, mas sustentável)
+          //   - P/VP entre 0 e 3      (não absurdamente caro)
           passa = !ehFII
             && roe != null && roe > 10
             && (pl == null || pl > 0)
             && (fund?.divEbitda == null || fund.divEbitda < 4)
-            && dy != null && dy > 4
+            && dy != null && dy > 4 && dy < 25
             && pvp != null && pvp > 0 && pvp < 3;
           if (passa) {
+            // Score: sweet spot é DY 6-15% (blue chips pagadoras clássicas).
+            // 4-6% e 15-25% ganham menos pontos — ainda passam, mas não lideram
+            // o ranking. 6-15% é onde estão ITUB4, ITSA4, CMIG4, ABEV3 etc.
+            const scoreDY = dy >= 6 && dy <= 15 ? 30
+              : dy >= 4 && dy < 6 ? 18
+              : 12; // 15-25%, ainda OK mas penalizado
             score = Math.round(Math.max(0, Math.min(100,
               (fund?.lucrosConsistentes ? 30 : 10) +
-              (dy > 6 ? 30 : dy > 4 ? 20 : 10) +
+              scoreDY +
               (fund?.divEbitda != null && fund.divEbitda < 2 ? 20 : fund?.divEbitda != null && fund.divEbitda < 3 ? 15 : 5) +
               (roe > 15 ? 20 : 10)
             )));
