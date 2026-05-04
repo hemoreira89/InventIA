@@ -3000,7 +3000,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     crescimento: {
       titulo: "Empresas em crescimento",
-      descricao: "CAGR de receita > 10% ou lucro > 15%, com ROE > 12%",
+      descricao: "CAGR receita > 10% ou lucro > 15% (até 60%), ROE > 12%, P/L entre 2 e 25",
       icon: Rocket
     },
     blue_chips_baratas: {
@@ -3300,17 +3300,76 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         } else if (filtros.tipo === "crescimento") {
-          // Empresa em crescimento precisa ser lucrativa (não dá pra "crescer" lucro negativo)
+          // Empresa em crescimento real e sustentável. Validado contra dados
+          // reais (04/05/2026).
+          //
+          // Histórico de filtragens:
+          //   1. Antes do cap CAGR<60: MOTV3 (109%), VULC3 (106%), PETR4 (78%)
+          //      lideravam. CAGR > 60% por 5 anos seguidos é estatisticamente
+          //      raríssimo em empresa madura — geralmente significa recuperação
+          //      de base baixa, ano-base com prejuízo, ou ciclo macro extremo
+          //      (PETR4 = petróleo subindo + dividendos políticos). Não é
+          //      "crescimento" pra projetar pra frente.
+          //   2. Antes do pl entre 2 e 25: VIVA3 com P/L 0.01 (erro de dado)
+          //      e TFCO4 com P/L 100.54 (caro demais) passavam. Limites
+          //      eliminam erros e empresas excessivamente esticadas.
+          //
+          // Critérios finais:
+          //   - CAGR receita > 10% OU CAGR lucro > 15%   (cresce de fato)
+          //   - CAGR lucro < 60% (se houver)              (não-explosivo, sustentável)
+          //   - ROE > 12%                                  (qualidade de gestão)
+          //   - P/L entre 2 e 25                           (lucrativa, sem extremos)
           const cresceReceita = fund?.cagrReceita5y != null && fund.cagrReceita5y > 10;
           const cresceLucro = fund?.cagrLucro5y != null && fund.cagrLucro5y > 15;
-          passa = !ehFII && (cresceReceita || cresceLucro) && roe != null && roe > 12 && (pl == null || pl > 0);
+          const cagrLucroOk = fund?.cagrLucro5y == null || fund.cagrLucro5y < 60;
+          passa = !ehFII
+            && (cresceReceita || cresceLucro)
+            && roe != null && roe > 12
+            && pl != null && pl > 2 && pl < 25
+            && cagrLucroOk;
           if (passa) {
-            score = Math.round(Math.max(0, Math.min(100,
-              (fund?.cagrReceita5y != null && fund.cagrReceita5y > 15 ? 30 : cresceReceita ? 20 : 10) +
-              (fund?.cagrLucro5y != null && fund.cagrLucro5y > 20 ? 30 : cresceLucro ? 20 : 10) +
-              (roe > 18 ? 25 : roe > 15 ? 15 : 10) +
-              (fund?.margemLiquida != null && fund.margemLiquida > 10 ? 15 : 5)
-            )));
+            // Score granular pra desempatar Top 8.
+            // 5 dimensões → até 120 pts brutos → normaliza pra 100.
+            // Filosofia: crescimento sustentável (não explosivo) + boa qualidade
+            // + margem operacional saudável + valuation razoável.
+
+            // CAGR receita: 15-30% é o sweet spot (forte mas sustentável).
+            // Acima é raro de manter; abaixo é morno.
+            const cagrR = fund?.cagrReceita5y;
+            const scoreCagrR = cagrR != null && cagrR > 15 && cagrR <= 30 ? 30
+              : cagrR != null && cagrR > 30 ? 22  // muito alto, atenção a base baixa
+              : cagrR != null && cagrR > 10 ? 22
+              : 10;
+
+            // CAGR lucro: 20-40% é ouro. Abaixo é OK, acima começa a ser suspeito.
+            const cagrL = fund?.cagrLucro5y;
+            const scoreCagrL = cagrL != null && cagrL >= 20 && cagrL <= 40 ? 30
+              : cagrL != null && cagrL > 40 && cagrL < 60 ? 22  // alto mas ainda passou
+              : cagrL != null && cagrL >= 15 ? 22
+              : 10;
+
+            // ROE: empresa de qualidade.
+            const scoreROE = roe > 25 ? 25
+              : roe > 18 ? 18
+              : roe > 15 ? 12
+              : 8;  // 12-15
+
+            // Margem líquida: empresa que cresce com lucro, não só receita.
+            const margem = fund?.margemLiquida;
+            const scoreMargem = margem != null && margem > 20 ? 20
+              : margem != null && margem > 10 ? 14
+              : margem != null && margem > 5 ? 8
+              : 3;
+
+            // P/L: pra crescimento, pode ser maior que value (até 25), mas
+            // P/L baixo + crescimento = oportunidade rara
+            const scorePL = pl < 8 ? 15
+              : pl < 15 ? 10
+              : 5;  // 15-25
+
+            const scoreBruto = scoreCagrR + scoreCagrL + scoreROE + scoreMargem + scorePL;
+            // Máx teórico: 30+30+25+20+15 = 120
+            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
           // Pagadora de dividendos precisa ter lucro positivo, dividendo
