@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -3964,9 +3964,31 @@ Regras:
   ];
 
   // Métricas para a barra superior
-  const metricaCarteira = dados?.totalCarteira || 0;
-  const metricaPosicoes = dados?.posicoes?.length || 0;
-  const metricaDY = dados?.posicoes?.length ? (dados.posicoes.reduce((s,p)=>s+(p.dy||0)*(p.peso/100),0)) : 0;
+  // Usa dados da análise IA se disponível (mais completo, com peso ponderado).
+  // Se não, calcula em tempo real direto da carteira + cotações ao vivo (brapi).
+  // Isso evita o usuário ver "—" no dashboard antes de clicar em Analisar.
+  const metricasRapidas = useMemo(() => {
+    if (!carteira.length) return { patrimonio: 0, posicoes: 0, dy: 0 };
+    let patrimonio = 0;
+    let dyPonderado = 0;
+    for (const ativo of carteira) {
+      const cot = cotacoesGlobais?.[ativo.ticker];
+      const preco = cot?.preco || ativo.pm || 0;
+      const valor = preco * ativo.qtd;
+      patrimonio += valor;
+      // DY rápido só pra ações conhecidas: usa cot.dy se existir
+      // (a brapi às vezes retorna, mas é fallback fraco. Análise IA é mais completa)
+      if (cot?.dy) dyPonderado += (cot.dy * valor);
+    }
+    const dy = patrimonio > 0 ? (dyPonderado / patrimonio) : 0;
+    return { patrimonio, posicoes: carteira.length, dy };
+  }, [carteira, cotacoesGlobais]);
+
+  const metricaCarteira = dados?.totalCarteira || metricasRapidas.patrimonio;
+  const metricaPosicoes = dados?.posicoes?.length || metricasRapidas.posicoes;
+  const metricaDY = dados?.posicoes?.length
+    ? (dados.posicoes.reduce((s,p)=>s+(p.dy||0)*(p.peso/100),0))
+    : metricasRapidas.dy;
 
   // Sparklines fake (em produção viria dos snapshots de patrimônio)
   // Gerados a partir dos snapshots reais quando disponíveis
