@@ -63,7 +63,12 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
   const pathPrincipal = ehFII ? `/fiis/${ticker}` : `/fundamentals/${ticker}`;
 
   try {
-    const [respPrincipal, respCompany] = await Promise.all([
+    // Fetches em paralelo:
+    //   1. principal: /fundamentals (ação) ou /fiis (FII)
+    //   2. company:   /companies (setor + nome corporativo, ambos os tipos)
+    //   3. dividends: /dividends (DY ttm) — APENAS pra ações; FIIs já têm
+    //                 dividend_yield_ttm no /fiis/{ticker}
+    const fetches = [
       fetch(`${BOLSAI_BASE}${pathPrincipal}`, {
         headers: { "X-API-Key": apiKey },
         signal: AbortSignal.timeout(20000), // bolsai pode ser lenta (até 15s) — damos folga
@@ -72,7 +77,25 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
         headers: { "X-API-Key": apiKey },
         signal: AbortSignal.timeout(20000),
       }),
-    ]);
+    ];
+
+    if (!ehFII) {
+      // /dividends/{ticker} retorna { dividend_yield_ttm, ttm_per_share, ... }
+      // Endpoint descoberto via /api/debug-screening?explore_dividends=PETR4
+      // Solução pro bug: 'Pagadoras consistentes' filtrava por dy>4 mas todas
+      // as ações tinham dy=null porque o /fundamentals/ não retorna DY.
+      fetches.push(
+        fetch(`${BOLSAI_BASE}/dividends/${ticker}`, {
+          headers: { "X-API-Key": apiKey },
+          signal: AbortSignal.timeout(20000),
+        })
+      );
+    }
+
+    const respostas = await Promise.all(fetches);
+    const respPrincipal = respostas[0];
+    const respCompany = respostas[1];
+    const respDividends = ehFII ? null : respostas[2];
 
     // Se principal falhou e é ação, tenta como FII (ticker pode ser FII ainda)
     let dados = null;
@@ -103,23 +126,46 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       nome = c.corporate_name || c.name || null;
     }
 
+    // Extrai DY de ações via /dividends/{ticker}.
+    // Pra FIIs, dyAcao fica null (eles usam dados.dividend_yield_ttm direto).
+    // Se o fetch falhar (404, timeout, ticker sem histórico), dyAcao continua
+    // null silenciosamente — não derruba o ticker inteiro.
+    let dyAcao = null;
+    if (respDividends && respDividends.ok) {
+      try {
+        const d = await respDividends.json();
+        dyAcao = d?.dividend_yield_ttm ?? null;
+      } catch {
+        // Body inválido — DY fica null mas resto do ticker continua
+      }
+    }
+
     // Mapeamento bolsai → nosso schema (validado contra schema real em /api/debug-screening?inspect=true)
     //
     // /fundamentals/{ticker} (ação) retorna:
     //   pl, pvp, roe, roic, ev_ebitda, vpa, lpa, gross_margin, net_margin,
     //   ebit_margin, ebitda_margin, debt_equity, net_debt_equity, net_debt_ebitda,
     //   cagr_revenue_5y, cagr_earnings_5y, ...
-    //   NÃO retorna: dividend_yield (ações precisam de outro endpoint pra DY)
+    //   NÃO retorna: dividend_yield (vem do /dividends/{ticker})
+    //
+    // /dividends/{ticker} (ação) retorna:
+    //   dividend_yield_ttm, ttm_per_share, current_price, total_payments,
+    //   annual_summary, payments
     //
     // /fiis/{ticker} (FII) retorna:
     //   pvp, dividend_yield_ttm, net_asset_value, segment, book_value_per_share, name, ...
     //   NÃO tem: pl, roe (FIIs não têm esses indicadores)
     //
-    // Para ação: usa nome de /companies (corporate_name)
-    // Para FII: usa nome de /fiis (campo "name")
+    // Para ação: usa nome de /companies (corporate_name), DY de /dividends
+    // Para FII: usa nome de /fiis (campo "name"), DY de /fiis (mesmo campo)
     const nomeAtivo = ehFII
       ? (dados.name || nome)  // FII tem "name", senão fallback pro companies
       : (nome || dados.corporate_name);  // ação usa corporate_name
+
+    // DY: pra FII usa o campo do /fiis/, pra ação usa o do /dividends/
+    const dyFinal = ehFII
+      ? num(dados.dividend_yield_ttm)
+      : num(dyAcao);
 
     return {
       ticker,
@@ -138,8 +184,9 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       ev_ebitda: num(dados.ev_ebitda),
       vpa: num(dados.vpa),
       lpa: num(dados.lpa),
-      // FIIs
-      dy: num(dados.dividend_yield_ttm),
+      // DY — pra FIIs vem do /fiis/, pra ações vem do /dividends/ (calculado em dyFinal acima)
+      dy: dyFinal,
+      // FII-only
       nav: num(dados.net_asset_value),
       segmento: dados.segment ?? null,
       // Qualitativo: assume lucros consistentes se cagr de lucros > 0
