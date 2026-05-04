@@ -31,6 +31,29 @@ const VOLUME_MINIMO = 1_000;
 const PARALELISMO = 20;
 
 /**
+ * Sanitiza valor numérico vindo da bolsai antes de mandar pro Supabase.
+ * - Rejeita NaN, Infinity, strings, objetos
+ * - Rejeita valores absurdos que estourariam qualquer NUMERIC razoável
+ *   (acima de 1e15 ou abaixo de -1e15)
+ * Tudo que não passar vira null em vez de quebrar o upsert silenciosamente.
+ *
+ * Razão de existir: bug de 04/05/2026 — bolsai retornava valores válidos
+ * (ex: nav = 4316720449.78 pra MXRF11) que estouravam NUMERIC(10,2) e o
+ * upsert do Supabase rejeitava a linha INTEIRA sem retornar erro pro chunk.
+ * Resultado: FIIs grandes ficavam com todos os campos null no banco.
+ */
+function num(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "number") return null;
+  if (!Number.isFinite(v)) return null; // pega NaN e Infinity
+  if (Math.abs(v) > 1e15) return null;   // teto sanitário (1 quadrilhão)
+  return v;
+}
+
+// Exporta pra teste unitário (não usado em runtime do endpoint)
+export { num };
+
+/**
  * Busca um ticker individual da bolsai (acoes + companies em paralelo).
  * Retorna objeto pronto pra inserir no Supabase, ou null se falhou.
  */
@@ -103,21 +126,21 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       tipo: tipoFinal,
       nome: nomeAtivo,
       setor_cvm: setorCVM,
-      // Ações
-      pl: dados.pl ?? null,
-      pvp: dados.pvp ?? null,
-      roe: dados.roe ?? null,
-      roic: dados.roic ?? null,
-      margem_liquida: dados.net_margin ?? null,
-      div_ebitda: dados.net_debt_ebitda ?? null,
-      cagr_lucro_5y: dados.cagr_earnings_5y ?? null,
-      cagr_receita_5y: dados.cagr_revenue_5y ?? null,
-      ev_ebitda: dados.ev_ebitda ?? null,
-      vpa: dados.vpa ?? null,
-      lpa: dados.lpa ?? null,
+      // Ações — sanitizados via num() pra prevenir overflow silencioso
+      pl: num(dados.pl),
+      pvp: num(dados.pvp),
+      roe: num(dados.roe),
+      roic: num(dados.roic),
+      margem_liquida: num(dados.net_margin),
+      div_ebitda: num(dados.net_debt_ebitda),
+      cagr_lucro_5y: num(dados.cagr_earnings_5y),
+      cagr_receita_5y: num(dados.cagr_revenue_5y),
+      ev_ebitda: num(dados.ev_ebitda),
+      vpa: num(dados.vpa),
+      lpa: num(dados.lpa),
       // FIIs
-      dy: dados.dividend_yield_ttm ?? null,
-      nav: dados.net_asset_value ?? null,
+      dy: num(dados.dividend_yield_ttm),
+      nav: num(dados.net_asset_value),
       segmento: dados.segment ?? null,
       // Qualitativo: assume lucros consistentes se cagr de lucros > 0
       // (CAGR negativo significa lucros caindo / prejuízos)
@@ -250,15 +273,33 @@ export default async function handler(req, res) {
     }
 
     // ── Upsert em chunks de 500 (Supabase tem limite de payload) ──
+    // Estratégia defensiva: se o batch falhar, tenta linha-a-linha e loga
+    // o ticker exato que estourou. Antes (commit pré-04/05), um overflow
+    // silencioso em 1 linha fazia o batch inteiro ser rejeitado sem erro
+    // visível — virava bug fantasma de FIIs com todos os campos null.
     let upsertErrors = 0;
+    let upsertFallbackTickers = []; // tickers que falharam mesmo no retry
     for (let i = 0; i < sucessos.length; i += 500) {
       const chunk = sucessos.slice(i, i + 500);
       const { error } = await supabase
         .from("screening_fundamentos")
         .upsert(chunk, { onConflict: "ticker" });
-      if (error) {
-        upsertErrors++;
-        console.error("Upsert chunk error:", error.message);
+
+      if (!error) continue;
+
+      // Batch falhou — tenta cada linha individualmente pra isolar a culpada
+      console.error(`[cron-fundamentos] Batch upsert falhou (${chunk.length} linhas):`, error.message);
+      console.error(`[cron-fundamentos] Tentando fallback linha-a-linha...`);
+
+      for (const linha of chunk) {
+        const { error: errLinha } = await supabase
+          .from("screening_fundamentos")
+          .upsert(linha, { onConflict: "ticker" });
+        if (errLinha) {
+          upsertErrors++;
+          upsertFallbackTickers.push(linha.ticker);
+          console.error(`[cron-fundamentos] Linha rejeitada ticker=${linha.ticker}: ${errLinha.message}`);
+        }
       }
     }
 
@@ -288,6 +329,9 @@ export default async function handler(req, res) {
       sucessos: sucessos.length,
       falhas,
       upsert_errors: upsertErrors,
+      // Se algum ticker estourou o upsert (mesmo após fallback linha-a-linha),
+      // lista quais. Vazio = todos os sucessos foram persistidos com sucesso.
+      upsert_fallback_tickers: upsertFallbackTickers,
       duracao_ms: duracao,
       // Se processou tudo no range pedido E o range atingiu o limit (ou seja,
       // pode ter mais ainda no catálogo), sugere próximo offset
