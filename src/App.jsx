@@ -3224,7 +3224,15 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       if (ordenados.length > 0) {
         setFase("IA gerando análise qualitativa...");
         try {
-          const tickersStr = ordenados.map(o => `${o.ticker} (${o.nome}, P/L ${o.pl?.toFixed(1) || "?"}, P/VP ${o.pvp?.toFixed(2) || "?"}${o.dy ? `, DY ${o.dy.toFixed(1)}%` : ""})`).join("; ");
+          // Passa SETOR explicitamente. Sem isso, a IA "chutava" o setor
+          // pelo ticker e às vezes errava grosseiramente (ex: AZZA3 — moda —
+          // aparecia com tese de "energia renovável"). O setor vem do
+          // setor_cvm da bolsai (PT) ou segmento (FIIs).
+          const tickersStr = ordenados.map(o => {
+            const setorTxt = o.setor ? ` [setor: ${o.setor}]` : "";
+            const dyTxt = o.dy ? `, DY ${o.dy.toFixed(1)}%` : "";
+            return `${o.ticker} (${o.nome})${setorTxt}, P/L ${o.pl?.toFixed(1) || "?"}, P/VP ${o.pvp?.toFixed(2) || "?"}${dyTxt}`;
+          }).join("; ");
           const promptIA = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
 Tipo de oportunidade: ${cfg.titulo} — ${cfg.descricao}
 Perfil: ${filtros.perfil}
@@ -3234,11 +3242,21 @@ ${tickersStr}
 
 Sua tarefa: análise qualitativa.
 
+REGRAS OBRIGATÓRIAS pra evitar erros factuais:
+- O setor de cada ativo está informado entre [setor: ...]. NUNCA contradiga isso.
+- Se você não tiver conhecimento confiável sobre o ativo específico, escreva
+  uma tese genérica baseada APENAS no setor informado (ex: "Empresa do setor
+  de moda com múltiplos descontados sugere recuperação de margem").
+- NUNCA invente fatos sobre o negócio (produtos, mercados, expansão geográfica)
+  se você não tem certeza. Em caso de dúvida, mencione APENAS o que está nos
+  dados quantitativos e no setor.
+- Se confundir o ticker com outra empresa, prefira ser genérico a errar.
+
 Responda APENAS este JSON (sem markdown):
 {
   "contexto_macro": "1 parágrafo sobre o cenário atual e porque esse tipo de oportunidade faz sentido agora",
   "teses": [
-    {"ticker":"TICKER","destaque":"vantagem em 1 frase","risco_principal":"risco em 1 frase"}
+    {"ticker":"TICKER","destaque":"vantagem em 1 frase coerente com o setor","risco_principal":"risco em 1 frase coerente com o setor"}
   ]
 }`;
           const r = await chamarIAComSearch(promptIA);
