@@ -3010,7 +3010,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     dividendos_estaveis: {
       titulo: "Pagadoras consistentes",
-      descricao: "ROE > 10%, dívida controlada (Dív/EBITDA < 4)",
+      descricao: "ROE > 10%, Dív/EBITDA < 4, DY > 4% e P/VP < 3",
       icon: DollarSign
     }
   };
@@ -3170,14 +3170,27 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             )));
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
-          // Pagadora de dividendos precisa ter lucro positivo
-          passa = !ehFII && roe != null && roe > 10 && (pl == null || pl > 0) && (
-            fund?.divEbitda == null || fund.divEbitda < 4
-          );
+          // Pagadora de dividendos precisa ter lucro positivo, dividendo
+          // distribuído e não estar absurdamente cara.
+          // Antes apareciam BBSE3 (P/VP 6.33) e CURY3 (P/VP 6.70) que são
+          // empresas excelentes mas estão sendo negociadas a múltiplos
+          // estratosféricos — não são "pagadoras baratas".
+          // Critérios:
+          //   - ROE > 10% (lucratividade real)
+          //   - Dív/EBITDA < 4 (alavancagem controlada)
+          //   - DY > 4% (precisa pagar dividendo de fato)
+          //   - P/VP < 3 (deixa passar bancos/seguradoras premium mas barra
+          //     casos como P/VP > 6 que distorciam a tela)
+          passa = !ehFII
+            && roe != null && roe > 10
+            && (pl == null || pl > 0)
+            && (fund?.divEbitda == null || fund.divEbitda < 4)
+            && dy != null && dy > 4
+            && pvp != null && pvp > 0 && pvp < 3;
           if (passa) {
             score = Math.round(Math.max(0, Math.min(100,
               (fund?.lucrosConsistentes ? 30 : 10) +
-              (dy != null && dy > 6 ? 30 : dy != null && dy > 4 ? 20 : 10) +
+              (dy > 6 ? 30 : dy > 4 ? 20 : 10) +
               (fund?.divEbitda != null && fund.divEbitda < 2 ? 20 : fund?.divEbitda != null && fund.divEbitda < 3 ? 15 : 5) +
               (roe > 15 ? 20 : 10)
             )));
