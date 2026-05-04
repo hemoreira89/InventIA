@@ -3557,6 +3557,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
           pl: pl ?? null,
           pvp: pvp ?? null,
           roe: roe ?? null,
+          debtEquity: fund?.debtEquity ?? null,
           canal52: canal52 != null ? Math.round(canal52) : null,
           score,
           temDados: !!(cot || fund),
@@ -3796,6 +3797,24 @@ Responda APENAS este JSON (sem markdown):
                         <div style={{fontSize:12,fontWeight:700,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pvp,2)}</div>
                       </div>}
                     </div>
+
+                    {/* Flag de alavancagem extrema: debt/equity > 5 sinaliza
+                        risco real em empresas não-financeiras. Bancos têm
+                        debt/equity alto por estrutura (depósitos = "dívida"),
+                        então só alerta se o setor não for de Bancos. */}
+                    {o.debtEquity != null && o.debtEquity > 5 &&
+                     !(o.setor || "").toLowerCase().includes("banco") && (
+                      <div style={{
+                        display:"flex",alignItems:"center",gap:6,marginBottom:10,
+                        padding:"6px 10px",borderRadius:6,
+                        background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.25)"
+                      }}>
+                        <AlertTriangle size={12} color="var(--ui-danger)" style={{flexShrink:0}}/>
+                        <div style={{fontSize:10,color:"var(--ui-danger)",fontWeight:600}}>
+                          Alavancagem extrema (Dív/PL: {fmt(o.debtEquity,1)})
+                        </div>
+                      </div>
+                    )}
 
                     {o.destaque && (
                       <div style={{display:"flex",gap:8,marginBottom:8}}>
