@@ -3184,13 +3184,54 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         } else if (filtros.tipo === "fiis_alto_dy") {
+          // FIIs com DY ≥ 8% e P/VP descontado.
+          // Auditoria SQL (04/05/2026): dados de FIIs estão saudáveis no cache.
+          // DY máximo = 15.39% (TEPP11), todos P/VP entre 0.62-1.07. Sem
+          // outliers absurdos tipo as ações tinham — então NÃO preciso de
+          // limites mínimos, só de score granular.
+          //
+          // Critérios mantidos:
+          //   - DY ≥ 8%      (renda passiva relevante)
+          //   - P/VP ≤ 1.1   (não pagar premium gritante)
           passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1 && pvp > 0;
           if (passa) {
-            score = Math.round(Math.max(0, Math.min(100,
-              (dy >= 12 ? 40 : dy >= 10 ? 30 : 20) +
-              (pvp <= 0.9 ? 30 : pvp <= 1.0 ? 25 : 15) +
-              (canal52 != null && canal52 < 50 ? 30 : 15)
-            )));
+            // Score granular pra desempatar Top 8.
+            // Versão antiga (40+30+30) saturava em 100 facilmente.
+            // 4 dimensões → até 100 pts (sem normalização aqui pq já cabe).
+
+            // DY: sweet spot 10-13% (alto sem ser suspeito).
+            // FIIs com DY > 14% historicamente sofrem corte de distribuição.
+            const scoreDY = dy >= 10 && dy <= 13 ? 35     // ouro
+              : dy >= 13 && dy <= 15 ? 28                  // alto, possível redução futura
+              : dy >= 8 && dy < 10 ? 22                    // sustentável
+              : 18;                                         // > 15, muito agressivo
+
+            // P/VP: comprar abaixo do patrimonial é objetivamente melhor.
+            const scorePVP = pvp <= 0.85 ? 30
+              : pvp <= 0.95 ? 22
+              : pvp <= 1.05 ? 15
+              : 10;  // 1.05-1.1, premium leve
+
+            // Canal 52 semanas: posição relativa ao mínimo do ano.
+            // Pode ser null (brapi falhou) — não penaliza tanto pra não
+            // discriminar FIIs sem cobertura.
+            const scoreCanal = canal52 == null ? 10
+              : canal52 < 30 ? 25                          // perto da mínima
+              : canal52 < 50 ? 18
+              : canal52 < 70 ? 12
+              : 8;                                          // perto da máxima
+
+            // NAV (Net Asset Value): FIIs com NAV grande têm mais liquidez
+            // e diversificação. Bilhões = blue chip do setor.
+            const nav = fund?.nav;
+            const scoreNav = nav == null ? 5
+              : nav > 2_000_000_000 ? 10                   // > R$ 2bi: blue chip
+              : nav > 500_000_000 ? 7                       // > R$ 500M: médio porte
+              : 3;                                          // < R$ 500M: pequeno
+
+            const scoreBruto = scoreDY + scorePVP + scoreCanal + scoreNav;
+            // Máx teórico: 35 + 30 + 25 + 10 = 100 (sem normalização)
+            score = Math.round(Math.min(100, scoreBruto));
           }
         } else if (filtros.tipo === "blue_chips_baratas") {
           // Blue chip = empresa grande lucrativa. P/L positivo é obrigatório.
