@@ -114,8 +114,9 @@ export default function Login({ onAuth }) {
               padding: 16,
               marginBottom: 20
             }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-success)", marginBottom: 6 }}>
-                ✉️ Verifique seu email!
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-success)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                <Mail size={16} strokeWidth={2.5}/>
+                Verifique seu email!
               </div>
               <div style={{ fontSize: 12, color: "var(--ui-text-muted)", lineHeight: 1.6 }}>
                 Enviamos um link de confirmação para <b style={{color:"var(--ui-text)"}}>{email}</b>.

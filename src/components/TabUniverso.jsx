@@ -1,12 +1,21 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Globe, Check, X, Plus, RotateCcw, Save, Search,
-  CheckSquare, Star, AlertCircle, Sparkles
+  CheckSquare, Star, AlertCircle, Sparkles,
+  // Ícones de setor (mapeados em CATEGORIAS pra unificar com o resto do app)
+  Landmark, Zap, Fuel, Droplet, ShoppingCart, Stethoscope,
+  Factory, Cpu, Package, Building2, FileText, Home
 } from "lucide-react";
 import { CATEGORIAS, getDefaultUniverso, getAllTickers } from "../lib/catalogoB3";
 import { carregarUniverso, salvarUniverso } from "../supabase";
 import { tickerValido } from "../lib/calc";
 import { showToast } from "../App";
+
+// Mapa de string → componente Lucide (catalogoB3.js só tem strings, serializável)
+const ICON_MAP = {
+  Landmark, Zap, Fuel, Droplet, ShoppingCart, Stethoscope,
+  Factory, Cpu, Package, Building2, FileText, Home
+};
 
 /**
  * TabUniverso - 100% theme-aware
@@ -382,7 +391,12 @@ export default function TabUniverso({ userId }) {
                   textAlign: "left"
                 }}
               >
-                <div style={{fontSize: 22, lineHeight: 1}}>{cat.icone}</div>
+                <div style={{display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, color: cat.cor}}>
+                  {(() => {
+                    const Icon = ICON_MAP[cat.icone];
+                    return Icon ? <Icon size={20} strokeWidth={2}/> : null;
+                  })()}
+                </div>
                 <div style={{flex: 1}}>
                   <div style={{fontSize: 13, fontWeight: 700, color: cat.cor, marginBottom: 2}}>
                     {cat.nome}

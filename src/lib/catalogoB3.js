@@ -7,7 +7,7 @@ export const CATEGORIAS = [
   {
     id: "bancos",
     nome: "Bancos",
-    icone: "🏦",
+    icone: "Landmark",
     cor: "#00b4d8",
     tipo: "acao",
     descricao: "Setor financeiro, dividendos consistentes",
@@ -24,7 +24,7 @@ export const CATEGORIAS = [
   {
     id: "energia",
     nome: "Energia Elétrica",
-    icone: "⚡",
+    icone: "Zap",
     cor: "#ffd60a",
     tipo: "acao",
     descricao: "Defensivas, alto DY, estáveis",
@@ -41,7 +41,7 @@ export const CATEGORIAS = [
   {
     id: "petroleo",
     nome: "Petróleo & Mineração",
-    icone: "🛢️",
+    icone: "Fuel",
     cor: "#ff6b35",
     tipo: "acao",
     descricao: "Commodities, cíclicas, alto DY",
@@ -58,7 +58,7 @@ export const CATEGORIAS = [
   {
     id: "saneamento",
     nome: "Saneamento",
-    icone: "💧",
+    icone: "Droplet",
     cor: "#00e5a0",
     tipo: "acao",
     descricao: "Defensivas com viés regulado",
@@ -71,7 +71,7 @@ export const CATEGORIAS = [
   {
     id: "consumo",
     nome: "Consumo & Varejo",
-    icone: "🛒",
+    icone: "ShoppingCart",
     cor: "#e040fb",
     tipo: "acao",
     descricao: "Cíclicas, mais voláteis",
@@ -87,7 +87,7 @@ export const CATEGORIAS = [
   {
     id: "saude",
     nome: "Saúde",
-    icone: "🏥",
+    icone: "Stethoscope",
     cor: "#ff4d6d",
     tipo: "acao",
     descricao: "Crescimento de longo prazo",
@@ -102,7 +102,7 @@ export const CATEGORIAS = [
   {
     id: "industria",
     nome: "Indústria & Logística",
-    icone: "🏭",
+    icone: "Factory",
     cor: "#a8dadc",
     tipo: "acao",
     descricao: "Diversas, exposição global",
@@ -118,7 +118,7 @@ export const CATEGORIAS = [
   {
     id: "tecnologia",
     nome: "Tecnologia",
-    icone: "💻",
+    icone: "Cpu",
     cor: "#7b61ff",
     tipo: "acao",
     descricao: "Crescimento, mais voláteis",
@@ -133,7 +133,7 @@ export const CATEGORIAS = [
   {
     id: "fii_logistica",
     nome: "FIIs Logística",
-    icone: "📦",
+    icone: "Package",
     cor: "#00e5a0",
     tipo: "fii",
     descricao: "Galpões logísticos, locação para grandes empresas",
@@ -148,7 +148,7 @@ export const CATEGORIAS = [
   {
     id: "fii_tijolo",
     nome: "FIIs Tijolo (Comercial)",
-    icone: "🏢",
+    icone: "Building2",
     cor: "#7b61ff",
     tipo: "fii",
     descricao: "Lajes corporativas, shoppings, escritórios",
@@ -164,7 +164,7 @@ export const CATEGORIAS = [
   {
     id: "fii_papel",
     nome: "FIIs Papel (Recebíveis)",
-    icone: "📄",
+    icone: "FileText",
     cor: "#ffd60a",
     tipo: "fii",
     descricao: "Carteiras de CRIs, alta renda mensal",
@@ -180,7 +180,7 @@ export const CATEGORIAS = [
   {
     id: "fii_residencial",
     nome: "FIIs Residencial",
-    icone: "🏘️",
+    icone: "Home",
     cor: "#00b4d8",
     tipo: "fii",
     descricao: "Renda de aluguel residencial",
