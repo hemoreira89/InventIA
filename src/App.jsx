@@ -3500,6 +3500,20 @@ export default function App({ session, onLogout }) {
     intervalMs: 60000,
   });
 
+  // Fundamentos cacheados da carteira (lê screening_fundamentos no Supabase).
+  // Usado pra mostrar DY MÉDIO no header sem precisar rodar Análise IA.
+  // Só inclui FIIs com DY (ações da bolsai não têm DY no /fundamentals/).
+  const [fundamentosCarteira, setFundamentosCarteira] = useState({});
+  useEffect(() => {
+    if (!tickersCarteira.length) {
+      setFundamentosCarteira({});
+      return;
+    }
+    buscarFundamentosCached(tickersCarteira)
+      .then(setFundamentosCarteira)
+      .catch(() => setFundamentosCarteira({}));
+  }, [tickersCarteira.join(",")]);
+
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
 
   // Atalhos globais de teclado
@@ -3973,16 +3987,17 @@ Regras:
     let dyPonderado = 0;
     for (const ativo of carteira) {
       const cot = cotacoesGlobais?.[ativo.ticker];
+      const fund = fundamentosCarteira?.[ativo.ticker];
       const preco = cot?.preco || ativo.pm || 0;
       const valor = preco * ativo.qtd;
       patrimonio += valor;
-      // DY rápido só pra ações conhecidas: usa cot.dy se existir
-      // (a brapi às vezes retorna, mas é fallback fraco. Análise IA é mais completa)
-      if (cot?.dy) dyPonderado += (cot.dy * valor);
+      // DY: prioriza cache da bolsai (FIIs têm DY confiável); fallback brapi
+      const dy = fund?.dy ?? cot?.dy;
+      if (dy) dyPonderado += (dy * valor);
     }
     const dy = patrimonio > 0 ? (dyPonderado / patrimonio) : 0;
     return { patrimonio, posicoes: carteira.length, dy };
-  }, [carteira, cotacoesGlobais]);
+  }, [carteira, cotacoesGlobais, fundamentosCarteira]);
 
   const metricaCarteira = dados?.totalCarteira || metricasRapidas.patrimonio;
   const metricaPosicoes = dados?.posicoes?.length || metricasRapidas.posicoes;
