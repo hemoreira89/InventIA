@@ -2990,7 +2990,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
   const TIPOS = {
     acoes_subprecificadas: {
       titulo: "Ações sub-precificadas",
-      descricao: "Ações com P/L < 12 e P/VP < 1.5 (clássicos value plays)",
+      descricao: "P/L entre 2 e 12, P/VP entre 0.3 e 1.5, ROE > 8% (value plays clássicos)",
       icon: TrendingDown
     },
     fiis_alto_dy: {
@@ -3126,16 +3126,62 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         let score = null;
 
         if (filtros.tipo === "acoes_subprecificadas") {
-          // P/L positivo (empresa lucrativa) E P/VP positivo
-          // P/L < 12 = barato pra empresa lucrativa
-          // P/VP < 1.5 = não está absurdamente acima do valor patrimonial
-          passa = !ehFII && pl != null && pvp != null && pl > 0 && pvp > 0 && pl < 12 && pvp < 1.5;
+          // "Subprecificada" = empresa LUCRATIVA negociada com desconto, não
+          // qualquer papel barato. Validado contra dados reais do cache (04/05/2026).
+          //
+          // Histórico de filtragens:
+          //   1. Antes do roe>8: HBOR3 (P/VP 0.22, ROE 3.27%) e MTRE3 (P/VP 0.39,
+          //      ROE 5.36%) apareciam. P/VP brutalmente baixo geralmente significa
+          //      que o mercado descartou a empresa, não barganha.
+          //   2. Antes do pl>2: SYNE3 (P/L 1.11, ROE 75% via lucro extraordinário)
+          //      e ALLD3 (P/L 1.55, distress) lideravam. P/L < 2 sinaliza lucro
+          //      não-recorrente ou problema sério, não desconto sustentável.
+          //   3. Antes do pvp>0.3: papéis com 70%+ desconto patrimonial passavam
+          //      como "barganha". Geralmente são empresas que vão a zero.
+          //
+          // Critérios finais:
+          //   - P/L entre 2 e 12         (lucrativa de verdade, não chumbo)
+          //   - P/VP entre 0.3 e 1.5     (descontada, mas não distressed)
+          //   - ROE > 8%                 (gera retorno real ao acionista)
+          passa = !ehFII
+            && pl != null && pl > 2 && pl < 12
+            && pvp != null && pvp > 0.3 && pvp < 1.5
+            && roe != null && roe > 8;
           if (passa) {
-            score = Math.round(Math.max(0, Math.min(100,
-              (pl < 6 ? 40 : pl < 9 ? 30 : 20) +
-              (pvp < 0.8 ? 40 : pvp < 1.0 ? 30 : 20) +
-              (roe != null && roe > 15 ? 20 : roe != null && roe > 10 ? 10 : 5)
-            )));
+            // Score granular pra desempatar (versão antiga saturava em 100).
+            // 5 dimensões → até 120 pts brutos → normaliza pra 100.
+            // Filosofia: "value play clássico" = balanço entre desconto + qualidade.
+
+            // P/L: sweet spot entre 5-9. Abaixo de 4 começa a ser suspeito.
+            const scorePL = pl >= 5 && pl <= 9 ? 30
+              : pl >= 4 && pl < 5 ? 22
+              : pl >= 9 && pl < 12 ? 18
+              : 12;  // 2-4, passa mas não lidera
+
+            // P/VP: <0.8 = forte desconto, 0.8-1.2 = barato e razoável.
+            const scorePVP = pvp < 0.8 ? 30
+              : pvp < 1.2 ? 22
+              : 12;  // 1.2-1.5
+
+            // ROE: empresa precisa gerar retorno. Acima de 20 é muito bom.
+            const scoreROE = roe > 20 ? 25
+              : roe > 15 ? 18
+              : roe > 10 ? 12
+              : 6;   // 8-10
+
+            // Margem líquida: sinal adicional de qualidade operacional.
+            const margem = fund?.margemLiquida;
+            const scoreMargem = margem != null && margem > 15 ? 20
+              : margem != null && margem > 8 ? 12
+              : margem != null && margem > 0 ? 5
+              : 2;
+
+            // Lucros consistentes (CAGR > 0): histórico positivo desempata.
+            const scoreLucros = fund?.lucrosConsistentes ? 15 : 5;
+
+            const scoreBruto = scorePL + scorePVP + scoreROE + scoreMargem + scoreLucros;
+            // Máx teórico: 30+30+25+20+15 = 120
+            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         } else if (filtros.tipo === "fiis_alto_dy") {
           passa = ehFII && dy != null && pvp != null && dy >= 8 && pvp <= 1.1 && pvp > 0;
