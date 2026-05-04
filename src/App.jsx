@@ -3112,7 +3112,11 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
         const fund = fundamentos[cat.ticker];
         const ehFII = fund?.tipo === "FII" || /11$/.test(cat.ticker);
 
-        const dy = ehFII ? fund?.dy : null;
+        // dy: até 04/05/2026, ações no cache tinham dy=null porque o endpoint
+        // /fundamentals/{ticker} da bolsai não retorna DY. Por isso esse código
+        // hardcodava dy=null pra ações. Após commit ea5a6f5, o cron busca DY
+        // de ações via /dividends/{ticker} também, então usamos o campo direto.
+        const dy = fund?.dy;
         const pl = fund?.pl;
         const pvp = fund?.pvp;
         const roe = fund?.roe;
