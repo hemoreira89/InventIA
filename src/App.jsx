@@ -3005,7 +3005,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     blue_chips_baratas: {
       titulo: "Blue chips em desconto",
-      descricao: "P/L < 15 e cotação no terço inferior do canal de 52 semanas",
+      descricao: "P/L < 15, P/VP entre 0.4 e 2, ROE > 12%, com desconto via canal 52s ou P/VP",
       icon: Award
     },
     dividendos_estaveis: {
@@ -3234,18 +3234,70 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             score = Math.round(Math.min(100, scoreBruto));
           }
         } else if (filtros.tipo === "blue_chips_baratas") {
-          // Blue chip = empresa grande lucrativa. P/L positivo é obrigatório.
-          // Se está perto da mínima de 52s OU P/VP < 2, é desconto.
-          passa = !ehFII && pl != null && pl > 0 && pl < 15 && (
-            (canal52 != null && canal52 < 60) || (pvp != null && pvp > 0 && pvp < 2)
-          );
+          // Blue chip = empresa grande, LUCRATIVA E DE QUALIDADE, negociada com
+          // algum desconto. Validado contra dados reais (04/05/2026).
+          //
+          // Histórico de filtragens:
+          //   1. Antes do roe>12: COGN3 (ROE 4.65%) e HYPE3 (ROE 9.55%, CAGR -1.68%)
+          //      apareciam como "blue chip barata". Volume alto não basta — sem
+          //      lucratividade real, é só ação grande em recuperação.
+          //   2. Antes do pvp>0.4: papéis distressed com P/VP brutalmente baixo
+          //      passavam (ex: COGN3 com P/VP 0.43). Blue chips nunca ficam tão
+          //      descontadas sem motivo grave.
+          //
+          // Critérios finais:
+          //   - P/L entre 0 e 15      (lucrativa, não absurdamente cara)
+          //   - P/VP entre 0.4 e 2    (descontada mas não distressed)
+          //   - ROE > 12%             (gera retorno consistente — qualidade real)
+          //   - Cotação no canal de 52s < 60% OU P/VP < 1.5 (algum tipo de desconto)
+          passa = !ehFII
+            && pl != null && pl > 0 && pl < 15
+            && pvp != null && pvp > 0.4 && pvp < 2
+            && roe != null && roe > 12
+            && (
+              (canal52 != null && canal52 < 60)
+              || pvp < 1.5
+            );
           if (passa) {
-            score = Math.round(Math.max(0, Math.min(100,
-              (pl < 10 ? 30 : 20) +
-              (pvp != null && pvp > 0 && pvp < 1.5 ? 25 : pvp != null && pvp > 0 && pvp < 2 ? 15 : 10) +
-              (canal52 != null && canal52 < 30 ? 30 : canal52 != null && canal52 < 50 ? 20 : 10) +
-              (fund?.cagrLucro5y != null && fund.cagrLucro5y > 5 ? 15 : 5)
-            )));
+            // Score granular pra desempatar Top 8.
+            // Versão antiga saturava em 100 (somando apenas ceilings de 4 dimensões).
+            // 5 dimensões → até 120 pts brutos → normaliza pra 100.
+
+            // P/L: <8 = barato pra blue chip (Itaú, Bradesco ficam nessa faixa
+            // raramente; quando ficam, é oportunidade)
+            const scorePL = pl < 8 ? 30
+              : pl < 12 ? 22
+              : 15;  // 12-15
+
+            // P/VP: blue chip clássica costuma ter P/VP 1.5-2.5 em momentos
+            // normais; abaixo disso é desconto real.
+            const scorePVP = pvp < 1.0 ? 25
+              : pvp < 1.5 ? 18
+              : 10;  // 1.5-2
+
+            // Canal 52s: cotação no terço inferior é forte sinal de oportunidade.
+            // Se brapi não retornou (canal52 == null), dá base mínima.
+            const scoreCanal = canal52 == null ? 8
+              : canal52 < 30 ? 30
+              : canal52 < 50 ? 20
+              : canal52 < 70 ? 10
+              : 5;
+
+            // ROE: qualidade da empresa. Blue chip premium tem ROE > 20%.
+            const scoreROE = roe > 20 ? 20
+              : roe > 15 ? 15
+              : 10;  // 12-15
+
+            // CAGR de lucro: empresa que cresce lucro consistentemente.
+            const cagrL = fund?.cagrLucro5y;
+            const scoreCagr = cagrL != null && cagrL > 15 ? 15
+              : cagrL != null && cagrL > 5 ? 10
+              : cagrL != null && cagrL > 0 ? 5
+              : 2;
+
+            const scoreBruto = scorePL + scorePVP + scoreCanal + scoreROE + scoreCagr;
+            // Máx teórico: 30+25+30+20+15 = 120
+            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         } else if (filtros.tipo === "crescimento") {
           // Empresa em crescimento precisa ser lucrativa (não dá pra "crescer" lucro negativo)
