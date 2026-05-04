@@ -3005,7 +3005,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     blue_chips_baratas: {
       titulo: "Blue chips em desconto",
-      descricao: "P/L < 15, P/VP entre 0.4 e 2, ROE > 12%, com desconto via canal 52s ou P/VP",
+      descricao: "P/L entre 2 e 15, P/VP entre 0.4 e 2, ROE entre 12% e 50%, com desconto",
       icon: Award
     },
     dividendos_estaveis: {
@@ -3248,12 +3248,19 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
           // Critérios finais:
           //   - P/L entre 0 e 15      (lucrativa, não absurdamente cara)
           //   - P/VP entre 0.4 e 2    (descontada mas não distressed)
-          //   - ROE > 12%             (gera retorno consistente — qualidade real)
+          //   - ROE entre 12% e 50%   (qualidade real, sem outlier de ROE artificial)
           //   - Cotação no canal de 52s < 60% OU P/VP < 1.5 (algum tipo de desconto)
+          //
+          // Adendo 04/05/2026: SYNE3 (P/L 1.1, ROE 74.79%) apareceu como #1
+          // mesmo após o aperto inicial. Eventos não recorrentes (venda de
+          // ativo, lucro extraordinário) inflam ROE e deflacionam P/L. Limites:
+          //   - P/L > 2 corta P/L absurdamente baixo (lucro não recorrente)
+          //   - ROE < 50 corta ROE absurdamente alto (mesmo padrão, pelo lado
+          //     do balanço). Empresa madura saudável tem ROE 15-30%.
           passa = !ehFII
-            && pl != null && pl > 0 && pl < 15
+            && pl != null && pl > 2 && pl < 15
             && pvp != null && pvp > 0.4 && pvp < 2
-            && roe != null && roe > 12
+            && roe != null && roe > 12 && roe < 50
             && (
               (canal52 != null && canal52 < 60)
               || pvp < 1.5
