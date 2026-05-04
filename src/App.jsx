@@ -12,7 +12,7 @@ import {
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command
+  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
@@ -3008,6 +3008,11 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       descricao: "Market cap > R$ 10bi, P/L 2-15, P/VP 0.4-2, ROE 12-50%, com desconto",
       icon: Award
     },
+    mega_caps_desconto: {
+      titulo: "Mega caps em desconto",
+      descricao: "Gigantes da B3 (cap > R$ 50bi) com P/L < 12 e ROE > 10%",
+      icon: Crown
+    },
     dividendos_estaveis: {
       titulo: "Pagadoras consistentes",
       descricao: "ROE > 10%, Dív/EBITDA < 4, DY entre 4 e 25%, P/VP < 3",
@@ -3322,6 +3327,57 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             const scoreBruto = scorePL + scorePVP + scoreCanal + scoreROE + scoreCagr;
             // Máx teórico: 30+25+30+20+15 = 120
             score = Math.round(Math.min(100, scoreBruto * 100 / 120));
+          }
+        } else if (filtros.tipo === "mega_caps_desconto") {
+          // Mega caps = gigantes do mercado brasileiro (cap > R$ 50bi).
+          // Filtro pra investidor que quer EXCLUSIVAMENTE empresas que
+          // dificilmente quebram (ITUB4, BBDC4, PETR4, VALE3, etc) e
+          // só compra quando o valuation estiver atraente.
+          //
+          // Validação contra dados reais (04/05/2026):
+          //   33 empresas com cap > 50bi (13 entre 50-100bi + 20 acima)
+          //
+          // Filosofia:
+          //   - Cap > R$ 50bi      (gigante de verdade)
+          //   - P/L < 12           (preço atrativo)
+          //   - ROE > 10%          (gerando retorno mínimo decente)
+          //   - P/VP entre 0.5 e 3 (gigantes podem ter P/VP maior por brand value)
+          //
+          // ROE > 10% (não 12% como Blue chips) porque mega caps maduras
+          // têm ROE menor que mid caps em crescimento — é normal e saudável.
+          const marketCap = fund?.marketCap;
+          passa = !ehFII
+            && marketCap != null && marketCap > 50e9
+            && pl != null && pl > 2 && pl < 12
+            && pvp != null && pvp > 0.5 && pvp < 3
+            && roe != null && roe > 10 && roe < 50;
+          if (passa) {
+            // Score: 4 dimensões → até 100 pts (sem normalização, já cabe).
+            // Premia empresa MAIOR + MAIS BARATA + MAIS RENTÁVEL.
+
+            // Tamanho: gigantes (>200bi) são as mais resilientes
+            const scoreCap = marketCap > 200e9 ? 30
+              : marketCap > 100e9 ? 22
+              : 15;  // 50-100bi
+
+            // P/L: barato pra mega cap
+            const scorePL = pl < 8 ? 30
+              : pl < 10 ? 22
+              : 15;  // 10-12
+
+            // ROE: blue chip premium tem ROE alto
+            const scoreROE = roe > 18 ? 25
+              : roe > 14 ? 18
+              : 12;  // 10-14
+
+            // P/VP: gigantes podem custar caro patrimonialmente, mas
+            // se estiver descontada, é oportunidade rara
+            const scorePVP = pvp < 1.0 ? 15
+              : pvp < 1.5 ? 10
+              : 5;  // 1.5-3
+
+            score = scoreCap + scorePL + scoreROE + scorePVP;
+            // Máx teórico: 30+30+25+15 = 100
           }
         } else if (filtros.tipo === "crescimento") {
           // Empresa em crescimento real e sustentável. Validado contra dados
