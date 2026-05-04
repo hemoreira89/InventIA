@@ -62,6 +62,10 @@ export async function buscarFundamentosCached(tickers) {
       nav: row.nav,
       segmento: row.segmento,
       lucrosConsistentes: row.lucros_consistentes,
+      // Qualidade adicional (adicionado 04/05/2026)
+      marketCap: row.market_cap,
+      roa: row.roa,
+      debtEquity: row.debt_equity,
       atualizadoEm: row.atualizado_em,
     };
   }

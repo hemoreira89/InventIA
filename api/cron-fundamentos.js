@@ -184,6 +184,12 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       ev_ebitda: num(dados.ev_ebitda),
       vpa: num(dados.vpa),
       lpa: num(dados.lpa),
+      // Qualidade adicional (adicionado 04/05/2026 — bolsai já retornava
+      // mas estava sendo descartado). Usado pra filtros futuros tipo
+      // "Blue chip de verdade" (market_cap > 10bi) e refinamento de score.
+      market_cap: num(dados.market_cap),
+      roa: num(dados.roa),
+      debt_equity: num(dados.debt_equity),
       // DY — pra FIIs vem do /fiis/, pra ações vem do /dividends/ (calculado em dyFinal acima)
       dy: dyFinal,
       // FII-only
