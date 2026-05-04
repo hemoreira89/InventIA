@@ -3184,9 +3184,19 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             // Lucros consistentes (CAGR > 0): histórico positivo desempata.
             const scoreLucros = fund?.lucrosConsistentes ? 15 : 5;
 
-            const scoreBruto = scorePL + scorePVP + scoreROE + scoreMargem + scoreLucros;
-            // Máx teórico: 30+30+25+20+15 = 120
-            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
+            // ROA: complementa ROE mostrando eficiência sem alavancagem.
+            // Peso BAIXO (5-8 pts) porque bancos têm ROA naturalmente baixo
+            // (ITUB4 1.5%, BBDC4 1.0%) por carregar muito ativo no balanço.
+            // Peso baixo evita punir bancos injustamente.
+            const roa = fund?.roa;
+            const scoreROA = roa != null && roa > 10 ? 8
+              : roa != null && roa > 5 ? 6
+              : roa != null && roa > 2 ? 3
+              : 1;  // banco ou empresa com ROA baixo
+
+            const scoreBruto = scorePL + scorePVP + scoreROE + scoreMargem + scoreLucros + scoreROA;
+            // Máx teórico: 30+30+25+20+15+8 = 128
+            score = Math.round(Math.min(100, scoreBruto * 100 / 128));
           }
         } else if (filtros.tipo === "fiis_alto_dy") {
           // FIIs com DY ≥ 8% e P/VP descontado.
@@ -3447,9 +3457,17 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
               : pl < 15 ? 10
               : 5;  // 15-25
 
-            const scoreBruto = scoreCagrR + scoreCagrL + scoreROE + scoreMargem + scorePL;
-            // Máx teórico: 30+30+25+20+15 = 120
-            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
+            // ROA: empresa em crescimento com ROA alto = uso eficiente de
+            // capital. Peso baixo porque ROA varia muito por setor.
+            const roa = fund?.roa;
+            const scoreROA = roa != null && roa > 10 ? 8
+              : roa != null && roa > 5 ? 6
+              : roa != null && roa > 2 ? 3
+              : 1;
+
+            const scoreBruto = scoreCagrR + scoreCagrL + scoreROE + scoreMargem + scorePL + scoreROA;
+            // Máx teórico: 30+30+25+20+15+8 = 128
+            score = Math.round(Math.min(100, scoreBruto * 100 / 128));
           }
         } else if (filtros.tipo === "dividendos_estaveis") {
           // Pagadora de dividendos precisa ter lucro positivo, dividendo
@@ -3510,9 +3528,18 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             // Lucros consistentes (CAGR > 0): histórico positivo.
             const scoreLucros = fund?.lucrosConsistentes ? 20 : 5;
 
-            const scoreBruto = scoreDY + scoreROE + scorePVP + scoreDiv + scoreLucros;
-            // Normaliza 120 → 100 (multiplicação por 100/120 ≈ 0.833)
-            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
+            // ROA: complementa qualidade. Peso baixo porque bancos têm ROA
+            // estruturalmente baixo (carregam ativos gigantes), e bancos
+            // costumam ser pagadores consistentes — não queremos puni-los.
+            const roa = fund?.roa;
+            const scoreROA = roa != null && roa > 10 ? 8
+              : roa != null && roa > 5 ? 6
+              : roa != null && roa > 2 ? 3
+              : 1;
+
+            const scoreBruto = scoreDY + scoreROE + scorePVP + scoreDiv + scoreLucros + scoreROA;
+            // Máx teórico: 35+25+20+20+20+8 = 128
+            score = Math.round(Math.min(100, scoreBruto * 100 / 128));
           }
         }
 
