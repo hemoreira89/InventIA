@@ -3197,18 +3197,44 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
             && dy != null && dy > 4 && dy < 25
             && pvp != null && pvp > 0 && pvp < 3;
           if (passa) {
-            // Score: sweet spot é DY 6-15% (blue chips pagadoras clássicas).
-            // 4-6% e 15-25% ganham menos pontos — ainda passam, mas não lideram
-            // o ranking. 6-15% é onde estão ITUB4, ITSA4, CMIG4, ABEV3 etc.
-            const scoreDY = dy >= 6 && dy <= 15 ? 30
-              : dy >= 4 && dy < 6 ? 18
-              : 12; // 15-25%, ainda OK mas penalizado
-            score = Math.round(Math.max(0, Math.min(100,
-              (fund?.lucrosConsistentes ? 30 : 10) +
-              scoreDY +
-              (fund?.divEbitda != null && fund.divEbitda < 2 ? 20 : fund?.divEbitda != null && fund.divEbitda < 3 ? 15 : 5) +
-              (roe > 15 ? 20 : 10)
-            )));
+            // Score granular pra desempatar Top 8.
+            // Versão anterior dava muitos "100" empatados (ITUB4, ITSA4, ABEV3
+            // todos batiam todos os ceilings, ranking caía pro tiebreak alfabético).
+            //
+            // Agora: 5 dimensões com até 120 pts brutos, normaliza pra 100.
+            // Filosofia "Pagadoras Consistentes": renda primeiro (DY), com
+            // qualidade (ROE), preço razoável (P/VP), dívida sob controle
+            // (Dív/EBITDA) e histórico de lucros (consistência).
+            //
+            // DY: sweet-sweet spot é 8-12% (alto sem ser suspeito).
+            //   ITUB4 (8.40), ITSA4 (9.50), TGMA3 (12.04) ficam no topo.
+            const scoreDY = dy >= 8 && dy <= 12 ? 35      // ouro
+              : ((dy >= 6 && dy < 8) || (dy > 12 && dy <= 15)) ? 25  // muito bom
+              : 12;                                                    // 4-6 ou 15-25, ainda passa
+
+            // ROE: empresas com ROE > 25% são raras e merecem destaque.
+            const scoreROE = roe > 25 ? 25
+              : roe > 15 ? 18
+              : 10;
+
+            // P/VP: comprar barato é objetivamente melhor pra "pagadoras".
+            const scorePVP = pvp < 1.5 ? 20
+              : pvp < 2.5 ? 12
+              : 5;  // 2.5-3, premium mas ainda passa
+
+            // Dívida: quanto menor, mais espaço pra distribuir lucros.
+            const divEbitda = fund?.divEbitda;
+            const scoreDiv = divEbitda != null && divEbitda < 1 ? 20
+              : divEbitda != null && divEbitda < 2 ? 15
+              : divEbitda != null && divEbitda < 3 ? 8
+              : 3;  // 3-4 ou null
+
+            // Lucros consistentes (CAGR > 0): histórico positivo.
+            const scoreLucros = fund?.lucrosConsistentes ? 20 : 5;
+
+            const scoreBruto = scoreDY + scoreROE + scorePVP + scoreDiv + scoreLucros;
+            // Normaliza 120 → 100 (multiplicação por 100/120 ≈ 0.833)
+            score = Math.round(Math.min(100, scoreBruto * 100 / 120));
           }
         }
 
