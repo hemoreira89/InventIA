@@ -3005,7 +3005,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
     },
     blue_chips_baratas: {
       titulo: "Blue chips em desconto",
-      descricao: "P/L entre 2 e 15, P/VP entre 0.4 e 2, ROE entre 12% e 50%, com desconto",
+      descricao: "Market cap > R$ 10bi, P/L 2-15, P/VP 0.4-2, ROE 12-50%, com desconto",
       icon: Award
     },
     dividendos_estaveis: {
@@ -3251,13 +3251,30 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
           //   - ROE entre 12% e 50%   (qualidade real, sem outlier de ROE artificial)
           //   - Cotação no canal de 52s < 60% OU P/VP < 1.5 (algum tipo de desconto)
           //
-          // Adendo 04/05/2026: SYNE3 (P/L 1.1, ROE 74.79%) apareceu como #1
-          // mesmo após o aperto inicial. Eventos não recorrentes (venda de
-          // ativo, lucro extraordinário) inflam ROE e deflacionam P/L. Limites:
+          // Adendo 04/05/2026 (segunda revisão): SYNE3 (P/L 1.1, ROE 74.79%)
+          // apareceu como #1 mesmo após o aperto inicial. Eventos não
+          // recorrentes (venda de ativo, lucro extraordinário) inflam ROE e
+          // deflacionam P/L. Limites:
           //   - P/L > 2 corta P/L absurdamente baixo (lucro não recorrente)
           //   - ROE < 50 corta ROE absurdamente alto (mesmo padrão, pelo lado
           //     do balanço). Empresa madura saudável tem ROE 15-30%.
+          //
+          // Adendo 04/05/2026 (terceira revisão): com market_cap no cache,
+          // finalmente alinhamos o NOME da tela com o conteúdo.
+          // Antes: "Blue chip" era heurística (P/L<15 + ROE>12), pegava
+          // small caps tipo LPSB3 (R\$ 1bi de cap), GRND3 (R\$ 7bi).
+          // Agora: market_cap > R\$ 10bi torna o filtro objetivo. Quem
+          // quiser small caps de qualidade tem 'Ações sub-precificadas'.
+          //
+          //   Distribuição validada (n=300 ações no cache):
+          //     < 10bi: 213  (small/mid caps — não-blue-chip)
+          //     10-50bi: 54  (large caps)
+          //     50-100bi: 13 (mega caps)
+          //     > 100bi:  20 (gigantes tipo PETR4, ITUB4)
+          //   Total candidatos potenciais: 87 large+
+          const marketCap = fund?.marketCap;
           passa = !ehFII
+            && marketCap != null && marketCap > 10e9
             && pl != null && pl > 2 && pl < 15
             && pvp != null && pvp > 0.4 && pvp < 2
             && roe != null && roe > 12 && roe < 50
