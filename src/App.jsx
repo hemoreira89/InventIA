@@ -3559,22 +3559,40 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
           roe: roe ?? null,
           debtEquity: fund?.debtEquity ?? null,
           canal52: canal52 != null ? Math.round(canal52) : null,
+          // Volume: usado pra desempate em dedup ON/PN (mais líquido vence)
+          volume: cat.volume ?? 0,
           score,
           temDados: !!(cot || fund),
           passaCriterio: passa,
         };
       });
 
-      // Ordena por score (mais alto primeiro), depois por ticker
-      const ordenados = oportunidades
+      // Ordena por score (mais alto primeiro), depois por ticker.
+      // Inclui dedup ON/PN/Units: empresas com múltiplas classes de ações
+      // (PETR3+PETR4, ITUB3+ITUB4, CYRE3+CYRE4) devem aparecer 1x só, senão
+      // o Top 8 vira Top 4-5 distintos. Heurística: agrupa por prefixo de
+      // 4 letras (padrão B3: PETR3/PETR4/PETR11 = prefixo PETR = Petrobras).
+      // Dentro do grupo, mantém o ticker com maior score (empate → mais líquido).
+      const aprovados = oportunidades
         .filter(o => o.temDados && o.passaCriterio)
         .sort((a, b) => {
           const sa = a.score ?? 0;
           const sb = b.score ?? 0;
           if (sb !== sa) return sb - sa;
-          return a.ticker.localeCompare(b.ticker);
-        })
-        .slice(0, 8);
+          return (b.volume ?? 0) - (a.volume ?? 0);
+        });
+
+      // Dedup: 1ª ocorrência de cada prefixo vence (já está ordenado por score+volume)
+      const vistos = new Set();
+      const dedupados = [];
+      for (const o of aprovados) {
+        const prefixo = (o.ticker || "").slice(0, 4);
+        if (vistos.has(prefixo)) continue;
+        vistos.add(prefixo);
+        dedupados.push(o);
+      }
+
+      const ordenados = dedupados.slice(0, 8);
 
       // ── PASSO 4 (opcional): IA gera contexto macro + tese para os aprovados ──
       // Se nenhum aprovado, pula a IA pra economizar
