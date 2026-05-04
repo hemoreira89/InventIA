@@ -34,10 +34,12 @@ test.describe('Fluxo principal autenticado', () => {
     await expect(page.getByText('WATCHLIST', { exact: true })).toBeVisible();
   });
 
-  test('todas as 14 tabs estão visíveis', async ({ page }) => {
-    // Lista exata dos labels das tabs
+  test('todas as 13 tabs estão visíveis', async ({ page }) => {
+    // Lista exata dos labels das tabs.
+    // Nota: 'Gráficos' foi removida das tabs em commit anterior — virou
+    // seção colapsável dentro de Análise IA (componente VisualizacoesCarteira).
     const tabs = [
-      'Carteira', 'Patrimônio', 'Gráficos', 'Análise IA',
+      'Carteira', 'Patrimônio', 'Análise IA',
       'Analisar Ticker', 'Comparador', 'Oportunidades',
       'Histórico', 'Proventos', 'Watchlist', 'Universo', 'IR',
       '1º Milhão', 'Cenários'
@@ -94,12 +96,17 @@ test.describe('Fluxo principal autenticado', () => {
   });
 
   test('campo de aporte aceita valores', async ({ page }) => {
+    // Aporte fica DENTRO da tab Análise IA (não é mais global no topo).
+    // Mudança feita em commit anterior pra reduzir poluição visual da home.
+    await page.getByRole('button', { name: 'Análise IA', exact: true }).click();
     const aporteInput = page.getByPlaceholder(/R\$ 0,00/i);
     await aporteInput.fill('1000');
     await expect(aporteInput).not.toHaveValue('');
   });
 
   test('botões de aporte rápido funcionam', async ({ page }) => {
+    // Aporte rápido (R$1k, R$2k, R$5k) também só existe na tab Análise IA.
+    await page.getByRole('button', { name: 'Análise IA', exact: true }).click();
     await page.getByRole('button', { name: 'R$1k', exact: true }).click();
     const aporteInput = page.getByPlaceholder(/R\$ 0,00/i);
     await expect(aporteInput).not.toHaveValue('');
