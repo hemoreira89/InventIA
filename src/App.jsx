@@ -1517,7 +1517,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
           {atingiram.map(w => (
             <div key={w.ticker} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
               <span style={{fontWeight:700,color:"var(--ui-success)",fontSize:14}}>{w.ticker}</span>
-              <span style={{fontSize:13,color:"var(--ui-text)"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} ✅</span>
+              <span style={{fontSize:13,color:"var(--ui-text)"}}>{fmtBRL(w.precoAtual)} ≤ alvo {fmtBRL(w.alvo)} <span style={{color:"var(--ui-success)"}}>✓</span></span>
             </div>
           ))}
         </div>
@@ -2273,7 +2273,7 @@ function TabComparador({ chamarIAComSearch }) {
     setErro(""); setLoading(true); setResultado(null);
     try {
       // ── PASSO 1: dados quantitativos via APIs (paralelo) ──
-      setFase(`📊 Buscando dados de ${ts.length} ativos (B3/CVM)...`);
+      setFase(`Buscando dados de ${ts.length} ativos (B3/CVM)...`);
 
       const [cotacoes, fundamentos] = await Promise.all([
         buscarCotacoes(ts).catch(() => ({})),
@@ -2317,7 +2317,7 @@ function TabComparador({ chamarIAComSearch }) {
       });
 
       // ── PASSO 2: IA só para análise comparativa qualitativa ──
-      setFase("🧠 Gerando análise comparativa...");
+      setFase("Gerando análise comparativa...");
 
       const promptIA = `Você é analista financeiro brasileiro. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
 
@@ -3045,7 +3045,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       // ── PASSO 1: filtra catálogo local (Supabase) por critérios objetivos ──
       // O catálogo tem ~750 ativos atualizados diariamente via cron.
       // Filtramos por tipo (stock|fund) e volume mínimo (descarta ilíquidos).
-      setFase("📋 Filtrando catálogo B3...");
+      setFase("Filtrando catálogo B3...");
 
       const ehFiltroFII = filtros.tipo === "fiis_alto_dy";
       const tipoCatalogo = ehFiltroFII ? "fund" : "stock";
@@ -3077,7 +3077,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       }
 
       // ── PASSO 2: busca fundamentos REAIS dos top 30 (bolsai paralelo) ──
-      setFase(`📊 Analisando fundamentos de ${candidatosCatalogo.length} ativos...`);
+      setFase(`Analisando fundamentos de ${candidatosCatalogo.length} ativos...`);
 
       const tickers = candidatosCatalogo.map(c => c.ticker);
 
@@ -3222,7 +3222,7 @@ function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
       let tesePorTicker = {};
 
       if (ordenados.length > 0) {
-        setFase("🧠 IA gerando análise qualitativa...");
+        setFase("IA gerando análise qualitativa...");
         try {
           const tickersStr = ordenados.map(o => `${o.ticker} (${o.nome}, P/L ${o.pl?.toFixed(1) || "?"}, P/VP ${o.pvp?.toFixed(2) || "?"}${o.dy ? `, DY ${o.dy.toFixed(1)}%` : ""})`).join("; ");
           const promptIA = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
@@ -3671,13 +3671,13 @@ export default function App({ session, onLogout }) {
       }[perfil];
       const focoDesc = { acoes:"ações da B3", fiis:"fundos imobiliários (FIIs)", misto:"mix de ações e FIIs" }[foco];
 
-      setFase("📊 Calculando perfil de risco da carteira...");
+      setFase("Calculando perfil de risco da carteira...");
 
       // Calcula análise de risco LOCAL (antes da IA) usando preços ao vivo + setor do catálogo
       const posEstimadas = estimarPosicoesParaRisco(carteira, cotacoesGlobais, getSetorPorTicker);
       const riscoPre = posEstimadas.length > 0 ? analisarRisco(posEstimadas, normalizarSetor) : null;
 
-      setFase("🔍 Gemini buscando cotações no Google Finance...");
+      setFase("Gemini buscando cotações no Google Finance...");
 
       const carteiraInfo = temCarteira
         ? `\nCARTEIRA ATUAL DO INVESTIDOR:\n${carteira.map(a=>`- ${a.ticker}: ${a.qtd} cotas${a.pm?`, PM R$${a.pm}`:""}`).join("\n")}`
@@ -3759,7 +3759,7 @@ Regras:
 - Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
 - SOMENTE JSON, sem markdown`;
 
-      setFase("🧠 Gemini 2.5 Pro analisando...");
+      setFase("Gemini 2.5 Pro analisando...");
       const analise = await chamarIAComSearch(prompt);
 
       // Busca cotação atual (brapi) E fundamentos reais (bolsai) em paralelo
@@ -3774,7 +3774,7 @@ Regras:
       let cotacoesReais = {};
       let fundamentosReais = {};
       if (tickersParaBuscar.length > 0) {
-        setFase("📊 Buscando cotações e fundamentos reais...");
+        setFase("Buscando cotações e fundamentos reais...");
         try {
           const [dadosCotacoes, dadosFundamentos] = await Promise.all([
             buscarCotacoes(tickersParaBuscar).catch(e => {
@@ -3862,7 +3862,7 @@ Regras:
       //  - Canal de 52 semanas vem direto da brapi (fiftyTwoWeekHigh/Low)
       let posicoes = [];
       if (temCarteira) {
-        setFase("📊 Calculando posições...");
+        setFase("Calculando posições...");
 
         posicoes = carteira.map(a => {
           const cot = cotacoesReais[a.ticker] || cotacoesGlobais[a.ticker] || {};
@@ -3905,7 +3905,7 @@ Regras:
         } catch(_) {}
       }
 
-      setFase("✅ Análise concluída!");
+      setFase("Análise concluída!");
       await sleep(400);
 
       const dadosFinais = {
@@ -4410,7 +4410,7 @@ Regras:
                   borderRadius:8,
                   fontSize:11,color:"var(--ui-text-muted)",lineHeight:1.5
                 }}>
-                  💡 <b>Dica:</b> dentro da paleta de comandos (<kbd style={kbdStyle}>⌘K</kbd>), digite um ticker (ex: PETR4) para analisar diretamente.
+                  <b>Dica:</b> dentro da paleta de comandos (<kbd style={kbdStyle}>⌘K</kbd>), digite um ticker (ex: PETR4) para analisar diretamente.
                 </div>
               </div>
             </div>
