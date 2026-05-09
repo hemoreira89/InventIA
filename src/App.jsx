@@ -5591,7 +5591,9 @@ Regras:
             <div className="ticker-tape" style={{
               borderTop:"1px solid var(--ui-border)",
               borderBottom:"1px solid var(--ui-border)",
-              background:"var(--ui-bg-secondary)",
+              background: themeApi.isLight
+                ? "linear-gradient(90deg, rgba(123,97,255,0.06), rgba(0,229,160,0.06))"
+                : "linear-gradient(90deg, rgba(123,97,255,0.10), rgba(0,229,160,0.08))",
               padding:"7px 0"
             }}>
               <div className="ticker-tape-track" style={{
