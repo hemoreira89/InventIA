@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME || "inventiabot";
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || "InvestIA_AppBot";
     return res.status(200).json({
       code,
       botUrl: `https://t.me/${botUsername}`,
