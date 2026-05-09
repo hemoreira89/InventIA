@@ -52,6 +52,42 @@ export async function carregarCarteiraPrincipal(userId) {
   return data;
 }
 
+export async function listarCarteiras(userId) {
+  const { data, error } = await supabase
+    .from('carteiras')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function criarCarteira(userId, nome) {
+  const { data, error } = await supabase
+    .from('carteiras')
+    .insert({ user_id: userId, nome })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renomearCarteira(carteiraId, nome) {
+  const { data, error } = await supabase
+    .from('carteiras')
+    .update({ nome })
+    .eq('id', carteiraId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deletarCarteira(carteiraId) {
+  const { error } = await supabase.from('carteiras').delete().eq('id', carteiraId);
+  if (error) throw error;
+}
+
 export async function carregarAtivos(carteiraId) {
   const { data, error } = await supabase
     .from('ativos')

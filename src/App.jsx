@@ -12,10 +12,11 @@ import {
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown
+  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale
 } from "lucide-react";
 import {
-  carregarCarteiraPrincipal, carregarAtivos, salvarAtivo, removerAtivo,
+  carregarCarteiraPrincipal, listarCarteiras, criarCarteira, renomearCarteira, deletarCarteira,
+  carregarAtivos, salvarAtivo, removerAtivo,
   registrarCompra, carregarCompras,
   carregarWatchlist, salvarWatchlist, removerWatchlist,
   salvarAnalise, carregarAnalises, removerAnalise,
@@ -40,6 +41,7 @@ import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
+import TickerAutocomplete from "./components/TickerAutocomplete";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
@@ -836,10 +838,15 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <Card>
         <STitle>REGISTRAR COMPRA</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-          <input placeholder="Ticker (PETR4)" value={ticker}
-            onChange={e => setTicker(e.target.value.toUpperCase())}
-            onKeyDown={e => e.key==="Enter"&&add()}
-            style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <div style={{gridColumn:"1/-1"}}>
+            <TickerAutocomplete
+              value={ticker}
+              onChange={e => setTicker(e.target.value.toUpperCase())}
+              onSelect={t => setTicker(t)}
+              onKeyDown={e => e.key==="Enter" && add()}
+              placeholder="Ticker (PETR4)"
+            />
+          </div>
           <input type="number" placeholder="Quantidade" value={qtd} onChange={e=>setQtd(e.target.value)}
             style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input type="number" placeholder="Preço médio R$" value={pm} onChange={e=>setPm(e.target.value)}
@@ -1498,8 +1505,14 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-accent)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-          <input placeholder="Ticker (VALE3)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
-            style={{gridColumn:"1/-1",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <div style={{gridColumn:"1/-1"}}>
+            <TickerAutocomplete
+              value={ticker}
+              onChange={e => setTicker(e.target.value.toUpperCase())}
+              onSelect={t => setTicker(t)}
+              placeholder="Ticker (VALE3)"
+            />
+          </div>
           <input type="number" placeholder="Preço alvo R$" value={alvo} onChange={e=>setAlvo(e.target.value)}
             style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
           <input placeholder="Nota (opcional)" value={nota} onChange={e=>setNota(e.target.value)}
@@ -2085,14 +2098,15 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSearch size={12} strokeWidth={2.5}/>ANÁLISE INDIVIDUAL DE TICKER</span></STitle>
         <div style={{display:"flex",gap:10}}>
-          <input
-            type="text"
-            placeholder="Ex: PETR4, ITUB4, MXRF11, BBAS3..."
-            value={ticker}
-            onChange={e=>setTicker(e.target.value.toUpperCase())}
-            onKeyDown={e=>e.key==="Enter"&&analisar()}
-            style={{flex:1,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"12px 16px",fontSize:16,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
-          />
+          <div style={{flex:1}}>
+            <TickerAutocomplete
+              value={ticker}
+              onChange={e => setTicker(e.target.value.toUpperCase())}
+              onSelect={t => { setTicker(t); setTimeout(analisar, 50); }}
+              onKeyDown={e => e.key==="Enter" && analisar()}
+              placeholder="Ex: PETR4, ITUB4, MXRF11, BBAS3..."
+            />
+          </div>
           <button onClick={analisar} disabled={loading} style={{background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,padding:"12px 24px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
             {loading ? <Loader2 size={15} className="spin"/> : <Sparkles size={15} strokeWidth={2.5}/>}
             {loading ? fase || "Analisando..." : "Analisar"}
@@ -2389,13 +2403,12 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:14}}>
           {tickers.map((t,i) => (
-            <input
+            <TickerAutocomplete
               key={i}
-              type="text"
-              placeholder={`Ticker ${i+1}`}
               value={t}
               onChange={e=>{const u=[...tickers];u[i]=e.target.value.toUpperCase();setTickers(u);}}
-              style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"12px 14px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,letterSpacing:1}}
+              onSelect={tk=>{const u=[...tickers];u[i]=tk;setTickers(u);}}
+              placeholder={`Ticker ${i+1}`}
             />
           ))}
         </div>
@@ -2850,6 +2863,549 @@ function TabProventos({ userId, pedirConfirmacao }) {
             </div>
           </Card>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Risco ───────────────────────────────────────────────────────────────
+function TabRisco({ carteira, cotacoesGlobais, dados }) {
+  const posicoes = useMemo(() => {
+    // Prefere dados enriquecidos da IA (mais completos); fallback p/ estimativa ao vivo
+    if (dados?.posicoes?.length) return dados.posicoes;
+    return estimarPosicoesParaRisco(carteira, cotacoesGlobais, getSetorPorTicker);
+  }, [carteira, cotacoesGlobais, dados]);
+
+  const risco = useMemo(() => {
+    if (!posicoes.length) return null;
+    return analisarRisco(posicoes, normalizarSetor);
+  }, [posicoes]);
+
+  if (!carteira.length) {
+    return (
+      <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+        <Shield size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+        <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Adicione ativos à carteira para ver a análise de risco</div>
+      </Card>
+    );
+  }
+
+  if (!risco) return null;
+
+  const { score, concentracao, setorial, alertas } = risco;
+
+  const corScore = score >= 70 ? "var(--ui-success)" : score >= 45 ? "var(--ui-warning)" : "var(--ui-danger)";
+  const labelScore = score >= 70 ? "Saudável" : score >= 45 ? "Atenção" : "Alto Risco";
+
+  const hhiClass = (hhi) => hhi < 1500 ? "success" : hhi < 2500 ? "warning" : "danger";
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* Score de saúde */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12}}>
+        <Card accent style={{textAlign:"center",padding:"20px 16px"}}>
+          <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:10}}>SCORE DE SAÚDE</div>
+          <div style={{fontSize:52,fontWeight:900,color:corScore,fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{score}</div>
+          <div style={{fontSize:12,color:corScore,fontWeight:700,marginTop:4}}>{labelScore}</div>
+          <div style={{marginTop:12,height:6,background:"var(--ui-bg-secondary)",borderRadius:3,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${score}%`,background:corScore,borderRadius:3,transition:"width 1s ease"}}/>
+          </div>
+        </Card>
+
+        <MetricaRisco
+          icone={PieIcon}
+          label="HHI DE ATIVOS"
+          valor={concentracao.hhi}
+          cor={hhiClass(concentracao.hhi)}
+          detalhe={`0–1500 diversificado · 2500+ concentrado`}
+          tooltip="Herfindahl-Hirschman Index: mede concentração de ativos. Quanto menor, melhor."
+        />
+        <MetricaRisco
+          icone={Factory}
+          label="HHI SETORIAL"
+          valor={setorial.hhi}
+          cor={hhiClass(setorial.hhi)}
+          detalhe={`${setorial.qtdSetores} setor${setorial.qtdSetores>1?"es":""}`}
+          tooltip="Concentração setorial. Carteiras setorialmente diversificadas têm HHI menor."
+        />
+        <MetricaRisco
+          icone={Briefcase}
+          label="Nº ATIVOS"
+          valor={concentracao.qtdAtivos}
+          cor={concentracao.qtdAtivos >= 8 ? "success" : concentracao.qtdAtivos >= 5 ? "warning" : "danger"}
+          detalhe="recomendado: 8+"
+          tooltip="Quantidade de ativos distintos na carteira."
+        />
+        {concentracao.maiorPosicao && (
+          <MetricaRisco
+            icone={AlertTriangle}
+            label="MAIOR POSIÇÃO"
+            valor={`${concentracao.maiorPosicao.ticker}`}
+            cor={concentracao.maiorPosicao.peso > 25 ? "danger" : concentracao.maiorPosicao.peso > 15 ? "warning" : "success"}
+            detalhe={`${fmt(concentracao.maiorPosicao.peso,1)}% da carteira`}
+            tooltip="Posição mais pesada. Acima de 15% merece atenção, acima de 25% é risco elevado."
+          />
+        )}
+        <MetricaRisco
+          icone={BarChart3}
+          label="TOP 3"
+          valor={`${fmt(concentracao.top3Pct,1)}%`}
+          cor={concentracao.top3Pct > 70 ? "danger" : concentracao.top3Pct > 55 ? "warning" : "success"}
+          detalhe="3 maiores ativos"
+          tooltip="Percentual dos 3 maiores ativos. Acima de 70% indica concentração preocupante."
+        />
+      </div>
+
+      {/* Alertas */}
+      <Card>
+        <STitle color="var(--ui-accent)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertTriangle size={11}/>ALERTAS DE RISCO</span></STitle>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {alertas.map((a, i) => {
+            const cor = a.tipo === "success" ? "var(--ui-success)" : a.tipo === "danger" ? "var(--ui-danger)" : "var(--ui-warning)";
+            const Icon = a.tipo === "success" ? CheckCircle2 : a.tipo === "danger" ? AlertCircle : AlertTriangle;
+            return (
+              <div key={i} style={{
+                display:"flex",alignItems:"flex-start",gap:10,padding:"10px 14px",borderRadius:9,
+                background: a.tipo === "success" ? "rgba(0,229,160,0.06)" : a.tipo === "danger" ? "rgba(255,77,109,0.06)" : "rgba(255,214,10,0.06)",
+                border: `1px solid ${a.tipo === "success" ? "rgba(0,229,160,0.18)" : a.tipo === "danger" ? "rgba(255,77,109,0.18)" : "rgba(255,214,10,0.18)"}`
+              }}>
+                <Icon size={14} color={cor} strokeWidth={2} style={{flexShrink:0,marginTop:1}}/>
+                <span style={{fontSize:13,color:"var(--ui-text)",lineHeight:1.5}}>{a.mensagem}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        {/* Concentração por ativo */}
+        <Card>
+          <STitle>CONCENTRAÇÃO POR ATIVO</STitle>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[...posicoes].sort((a,b)=>(b.peso||0)-(a.peso||0)).slice(0,12).map(p => (
+              <div key={p.ticker} style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"var(--ui-accent)",minWidth:52}}>{p.ticker}</span>
+                <div style={{flex:1,height:8,background:"var(--ui-bg-secondary)",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{
+                    height:"100%",width:`${Math.min(100,p.peso||0)}%`,borderRadius:4,transition:"width 0.8s ease",
+                    background: (p.peso||0) > 25 ? "var(--ui-danger)" : (p.peso||0) > 15 ? "var(--ui-warning)" : "var(--ui-accent)"
+                  }}/>
+                </div>
+                <span style={{fontSize:11,color:"var(--ui-text-muted)",fontWeight:600,minWidth:40,textAlign:"right"}}>{fmt(p.peso||0,1)}%</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Concentração setorial */}
+        <Card>
+          <STitle>CONCENTRAÇÃO SETORIAL</STitle>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {setorial.distribuicao.slice(0,10).map((s,i) => (
+              <div key={s.setor} style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:11,color:"var(--ui-text-muted)",minWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.setor}</span>
+                <div style={{flex:1,height:8,background:"var(--ui-bg-secondary)",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{
+                    height:"100%",width:`${Math.min(100,s.peso)}%`,borderRadius:4,transition:"width 0.8s ease",
+                    background:PALETTE[i%PALETTE.length]
+                  }}/>
+                </div>
+                <span style={{fontSize:11,color:"var(--ui-text-muted)",fontWeight:600,minWidth:40,textAlign:"right"}}>{fmt(s.peso,1)}%</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Posições acima de 10% */}
+      {concentracao.acima10Pct.length > 0 && (
+        <Card>
+          <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertTriangle size={11}/>POSIÇÕES ACIMA DE 10%</span></STitle>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {concentracao.acima10Pct.map(p => (
+              <div key={p.ticker} style={{
+                background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.22)",borderRadius:9,padding:"10px 14px",minWidth:120
+              }}>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:800,fontSize:15,color:"var(--ui-warning)"}}>{p.ticker}</div>
+                <div style={{fontSize:13,color:"var(--ui-text-muted)",fontWeight:600}}>{fmt(p.peso,1)}% da carteira</div>
+                <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>
+                  {p.peso > 25 ? "⚠ Risco elevado" : "Atenção recomendada"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div style={{fontSize:11,color:"var(--ui-text-disabled)",textAlign:"center",padding:"8px 0"}}>
+        Análise quantitativa baseada nos pesos atuais. Rode "Análise IA" para dados com cotações e setores atualizados.
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Renda Passiva ────────────────────────────────────────────────────────
+function TabRendaPassiva({ dados, carteira, cotacoesGlobais }) {
+  const patrimonioAtual = dados?.totalCarteira || 0;
+  const dyCarteira = dados?.posicoes?.length
+    ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*(p.peso/100), 0)
+    : 0;
+
+  const [patrimonio, setPatrimonio] = useState(() => patrimonioAtual > 0 ? String(Math.round(patrimonioAtual)) : "100000");
+  const [aporte, setAporte] = useState("2000");
+  const [dyEsperado, setDyEsperado] = useState(() => dyCarteira > 0 ? String(dyCarteira.toFixed(1)) : "8");
+  const [taxaCrescimento, setTaxaCrescimento] = useState("10");
+  const [anos, setAnos] = useState("20");
+  const [resultado, setResultado] = useState(null);
+
+  // Atualiza inputs automaticamente quando dados da IA chegam
+  useEffect(() => {
+    if (patrimonioAtual > 0) setPatrimonio(String(Math.round(patrimonioAtual)));
+    if (dyCarteira > 0) setDyEsperado(dyCarteira.toFixed(1));
+  }, [patrimonioAtual, dyCarteira]);
+
+  const calcular = () => {
+    const pv = Number(patrimonio) || 0;
+    const pmt = Number(aporte) || 0;
+    const dy = (Number(dyEsperado) || 8) / 100;
+    const taxa = (Number(taxaCrescimento) || 10) / 100;
+    const n = Number(anos) || 20;
+
+    const pontos = [];
+    for (let a = 0; a <= n; a++) {
+      // Patrimônio acumula com taxa de crescimento real + aportes
+      const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+      const rendaMensal = (patrimonioAnual * dy) / 12;
+      pontos.push({
+        ano: `${a}a`,
+        patrimonio: Math.round(patrimonioAnual),
+        rendaMensal: Math.round(rendaMensal),
+        rendaAnual: Math.round(rendaMensal * 12),
+      });
+    }
+
+    const final = pontos[pontos.length - 1];
+    const metaIndependencia = 10000; // R$10k/mês como referência
+    const anoIndependencia = pontos.find(p => p.rendaMensal >= metaIndependencia);
+
+    setResultado({ pontos, final, anoIndependencia });
+  };
+
+  const rendaMensalAtual = (Number(patrimonio) * (Number(dyEsperado)/100)) / 12;
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+      <Card style={{position:"sticky",top:120}}>
+        <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>PROJEÇÃO DE RENDA PASSIVA</span></STitle>
+
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+          <div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Patrimônio atual (R$)</div>
+            <input type="number" value={patrimonio} onChange={e=>setPatrimonio(e.target.value)}
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:14,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Aporte mensal (R$)</div>
+            <input type="number" value={aporte} onChange={e=>setAporte(e.target.value)}
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>DY médio esperado (% a.a.)</div>
+            <input type="number" step="0.5" value={dyEsperado} onChange={e=>setDyEsperado(e.target.value)}
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:14,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+            {dyCarteira > 0 && <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:4}}>DY atual da carteira: {dyCarteira.toFixed(1)}%</div>}
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Crescimento do patrimônio (% a.a.)</div>
+            <input type="number" step="0.5" value={taxaCrescimento} onChange={e=>setTaxaCrescimento(e.target.value)}
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:14,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Horizonte (anos)</div>
+            <input type="number" value={anos} onChange={e=>setAnos(e.target.value)}
+              style={{width:"100%",background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"11px 12px",fontSize:14,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}/>
+          </div>
+        </div>
+
+        <div style={{padding:"10px 12px",background:"rgba(0,229,160,0.06)",border:"1px solid rgba(0,229,160,0.15)",borderRadius:8,marginBottom:12}}>
+          <div style={{fontSize:10,color:"var(--ui-text-faint)",marginBottom:3}}>RENDA MENSAL HOJE</div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(rendaMensalAtual)}</div>
+          <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>{fmtBRL(rendaMensalAtual*12)} por ano · DY {dyEsperado}%</div>
+        </div>
+
+        <button onClick={calcular} style={{width:"100%",background:"linear-gradient(135deg,#00e5a0,#00b4d8)",border:"none",borderRadius:9,padding:"13px",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+          <><TrendingUp size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Projetar Renda Futura</>
+        </button>
+      </Card>
+
+      {resultado && (
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {/* Cards de resultado */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
+            <Card style={{textAlign:"center",padding:"18px 12px"}}>
+              <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>RENDA EM {anos} ANOS</div>
+              <div style={{fontSize:24,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.final.rendaMensal)}</div>
+              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>por mês</div>
+            </Card>
+            <Card style={{textAlign:"center",padding:"18px 12px"}}>
+              <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>PATRIMÔNIO FINAL</div>
+              <div style={{fontSize:20,fontWeight:900,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtK(resultado.final.patrimonio)}</div>
+              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>estimado</div>
+            </Card>
+            <Card style={{textAlign:"center",padding:"18px 12px"}}>
+              <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>MULTIPLICAÇÃO</div>
+              <div style={{fontSize:24,fontWeight:900,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>
+                {resultado.final.rendaMensal > 0 && rendaMensalAtual > 0
+                  ? `${(resultado.final.rendaMensal/rendaMensalAtual).toFixed(1)}×`
+                  : "–"}
+              </div>
+              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>da renda atual</div>
+            </Card>
+            {resultado.anoIndependencia ? (
+              <Card style={{textAlign:"center",padding:"18px 12px",background:"rgba(0,229,160,0.06)",border:"1px solid rgba(0,229,160,0.18)"}}>
+                <div style={{fontSize:9,color:"var(--ui-success)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>INDEPENDÊNCIA (R$10k/mês)</div>
+                <div style={{fontSize:24,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anoIndependencia.ano}</div>
+                <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>com renda de {fmtBRL(resultado.anoIndependencia.rendaMensal)}</div>
+              </Card>
+            ) : (
+              <Card style={{textAlign:"center",padding:"18px 12px",background:"rgba(255,214,10,0.06)",border:"1px solid rgba(255,214,10,0.18)"}}>
+                <div style={{fontSize:9,color:"var(--ui-warning)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>INDEPENDÊNCIA (R$10k/mês)</div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--ui-warning)"}}>Aumente aportes</div>
+                <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>meta não atingida em {anos} anos</div>
+              </Card>
+            )}
+          </div>
+
+          {/* Gráfico de renda mensal */}
+          <Card>
+            <STitle>EVOLUÇÃO DA RENDA MENSAL</STitle>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={resultado.pontos} margin={{left:0,right:0,top:5,bottom:5}}>
+                <defs>
+                  <linearGradient id="grenda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--ui-success)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--ui-success)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+                <XAxis dataKey="ano" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+                <Tooltip formatter={(v)=>[fmtBRL(v),"Renda mensal"]} labelFormatter={l=>`Ano ${l}`}/>
+                <Area type="monotone" dataKey="rendaMensal" stroke="var(--ui-success)" strokeWidth={2} fill="url(#grenda)" name="Renda mensal"/>
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {/* Gráfico de patrimônio */}
+          <Card>
+            <STitle>EVOLUÇÃO DO PATRIMÔNIO</STitle>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={resultado.pontos} margin={{left:0,right:0,top:5,bottom:5}}>
+                <defs>
+                  <linearGradient id="gpatr" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--ui-accent)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--ui-accent)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+                <XAxis dataKey="ano" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)} width={54}/>
+                <Tooltip formatter={(v)=>[fmtBRL(v),"Patrimônio"]} labelFormatter={l=>`Ano ${l}`}/>
+                <Area type="monotone" dataKey="patrimonio" stroke="var(--ui-accent)" strokeWidth={2} fill="url(#gpatr)" name="Patrimônio"/>
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <div style={{fontSize:11,color:"var(--ui-text-disabled)",textAlign:"center",padding:"4px 0"}}>
+            Projeção simulada. Rentabilidade passada não garante resultado futuro. Confirme com seu assessor.
+          </div>
+        </div>
+      )}
+
+      {!resultado && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <Coins size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:8}}>Simule sua independência financeira</div>
+          <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.7}}>
+            Ajuste os parâmetros e veja como sua renda de dividendos<br/>evolui ao longo do tempo com aportes regulares.
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Rebalanceamento ─────────────────────────────────────────────────────
+function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
+  const posicoes = useMemo(() => {
+    if (dados?.posicoes?.length) return dados.posicoes;
+    return estimarPosicoesParaRisco(carteira, cotacoesGlobais, getSetorPorTicker);
+  }, [carteira, cotacoesGlobais, dados]);
+
+  const [aporte, setAporte] = useState("");
+
+  if (!carteira.length) {
+    return (
+      <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+        <Target size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+        <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Adicione ativos à carteira para ver o rebalanceamento</div>
+      </Card>
+    );
+  }
+
+  const totalAtual = posicoes.reduce((s,p) => s + (p.valor||0), 0);
+  const aporteNum = Number(aporte) || 0;
+  const totalComAporte = totalAtual + aporteNum;
+
+  // Monta dados comparando peso atual vs peso alvo
+  const rows = carteira.map(a => {
+    const pos = posicoes.find(p => p.ticker === a.ticker);
+    const pesoAtual = pos ? pos.peso : 0;
+    const pesoAlvo = a.peso_alvo || 0;
+    const valorAtual = pos ? (pos.valor || 0) : 0;
+    const valorAlvo = pesoAlvo > 0 ? (totalComAporte * pesoAlvo / 100) : null;
+    const diferenca = valorAlvo != null ? (valorAlvo - valorAtual - (pesoAlvo/100)*aporteNum) : null;
+    const delta = pesoAlvo > 0 ? (pesoAtual - pesoAlvo) : null;
+
+    return {
+      ticker: a.ticker,
+      pesoAtual: +pesoAtual.toFixed(1),
+      pesoAlvo: +pesoAlvo.toFixed(1),
+      valorAtual,
+      valorAlvo,
+      diferenca,
+      delta,
+      preco: pos?.preco || a.pm || null
+    };
+  }).sort((a,b) => {
+    if (a.pesoAlvo > 0 && b.pesoAlvo === 0) return -1;
+    if (b.pesoAlvo > 0 && a.pesoAlvo === 0) return 1;
+    return (b.pesoAtual||0) - (a.pesoAtual||0);
+  });
+
+  const semAlvo = rows.filter(r => r.pesoAlvo === 0).length;
+  const totalAlvo = rows.reduce((s,r) => s + r.pesoAlvo, 0);
+  const alertaAlvo = Math.abs(totalAlvo - 100) > 1 && totalAlvo > 0;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <Card>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:14}}>
+          <div>
+            <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={11}/>REBALANCEAMENTO DA CARTEIRA</span></STitle>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>Compare o peso atual de cada ativo com o peso-alvo definido na carteira.</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>Simular aporte:</div>
+            <input
+              type="number"
+              placeholder="R$ 0"
+              value={aporte}
+              onChange={e=>setAporte(e.target.value)}
+              style={{width:120,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}
+            />
+          </div>
+        </div>
+
+        {alertaAlvo && (
+          <div style={{marginBottom:12,padding:"8px 12px",background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.22)",borderRadius:8,fontSize:12,color:"var(--ui-warning)",display:"flex",alignItems:"center",gap:8}}>
+            <AlertTriangle size={13}/>
+            Os pesos-alvo somam {fmt(totalAlvo,1)}% (ideal: 100%). Ajuste-os na aba Carteira.
+          </div>
+        )}
+
+        {semAlvo > 0 && (
+          <div style={{marginBottom:12,padding:"8px 12px",background:"rgba(123,97,255,0.06)",border:"1px solid rgba(123,97,255,0.18)",borderRadius:8,fontSize:12,color:"var(--ui-text-muted)",display:"flex",alignItems:"center",gap:8}}>
+            <AlertCircle size={13} color="var(--ui-accent)"/>
+            {semAlvo} ativo{semAlvo>1?"s":""} sem peso-alvo definido. Edite na aba Carteira para incluir no rebalanceamento.
+          </div>
+        )}
+
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead>
+              <tr style={{borderBottom:"2px solid var(--ui-border)"}}>
+                <th style={{textAlign:"left",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>ATIVO</th>
+                <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>PESO ATUAL</th>
+                <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>PESO ALVO</th>
+                <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>DELTA</th>
+                <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>VALOR ATUAL</th>
+                {aporteNum > 0 && <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>AÇÃO</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const deltaPos = r.delta != null && r.delta < -2;
+                const deltaNeg = r.delta != null && r.delta > 2;
+                return (
+                  <tr key={r.ticker} style={{borderBottom:"1px solid var(--ui-border)"}}>
+                    <td style={{padding:"10px 8px"}}>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:800,fontSize:13,color:"var(--ui-accent)"}}>{r.ticker}</span>
+                    </td>
+                    <td style={{padding:"10px 8px",textAlign:"right"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
+                        <div style={{width:60,height:5,background:"var(--ui-bg-secondary)",borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${Math.min(100,r.pesoAtual)}%`,background:"var(--ui-accent)",borderRadius:3}}/>
+                        </div>
+                        <span style={{fontWeight:700,color:"var(--ui-text)"}}>{r.pesoAtual}%</span>
+                      </div>
+                    </td>
+                    <td style={{padding:"10px 8px",textAlign:"right",color:r.pesoAlvo>0?"var(--ui-text)":"var(--ui-text-disabled)"}}>
+                      {r.pesoAlvo > 0 ? `${r.pesoAlvo}%` : "–"}
+                    </td>
+                    <td style={{padding:"10px 8px",textAlign:"right"}}>
+                      {r.delta != null ? (
+                        <span style={{
+                          fontWeight:700,fontSize:12,
+                          color: deltaPos ? "var(--ui-success)" : deltaNeg ? "var(--ui-danger)" : "var(--ui-text-muted)"
+                        }}>
+                          {r.delta > 0 ? "+" : ""}{fmt(r.delta,1)}%
+                          {deltaPos && <ArrowUp size={10} style={{display:"inline",marginLeft:3}}/>}
+                          {deltaNeg && <ArrowDown size={10} style={{display:"inline",marginLeft:3}}/>}
+                        </span>
+                      ) : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
+                    </td>
+                    <td style={{padding:"10px 8px",textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--ui-text-muted)"}}>
+                      {r.valorAtual > 0 ? fmtBRL(r.valorAtual) : "–"}
+                    </td>
+                    {aporteNum > 0 && (
+                      <td style={{padding:"10px 8px",textAlign:"right"}}>
+                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (
+                          <div>
+                            <span style={{
+                              fontWeight:700,fontSize:12,
+                              color: r.valorAlvo > r.valorAtual ? "var(--ui-success)" : "var(--ui-danger)"
+                            }}>
+                              {r.valorAlvo > r.valorAtual ? "Comprar " : "Manter "}
+                              {r.valorAlvo > r.valorAtual ? fmtBRL(r.valorAlvo - r.valorAtual) : ""}
+                            </span>
+                            {r.preco && r.valorAlvo > r.valorAtual && (
+                              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>
+                                ≈ {Math.ceil((r.valorAlvo - r.valorAtual)/r.preco)} cotas
+                              </div>
+                            )}
+                          </div>
+                        ) : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {totalAtual > 0 && (
+          <div style={{marginTop:14,padding:"10px 14px",background:"var(--ui-bg-secondary)",borderRadius:8,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+            <span style={{fontSize:12,color:"var(--ui-text-muted)"}}>Patrimônio total: <b style={{color:"var(--ui-text)"}}>{fmtBRL(totalAtual)}</b></span>
+            {aporteNum > 0 && <span style={{fontSize:12,color:"var(--ui-text-muted)"}}>Com aporte: <b style={{color:"var(--ui-success)"}}>{fmtBRL(totalComAporte)}</b></span>}
+            <span style={{fontSize:12,color:"var(--ui-text-muted)"}}>{rows.filter(r=>r.pesoAlvo>0).length} ativos com meta definida</span>
+          </div>
+        )}
+      </Card>
+
+      <div style={{fontSize:11,color:"var(--ui-text-disabled)",textAlign:"center",padding:"4px 0"}}>
+        Rode "Análise IA" para usar preços e pesos atualizados do mercado. Ações sugeridas são estimativas — confirme com sua corretora.
       </div>
     </div>
   );
@@ -3897,6 +4453,7 @@ export default function App({ session, onLogout }) {
   const [erro, setErro] = useState(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [carteiraId, setCarteiraId] = useState(null);
+  const [carteiras, setCarteiras] = useState([]); // lista de todos os portfólios
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [confirmacao, setConfirmacao] = useState({open:false});
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -3993,6 +4550,9 @@ export default function App({ session, onLogout }) {
           "m": "meta",
           "i": "ir",
           "x": "cenarios",
+          "r": "risco",
+          "e": "renda",
+          "b": "rebalanceamento",
         };
         if (navMap[e.key]) {
           e.preventDefault();
@@ -4022,8 +4582,12 @@ export default function App({ session, onLogout }) {
     if (!userId) return;
     (async () => {
       try {
-        // Pega carteira principal (criada automaticamente pelo trigger)
-        let cart = await carregarCarteiraPrincipal(userId);
+        // Carrega todos os portfólios do usuário
+        const todasCarteiras = await listarCarteiras(userId);
+        setCarteiras(todasCarteiras);
+
+        // Usa a primeira carteira (principal) por padrão
+        const cart = todasCarteiras[0] || await carregarCarteiraPrincipal(userId);
         if (cart) {
           setCarteiraId(cart.id);
           const ativos = await carregarAtivos(cart.id);
@@ -4064,6 +4628,42 @@ export default function App({ session, onLogout }) {
     setSavedMsg("Salvo automaticamente ✓");
     setTimeout(() => setSavedMsg(""), 2000);
   }, []);
+
+  // Troca o portfólio ativo e recarrega os ativos
+  const trocarCarteira = useCallback(async (novoCarteiraId) => {
+    if (novoCarteiraId === carteiraId) return;
+    setCarteiraId(novoCarteiraId);
+    setCarteira([]);
+    setDados(null);
+    setHistorico([]);
+    try {
+      const ativos = await carregarAtivos(novoCarteiraId);
+      setCarteira(ativos.map(a => ({
+        id: a.id, ticker: a.ticker,
+        qtd: Number(a.qtd),
+        pm: a.pm ? Number(a.pm) : null,
+        peso_alvo: a.peso_alvo ? Number(a.peso_alvo) : null
+      })));
+      const compras = await carregarCompras(userId);
+      setHistorico(compras.map(c => ({ ticker: c.ticker, qtd: Number(c.qtd), pm: Number(c.preco), data: c.data })));
+      showToast(`Portfólio alterado`, "success");
+    } catch (e) {
+      showToast("Erro ao carregar portfólio: " + e.message, "error");
+    }
+  }, [carteiraId, userId]);
+
+  // Cria um novo portfólio e troca para ele
+  const novaCarteira = useCallback(async (nome) => {
+    if (!userId) return;
+    try {
+      const cart = await criarCarteira(userId, nome || `Portfólio ${carteiras.length + 1}`);
+      setCarteiras(prev => [...prev, cart]);
+      await trocarCarteira(cart.id);
+      showToast(`"${cart.nome}" criado`, "success");
+    } catch (e) {
+      showToast("Erro ao criar portfólio: " + e.message, "error");
+    }
+  }, [userId, carteiras.length, trocarCarteira]);
 
   // Universo de investimento do usuário (tickers que a IA vai considerar)
   // IMPORTANTE: precisa estar declarado ANTES do useCallback `analisar` que usa
@@ -4378,6 +4978,8 @@ Regras:
   const TABS = [
     {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
     {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"var(--ui-success)",grupo:"portfolio"},
+    {k:"risco",icon:Shield,label:"Risco",cor:"var(--ui-success)",grupo:"portfolio"},
+    {k:"rebalanceamento",icon:Scale,label:"Rebalancear",cor:"var(--ui-success)",grupo:"portfolio"},
     {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
     {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
     {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
@@ -4388,6 +4990,7 @@ Regras:
     {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
     {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
     {k:"meta",icon:Target,label:"1º Milhão",cor:"var(--ui-info)",grupo:"planning"},
+    {k:"renda",icon:Coins,label:"Renda Passiva",cor:"var(--ui-info)",grupo:"planning"},
     {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
   ];
 
@@ -4607,6 +5210,40 @@ Regras:
           </div>
         </div>
 
+        {/* Linha 1.5: Seletor de portfólios (quando há mais de 1) */}
+        {carteiras.length > 0 && (
+          <div style={{
+            display:"flex",padding:"4px 24px",gap:8,alignItems:"center",
+            borderTop:"1px solid var(--ui-border)",
+            background:"var(--ui-bg-secondary)",
+            overflowX:"auto"
+          }}>
+            <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,whiteSpace:"nowrap"}}>PORTFÓLIO:</span>
+            {carteiras.map(c => (
+              <button key={c.id} onClick={() => trocarCarteira(c.id)} style={{
+                background: carteiraId === c.id ? "rgba(123,97,255,0.15)" : "transparent",
+                border: `1px solid ${carteiraId === c.id ? "rgba(123,97,255,0.4)" : "var(--ui-border)"}`,
+                borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:12,fontWeight:600,
+                color: carteiraId === c.id ? "var(--ui-accent)" : "var(--ui-text-muted)",
+                whiteSpace:"nowrap",transition:"all .15s ease"
+              }}>
+                {c.nome || `Portfólio ${carteiras.indexOf(c)+1}`}
+              </button>
+            ))}
+            <button onClick={() => {
+              const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
+              if (nome?.trim()) novaCarteira(nome.trim());
+            }} style={{
+              background:"transparent",border:"1px dashed var(--ui-border)",borderRadius:6,
+              padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600,
+              color:"var(--ui-text-disabled)",display:"flex",alignItems:"center",gap:4,
+              whiteSpace:"nowrap"
+            }}>
+              <Plus size={10}/> Novo
+            </button>
+          </div>
+        )}
+
         {/* Linha 2: Tabs com agrupamento por cor */}
         <div style={{
           display:"flex",padding:"0 24px",gap:0,
@@ -4757,6 +5394,9 @@ Regras:
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch} universoTickers={universoTickers}/>}
           {tab==="patrimonio" && <TabPatrimonio userId={userId} dados={dados}/>}
+          {tab==="risco" && <TabRisco carteira={carteira} cotacoesGlobais={cotacoesGlobais} dados={dados}/>}
+          {tab==="rebalanceamento" && <TabRebalanceamento carteira={carteira} dados={dados} cotacoesGlobais={cotacoesGlobais}/>}
+          {tab==="renda" && <TabRendaPassiva dados={dados} carteira={carteira} cotacoesGlobais={cotacoesGlobais}/>}
           {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}

@@ -253,3 +253,84 @@ export function temConcentracaoRisco(posicoes) {
   const setorAlto = setores.some(s => s.peso > 50);
   return ativoAlto || setorAlto;
 }
+
+// ─── Projeção de Renda Passiva ────────────────────────────────────────────────
+
+/**
+ * Projeta a evolução do patrimônio e renda passiva ao longo dos anos.
+ * @param {Object} params
+ * @param {number} params.patrimonioInicial - Patrimônio atual em R$
+ * @param {number} params.aporteMensal      - Aporte mensal em R$
+ * @param {number} params.dyAnual           - DY médio esperado (% a.a., ex: 8 para 8%)
+ * @param {number} params.taxaCrescimento   - Crescimento do patrimônio (% a.a., ex: 10)
+ * @param {number} params.anos              - Horizonte em anos
+ * @returns {Array<{ano, patrimonio, rendaMensal, rendaAnual}>}
+ */
+export function projetarRendaPassiva({ patrimonioInicial, aporteMensal, dyAnual, taxaCrescimento, anos }) {
+  const pv = Number(patrimonioInicial) || 0;
+  const pmt = Number(aporteMensal) || 0;
+  const dy = (Number(dyAnual) || 8) / 100;
+  const n = Math.max(1, Math.round(Number(anos) || 20));
+
+  const pontos = [];
+  for (let a = 0; a <= n; a++) {
+    const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+    const rendaMensal = (patrimonioAnual * dy) / 12;
+    pontos.push({
+      ano: `${a}a`,
+      patrimonio: Math.round(patrimonioAnual),
+      rendaMensal: Math.round(rendaMensal),
+      rendaAnual: Math.round(rendaMensal * 12),
+    });
+  }
+  return pontos;
+}
+
+/**
+ * Calcula o ano em que a renda mensal atinge a meta de independência financeira.
+ * @param {Array} projecao - resultado de projetarRendaPassiva
+ * @param {number} metaMensal - renda alvo em R$/mês (default: R$10.000)
+ * @returns {Object|null} - ponto da projeção onde a meta foi atingida, ou null
+ */
+export function acharIndependenciaFinanceira(projecao, metaMensal = 10000) {
+  if (!projecao?.length) return null;
+  return projecao.find(p => p.rendaMensal >= metaMensal) || null;
+}
+
+// ─── Rebalanceamento ─────────────────────────────────────────────────────────
+
+/**
+ * Calcula ações de rebalanceamento para cada ativo.
+ * @param {Array}  posicoes   - [{ticker, pesoAtual, pesoAlvo, valorAtual, preco}]
+ * @param {number} aporte     - Valor disponível para aportar (R$)
+ * @returns {Array<{ticker, pesoAtual, pesoAlvo, delta, valorAlvo, acao, qtdSugerida}>}
+ */
+export function calcularRebalanceamento(posicoes, aporte = 0) {
+  if (!posicoes?.length) return [];
+
+  const totalAtual = posicoes.reduce((s, p) => s + (p.valorAtual || 0), 0);
+  const totalComAporte = totalAtual + aporte;
+
+  return posicoes.map(p => {
+    const pesoAtual = +(p.pesoAtual || 0).toFixed(2);
+    const pesoAlvo = +(p.pesoAlvo || 0).toFixed(2);
+    const delta = +(pesoAtual - pesoAlvo).toFixed(2);
+    const valorAlvo = pesoAlvo > 0 ? totalComAporte * pesoAlvo / 100 : null;
+    const diferenca = valorAlvo != null ? valorAlvo - (p.valorAtual || 0) : null;
+    const qtdSugerida = (diferenca != null && diferenca > 0 && p.preco > 0)
+      ? Math.ceil(diferenca / p.preco)
+      : null;
+
+    return {
+      ticker: p.ticker,
+      pesoAtual,
+      pesoAlvo,
+      delta,
+      valorAtual: p.valorAtual || 0,
+      valorAlvo,
+      diferenca,
+      acao: diferenca == null ? null : diferenca > 0 ? "comprar" : "manter",
+      qtdSugerida,
+    };
+  });
+}
