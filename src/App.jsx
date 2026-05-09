@@ -5640,6 +5640,60 @@ Regras:
           </div>
         </div>
 
+        {/* Linha 1.5: Strip de top tickers (preço + variação do dia) */}
+        {(() => {
+          const topTickers = carteira
+            .map(a => {
+              const c = cotacoesGlobais[a.ticker];
+              const preco = c?.preco ?? null;
+              const valor = preco != null ? preco * (a.qtd || 0) : 0;
+              return { ticker: a.ticker, preco, variacaoPct: c?.variacaoPct ?? null, valor };
+            })
+            .filter(x => x.preco != null)
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 6);
+          if (!topTickers.length) return null;
+          return (
+            <div style={{
+              display:"flex",alignItems:"center",gap:18,
+              padding:"6px 24px",
+              borderTop:"1px solid var(--ui-border)",
+              background:"var(--ui-bg-secondary)",
+              overflowX:"auto",
+              fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:600
+            }}>
+              {topTickers.map(t => {
+                const v = t.variacaoPct;
+                const cor = v == null ? "var(--ui-text-faint)" : v >= 0 ? "var(--ui-success)" : "var(--ui-danger)";
+                return (
+                  <button key={t.ticker}
+                    onClick={()=>{
+                      setTab("ticker");
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent("inventia:analyze-ticker", { detail: { ticker: t.ticker } }));
+                      }, 100);
+                    }}
+                    title={`Analisar ${t.ticker}`}
+                    style={{
+                      display:"flex",alignItems:"center",gap:6,
+                      background:"transparent",border:"none",cursor:"pointer",
+                      padding:"2px 0",whiteSpace:"nowrap",
+                      fontFamily:"inherit",fontSize:"inherit",fontWeight:"inherit"
+                    }}>
+                    <span style={{color:"var(--ui-text)"}}>{t.ticker}</span>
+                    <span style={{color:"var(--ui-text-muted)"}}>R${fmt(t.preco,2)}</span>
+                    {v != null && (
+                      <span style={{color:cor}}>
+                        {v >= 0 ? "▲" : "▼"} {fmt(Math.abs(v),2)}%
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* Linha 2: Tabs agrupadas em dropdowns */}
         <div style={{
           display:"flex",padding:"0 24px",gap:0,
