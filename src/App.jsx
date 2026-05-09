@@ -12,7 +12,8 @@ import {
   Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale
+  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
+  MessageCircle
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, listarCarteiras, criarCarteira, renomearCarteira, deletarCarteira,
@@ -43,6 +44,7 @@ import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import TickerAutocomplete from "./components/TickerAutocomplete";
+import TelegramModal from "./components/TelegramModal";
 import { carregarUniverso } from "./supabase";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
@@ -4789,6 +4791,7 @@ export default function App({ session, onLogout }) {
 
   // Atalhos globais de teclado
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
   useEffect(() => {
     let lastKey = null;
     let lastKeyTime = 0;
@@ -5485,6 +5488,23 @@ Regras:
               ?
             </button>
 
+            {/* Botão Telegram */}
+            <button
+              onClick={() => setShowTelegramModal(true)}
+              title="Vincular Telegram"
+              style={{
+                background:"var(--ui-bg-secondary)",
+                border:"1px solid var(--ui-border)",
+                borderRadius:6,
+                padding:"7px 10px",
+                color:"#229ED9",
+                cursor:"pointer",
+                display:"flex",alignItems:"center",justifyContent:"center"
+              }}
+            >
+              <MessageCircle size={15} fill="#229ED9" strokeWidth={0}/>
+            </button>
+
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
             <ThemeToggle theme={themeApi.theme} toggle={themeApi.toggle}/>
@@ -5720,6 +5740,13 @@ Regras:
           perigoso={confirmacao.perigoso}
           onConfirm={() => { confirmacao.onConfirm?.(); setConfirmacao({open:false}); }}
           onCancel={() => setConfirmacao({open:false})}
+        />
+
+        {/* Modal Telegram */}
+        <TelegramModal
+          open={showTelegramModal}
+          onClose={() => setShowTelegramModal(false)}
+          userId={userId}
         />
 
         {/* Command Palette (Ctrl+K) */}
