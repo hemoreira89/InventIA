@@ -140,7 +140,19 @@ PERGUNTA: ${pergunta}`;
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 1024, temperature: 0.4 } }), signal: AbortSignal.timeout(20000) }
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 2048,
+            temperature: 0.4,
+            thinkingConfig: { thinkingBudget: 0 } // desabilita raciocínio interno (consome tokens do output)
+          }
+        }),
+        signal: AbortSignal.timeout(20000)
+      }
     );
     if (!res.ok) return "Não consegui gerar uma resposta agora. Tente novamente.";
     const data = await res.json();
