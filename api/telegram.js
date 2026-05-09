@@ -132,7 +132,7 @@ async function handleVinculo(chatId, code, supabase, token) {
 
   await Promise.all([
     supabase.from("telegram_link_codes").update({ used: true }).eq("code", code.toUpperCase()),
-    supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", link.user_id)
+    supabase.from("telegram_links").upsert({ user_id: link.user_id, chat_id: chatId }, { onConflict: "user_id" })
   ]);
 
   await enviarMensagem(
@@ -175,11 +175,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // Busca perfil vinculado ao chat_id
+    // Busca usuário vinculado ao chat_id
     const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("telegram_chat_id", chatId)
+      .from("telegram_links")
+      .select("user_id")
+      .eq("chat_id", chatId)
       .single();
 
     if (!profile) {
@@ -196,7 +196,7 @@ export default async function handler(req, res) {
     const { data: carteiras } = await supabase
       .from("carteiras")
       .select("id")
-      .eq("user_id", profile.id)
+      .eq("user_id", profile.user_id)
       .order("created_at")
       .limit(1);
 

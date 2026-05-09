@@ -15,11 +15,11 @@ export default function TelegramModal({ open, onClose, userId }) {
     setStatus("loading");
     setCode(null);
     supabase
-      .from("profiles")
-      .select("telegram_chat_id")
-      .eq("id", userId)
-      .single()
-      .then(({ data }) => setStatus(data?.telegram_chat_id ? "linked" : "unlinked"));
+      .from("telegram_links")
+      .select("chat_id")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }) => setStatus(data?.chat_id ? "linked" : "unlinked"));
   }, [open, userId]);
 
   async function gerarCodigo() {
@@ -48,7 +48,7 @@ export default function TelegramModal({ open, onClose, userId }) {
   async function desvincular() {
     if (!confirm("Deseja desvincular sua conta do Telegram?")) return;
     setUnlinking(true);
-    await supabase.from("profiles").update({ telegram_chat_id: null }).eq("id", userId);
+    await supabase.from("telegram_links").delete().eq("user_id", userId);
     setUnlinking(false);
     setStatus("unlinked");
   }
