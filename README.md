@@ -387,13 +387,13 @@ Pressione `g` seguido da tecla:
 - [x] Análise IA, individual, comparador, oportunidades
 
 ### 🚧 Backlog
-- [ ] **Múltiplas carteiras** — separar "Aposentadoria", "Trade", "Cripto"
-- [ ] **Análise de risco real** — HHI, beta médio, exposição cambial
-- [ ] **Dashboard de renda passiva projetada** — "Em 5/10/20 anos com aporte X você terá Y/mês"
-- [ ] **Auto-completar ticker** — sugestões enquanto digita
-- [ ] **Notificações push** — preço-alvo atingido, dividendo recebido
+- [x] **Múltiplas carteiras** — separar "Aposentadoria", "Trade", "Cripto" ✅
+- [x] **Análise de risco real** — HHI, concentração de ativos/setores, score de saúde ✅
+- [x] **Dashboard de renda passiva projetada** — "Em 5/10/20 anos com aporte X você terá Y/mês" ✅
+- [x] **Auto-completar ticker** — sugestões enquanto digita (1430+ ativos B3) ✅
+- [x] **Comparar carteira atual vs ideal** — tabela com delta e ações de rebalanceamento ✅
+- [ ] **Notificações push** — preço-alvo atingido, dividendo recebido (requer service worker + servidor)
 - [ ] **Sidebar** ao invés de tabs (telas grandes)
-- [ ] **Comparar carteira atual vs ideal** — gráfico com setas
 
 ### ❌ Avaliado e descartado
 - **Integração direta com B3 (Área do Investidor API)** — requer contrato comercial, tarifa por consulta, compliance LGPD/regulatório. Inviável para projeto pessoal.

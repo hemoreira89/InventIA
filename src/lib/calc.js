@@ -253,3 +253,188 @@ export function temConcentracaoRisco(posicoes) {
   const setorAlto = setores.some(s => s.peso > 50);
   return ativoAlto || setorAlto;
 }
+
+// ─── Projeção de Renda Passiva ────────────────────────────────────────────────
+
+/**
+ * Projeta a evolução do patrimônio e renda passiva ao longo dos anos.
+ * @param {Object} params
+ * @param {number} params.patrimonioInicial - Patrimônio atual em R$
+ * @param {number} params.aporteMensal      - Aporte mensal em R$
+ * @param {number} params.dyAnual           - DY médio esperado (% a.a., ex: 8 para 8%)
+ * @param {number} params.taxaCrescimento   - Crescimento do patrimônio (% a.a., ex: 10)
+ * @param {number} params.anos              - Horizonte em anos
+ * @returns {Array<{ano, patrimonio, rendaMensal, rendaAnual}>}
+ */
+export function projetarRendaPassiva({ patrimonioInicial, aporteMensal, dyAnual, taxaCrescimento, anos }) {
+  const pv = Number(patrimonioInicial) || 0;
+  const pmt = Number(aporteMensal) || 0;
+  const dy = (Number(dyAnual) || 8) / 100;
+  const n = Math.max(1, Math.round(Number(anos) || 20));
+
+  const pontos = [];
+  for (let a = 0; a <= n; a++) {
+    const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+    const rendaMensal = (patrimonioAnual * dy) / 12;
+    pontos.push({
+      ano: `${a}a`,
+      patrimonio: Math.round(patrimonioAnual),
+      rendaMensal: Math.round(rendaMensal),
+      rendaAnual: Math.round(rendaMensal * 12),
+    });
+  }
+  return pontos;
+}
+
+/**
+ * Calcula o ano em que a renda mensal atinge a meta de independência financeira.
+ * @param {Array} projecao - resultado de projetarRendaPassiva
+ * @param {number} metaMensal - renda alvo em R$/mês (default: R$10.000)
+ * @returns {Object|null} - ponto da projeção onde a meta foi atingida, ou null
+ */
+export function acharIndependenciaFinanceira(projecao, metaMensal = 10000) {
+  if (!projecao?.length) return null;
+  return projecao.find(p => p.rendaMensal >= metaMensal) || null;
+}
+
+// ─── Rebalanceamento ─────────────────────────────────────────────────────────
+
+/**
+ * Calcula ações de rebalanceamento para cada ativo.
+ * @param {Array}  posicoes   - [{ticker, pesoAtual, pesoAlvo, valorAtual, preco}]
+ * @param {number} aporte     - Valor disponível para aportar (R$)
+ * @returns {Array<{ticker, pesoAtual, pesoAlvo, delta, valorAlvo, acao, qtdSugerida}>}
+ */
+export function calcularRebalanceamento(posicoes, aporte = 0) {
+  if (!posicoes?.length) return [];
+
+  const totalAtual = posicoes.reduce((s, p) => s + (p.valorAtual || 0), 0);
+  const totalComAporte = totalAtual + aporte;
+
+  return posicoes.map(p => {
+    const pesoAtual = +(p.pesoAtual || 0).toFixed(2);
+    const pesoAlvo = +(p.pesoAlvo || 0).toFixed(2);
+    const delta = +(pesoAtual - pesoAlvo).toFixed(2);
+    const valorAlvo = pesoAlvo > 0 ? totalComAporte * pesoAlvo / 100 : null;
+    const diferenca = valorAlvo != null ? valorAlvo - (p.valorAtual || 0) : null;
+    const qtdSugerida = (diferenca != null && diferenca > 0 && p.preco > 0)
+      ? Math.ceil(diferenca / p.preco)
+      : null;
+
+    return {
+      ticker: p.ticker,
+      pesoAtual,
+      pesoAlvo,
+      delta,
+      valorAtual: p.valorAtual || 0,
+      valorAlvo,
+      diferenca,
+      acao: diferenca == null ? null : diferenca > 0 ? "comprar" : "manter",
+      qtdSugerida,
+    };
+  });
+}
+
+// ─── Calendário de Proventos ─────────────────────────────────────────────────
+
+// Sazonalidade mensal para ações BR (pesos somam 12, um por mês Jan-Dez).
+// Baseado no padrão real da B3: dividendos concentram em mar/mai/ago/nov.
+export const SAZONALIDADE_ACOES = [0.3, 0.5, 1.8, 0.8, 1.6, 0.7, 0.4, 1.5, 0.6, 0.7, 1.7, 1.4];
+
+/**
+ * Projeta o calendário de proventos para os próximos 12 meses (a partir de hoje).
+ *
+ * Para cada mês retorna:
+ *   - projetado: estimativa baseada em DY + sazonalidade (sempre calculado)
+ *   - real:      soma dos proventos reais já registrados naquele mês (se houver)
+ *   - ativos:    breakdown por ticker com o valor projetado
+ *
+ * @param {Array}  carteira            - [{ticker, qtd, pm}]
+ * @param {Object} precos              - { [ticker]: number } preços atuais
+ * @param {Object} dys                 - { [ticker]: number } DY anual em % (ex: 8.5)
+ * @param {Array}  proventosHistorico  - [{ticker, valor, data_pagamento}] do banco
+ * @param {Date}   hoje                - data de referência (default: new Date())
+ * @returns {Array<{
+ *   mesLabel, mesAno, ano, mes (0-indexed), isFuturo, isAtual,
+ *   projetado, real, ativos: [{ticker, valor, tipo}]
+ * }>}
+ */
+export function projetarCalendario(carteira, precos, dys, proventosHistorico, hoje = new Date()) {
+  const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const anoHoje = hoje.getFullYear();
+  const mesHoje = hoje.getMonth(); // 0-indexed
+
+  // Pré-computa valor atual de cada ativo
+  const posicoes = (carteira || []).map(a => {
+    const preco = precos?.[a.ticker] || a.pm || 0;
+    const valor = preco * (a.qtd || 0);
+    const dy = dys?.[a.ticker] ?? (isFII(a.ticker) ? 8 : 5);
+    return { ticker: a.ticker, valor, dy, tipo: isFII(a.ticker) ? "FII" : "Ação" };
+  }).filter(p => p.valor > 0);
+
+  // Agrupa proventos históricos por ano+mês para lookup rápido
+  const histMap = {};
+  (proventosHistorico || []).forEach(p => {
+    const d = new Date(p.data_pagamento + "T12:00:00");
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!histMap[key]) histMap[key] = 0;
+    histMap[key] += Number(p.valor) || 0;
+  });
+
+  const resultado = [];
+  for (let i = 0; i < 12; i++) {
+    const totalMeses = mesHoje + i;
+    const ano = anoHoje + Math.floor(totalMeses / 12);
+    const mes = totalMeses % 12;                  // 0-indexed
+
+    const isFuturo = ano > anoHoje || (ano === anoHoje && mes > mesHoje);
+    const isAtual  = ano === anoHoje && mes === mesHoje;
+    const histKey  = `${ano}-${mes}`;
+    const real     = histMap[histKey] ?? null;
+
+    // Projeção por ativo neste mês
+    const ativos = posicoes.map(p => {
+      const dividendoAnual = p.valor * p.dy / 100;
+      const fator = p.tipo === "FII" ? 1.0 : SAZONALIDADE_ACOES[mes];
+      const valor = Math.round(dividendoAnual / 12 * fator);
+      return { ticker: p.ticker, valor, tipo: p.tipo };
+    }).filter(a => a.valor > 0);
+
+    const projetado = ativos.reduce((s, a) => s + a.valor, 0);
+
+    resultado.push({
+      mesLabel: NOMES_MESES[mes],
+      mesAno: `${NOMES_MESES[mes]}/${String(ano).slice(2)}`,
+      ano,
+      mes,
+      isFuturo,
+      isAtual,
+      projetado,
+      real,
+      ativos: ativos.sort((a, b) => b.valor - a.valor),
+    });
+  }
+
+  return resultado;
+}
+
+function isFII(ticker) {
+  return /^[A-Z]{4}11$/.test((ticker || "").toUpperCase().trim());
+}
+
+/**
+ * Retorna estatísticas resumidas da projeção do calendário.
+ */
+export function resumoCalendario(calendario) {
+  if (!calendario?.length) return { totalAnual: 0, mediaMensal: 0, melhorMes: null, piorMes: null };
+
+  const totais = calendario.map(m => m.projetado);
+  const totalAnual = totais.reduce((s, v) => s + v, 0);
+  const mediaMensal = Math.round(totalAnual / 12);
+  const maxVal = Math.max(...totais);
+  const minVal = Math.min(...totais.filter(v => v > 0));
+  const melhorMes = calendario.find(m => m.projetado === maxVal) || null;
+  const piorMes = calendario.find(m => m.projetado === minVal) || null;
+
+  return { totalAnual, mediaMensal, melhorMes, piorMes };
+}
