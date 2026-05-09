@@ -126,8 +126,9 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 | `ticker` | TabTicker | Análise individual de ticker |
 | `comparador` | TabComparador | Comparação de até 4 ativos |
 | `oportunidades` | TabOportunidades | Buscador de oportunidades B3 |
-| `risco` | TabRisco | Dashboard de risco (HHI, concentração, score) |
-| `renda` | TabRendaPassiva | Projeção de renda passiva futura |
+| `risco` | TabRisco | Dashboard de risco quantitativo (HHI, concentração por ativo/setor, score) |
+| `rebalanceamento` | TabRebalanceamento | Atual vs. ideal com ações de compra e simulação de aporte |
+| `renda` | TabRendaPassiva | Projeção de renda passiva futura (DY%, aporte, horizonte) |
 | `historico` | TabHistorico | Histórico de análises salvas |
 | `proventos` | TabProventos | Registro e visualização de dividendos |
 | `watchlist` | TabWatchlist | Preços-alvo e alertas |
@@ -142,7 +143,10 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 
 - `Ctrl+K` / `/` — Paleta de comandos
 - `?` — Painel de atalhos
-- `g + c/p/a/t/o/r/e/h/d/w/u/m/i/x` — Navegação rápida entre abas
+- `g + c` Carteira · `g + p` Patrimônio · `g + r` Risco · `g + b` Rebalancear
+- `g + a` Análise IA · `g + t` Ticker · `g + o` Oportunidades
+- `g + h` Histórico · `g + d` Proventos · `g + w` Watchlist · `g + u` Universo · `g + i` IR
+- `g + m` 1º Milhão · `g + e` Renda Passiva · `g + x` Cenários
 
 ---
 

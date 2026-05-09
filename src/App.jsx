@@ -5481,6 +5481,8 @@ Regras:
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                     <KeyRow keys={["g","c"]} desc="Carteira"/>
                     <KeyRow keys={["g","p"]} desc="Patrimônio"/>
+                    <KeyRow keys={["g","r"]} desc="Risco"/>
+                    <KeyRow keys={["g","b"]} desc="Rebalancear"/>
                     <KeyRow keys={["g","a"]} desc="Análise IA"/>
                     <KeyRow keys={["g","t"]} desc="Analisar Ticker"/>
                     <KeyRow keys={["g","o"]} desc="Oportunidades"/>
@@ -5489,6 +5491,7 @@ Regras:
                     <KeyRow keys={["g","w"]} desc="Watchlist"/>
                     <KeyRow keys={["g","u"]} desc="Universo"/>
                     <KeyRow keys={["g","m"]} desc="1º Milhão"/>
+                    <KeyRow keys={["g","e"]} desc="Renda Passiva"/>
                     <KeyRow keys={["g","i"]} desc="Calculadora IR"/>
                     <KeyRow keys={["g","x"]} desc="Cenários"/>
                   </div>
