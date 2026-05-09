@@ -92,14 +92,20 @@ async function enviarMensagem(chatId, texto, token) {
 
 async function buscarCotacoes(tickers, brapiToken) {
   if (!tickers.length || !brapiToken) return {};
-  try {
-    const res = await fetch(`https://brapi.dev/api/quote/${tickers.join(",")}?token=${brapiToken}`, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return {};
-    const data = await res.json();
-    const r = {};
-    for (const item of data.results || []) r[item.symbol] = item.regularMarketPrice;
-    return r;
-  } catch { return {}; }
+  // Plano free da brapi: 1 ticker por request — paraleliza as chamadas
+  const promessas = tickers.map(async (t) => {
+    try {
+      const res = await fetch(`https://brapi.dev/api/quote/${t}?token=${brapiToken}`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const item = data.results?.[0];
+      return item ? { symbol: item.symbol, preco: item.regularMarketPrice } : null;
+    } catch { return null; }
+  });
+  const respostas = await Promise.all(promessas);
+  const r = {};
+  for (const item of respostas) if (item?.preco != null) r[item.symbol] = item.preco;
+  return r;
 }
 
 function construirContexto(ativos, cotacoes) {
