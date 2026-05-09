@@ -90,9 +90,56 @@ export default async function handler(req, res) {
     SUPABASE_ANON_KEY
   ));
 
+  // Teste 6: SELECT telegram_links com service_role para pegar user_id vinculado
+  let linkedUserId = null;
+  if (process.env.SUPABASE_SERVICE_ROLE) {
+    const r6 = await tentarQuery(
+      "6. SELECT telegram_links (service_role)",
+      `${SUPABASE_URL}/rest/v1/telegram_links?select=user_id,chat_id&limit=5`,
+      process.env.SUPABASE_SERVICE_ROLE
+    );
+    tests.push(r6);
+    if (Array.isArray(r6.body) && r6.body[0]?.user_id) linkedUserId = r6.body[0].user_id;
+
+    // Teste 7: SELECT carteiras com service_role para o user_id vinculado
+    if (linkedUserId) {
+      const r7 = await tentarQuery(
+        `7. SELECT carteiras user_id=${linkedUserId.slice(0, 8)}... (service_role)`,
+        `${SUPABASE_URL}/rest/v1/carteiras?user_id=eq.${linkedUserId}&select=id,nome,created_at`,
+        process.env.SUPABASE_SERVICE_ROLE
+      );
+      tests.push(r7);
+
+      // Teste 8: SELECT ativos da primeira carteira encontrada
+      const carteiraId = Array.isArray(r7.body) && r7.body[0]?.id;
+      if (carteiraId) {
+        tests.push(await tentarQuery(
+          `8. SELECT ativos carteira_id=${carteiraId.slice(0, 8)}... (service_role)`,
+          `${SUPABASE_URL}/rest/v1/ativos?carteira_id=eq.${carteiraId}&select=ticker,qtd,pm&limit=20`,
+          process.env.SUPABASE_SERVICE_ROLE
+        ));
+      }
+    }
+
+    // Teste 9: SELECT carteiras genérico (testa GRANT)
+    tests.push(await tentarQuery(
+      "9. SELECT all carteiras (service_role)",
+      `${SUPABASE_URL}/rest/v1/carteiras?select=user_id,nome&limit=3`,
+      process.env.SUPABASE_SERVICE_ROLE
+    ));
+
+    // Teste 10: SELECT ativos genérico (testa GRANT)
+    tests.push(await tentarQuery(
+      "10. SELECT all ativos (service_role)",
+      `${SUPABASE_URL}/rest/v1/ativos?select=ticker,carteira_id&limit=3`,
+      process.env.SUPABASE_SERVICE_ROLE
+    ));
+  }
+
   return res.status(200).json({
     code_tested: code || "(nenhum — passe ?code=INV-XXXXXX)",
-    deployed_commit: "diagnostic v1",
+    deployed_commit: "diagnostic v2 (carteiras/ativos)",
+    linked_user_id: linkedUserId,
     env,
     tests
   });
