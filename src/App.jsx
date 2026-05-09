@@ -5365,9 +5365,22 @@ Regras:
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
+        @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         .anim{animation:fadeUp .35s ease both}
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
+        .ticker-tape{
+          position:relative;overflow:hidden;
+          mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 40px),transparent 100%);
+          -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 40px),transparent 100%);
+        }
+        .ticker-tape-track{
+          display:inline-flex;gap:32px;white-space:nowrap;
+          animation:marquee 60s linear infinite;
+          will-change:transform;
+        }
+        .ticker-tape:hover .ticker-tape-track{animation-play-state:paused}
+        .ticker-tape-item{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
         input,select,button,textarea{outline:none;font-family:inherit}
         input:focus,select:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
         button:hover:not(:disabled){filter:brightness(1.1)}
@@ -5565,6 +5578,46 @@ Regras:
             </button>
           </div>
         )}
+
+        {/* Linha 1.7: Ticker tape animado (estilo TradingView) */}
+        {(() => {
+          const tickersComCotacao = tickersCarteira
+            .map(t => ({ ticker: t, c: cotacoesGlobais?.[t] }))
+            .filter(x => x.c?.preco != null);
+          if (tickersComCotacao.length === 0) return null;
+          // Duplica a lista pra loop infinito sem cortes
+          const loop = [...tickersComCotacao, ...tickersComCotacao];
+          return (
+            <div className="ticker-tape" style={{
+              borderTop:"1px solid var(--ui-border)",
+              borderBottom:"1px solid var(--ui-border)",
+              background:"var(--ui-bg-secondary)",
+              padding:"7px 0"
+            }}>
+              <div className="ticker-tape-track" style={{
+                animationDuration: `${Math.max(30, tickersComCotacao.length * 6)}s`
+              }}>
+                {loop.map((x, i) => {
+                  const pct = x.c.variacaoPct;
+                  const sobe = pct != null && pct >= 0;
+                  const cor = pct == null ? "var(--ui-text-muted)" : (sobe ? "var(--ui-success)" : "var(--ui-danger)");
+                  return (
+                    <span key={`${x.ticker}-${i}`} className="ticker-tape-item">
+                      <span style={{color:"var(--ui-text)",fontWeight:700}}>{x.ticker}</span>
+                      <span style={{color:"var(--ui-text-muted)"}}>{fmtBRL(x.c.preco)}</span>
+                      {pct != null && (
+                        <span style={{color:cor,display:"inline-flex",alignItems:"center",gap:2}}>
+                          {sobe ? <ArrowUp size={11} strokeWidth={3}/> : <ArrowDown size={11} strokeWidth={3}/>}
+                          {Math.abs(pct).toFixed(2)}%
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Linha 2: Tabs com agrupamento por cor */}
         <div style={{
