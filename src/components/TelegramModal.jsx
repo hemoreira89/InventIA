@@ -25,21 +25,29 @@ export default function TelegramModal({ open, onClose, userId }) {
   async function gerarCodigo() {
     setStatus("generating");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/telegram-link", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        }
+      // Gera código localmente — sem serverless function
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "INV-";
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      // Remove códigos anteriores não-utilizados do usuário
+      await supabase.from("telegram_link_codes").delete().eq("user_id", userId).eq("used", false);
+
+      // Insere novo código (RLS garante que só o próprio usuário pode inserir)
+      const { error } = await supabase.from("telegram_link_codes").insert({
+        code,
+        user_id: userId,
+        expires_at: expiresAt
       });
-      if (!res.ok) throw new Error("Falha ao gerar código");
-      const data = await res.json();
-      setCode(data.code);
-      setBotUrl(data.botUrl);
-      setExpiresAt(new Date(data.expiresAt));
+      if (error) throw error;
+
+      setCode(code);
+      setBotUrl("https://t.me/InvestIA_AppBot");
+      setExpiresAt(new Date(expiresAt));
       setStatus("code");
-    } catch {
+    } catch (err) {
+      console.error("Erro ao gerar código:", err);
       setStatus("unlinked");
       alert("Erro ao gerar código. Tente novamente.");
     }
