@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, Briefcase, BarChart3, Brain, FileSearch, GitCompare,
   Lightbulb, History, Coins, Eye, Target, TrendingUp, Receipt,
-  Activity, ArrowRight, Command, Globe, Shield, Scale
+  Activity, ArrowRight, Command, Globe, Shield, Scale, Calendar
 } from "lucide-react";
 
 /**
@@ -26,6 +26,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
     { id: "tab-oportunidades", group: "Navegação", icon: Lightbulb, label: "Ir para Oportunidades", action: "navigate", target: "oportunidades" },
     { id: "tab-historico", group: "Navegação", icon: History, label: "Ir para Histórico", action: "navigate", target: "historico" },
     { id: "tab-proventos", group: "Navegação", icon: Coins, label: "Ir para Proventos", action: "navigate", target: "proventos" },
+    { id: "tab-calendario", group: "Navegação", icon: Calendar, label: "Ir para Calendário", action: "navigate", target: "calendario" },
     { id: "tab-watchlist", group: "Navegação", icon: Eye, label: "Ir para Watchlist", action: "navigate", target: "watchlist" },
     { id: "tab-universo", group: "Navegação", icon: Globe, label: "Ir para Universo", action: "navigate", target: "universo" },
     { id: "tab-meta", group: "Navegação", icon: Target, label: "Ir para 1º Milhão", action: "navigate", target: "meta" },

@@ -31,7 +31,8 @@ import {
   juroCompostos, gerarProjecao, calcularIR,
   calcularPesos, novoPrecoMedio, quantidadeComprável,
   dyMedioCarteira, alertasRebalanceamento,
-  tickerValido, tipoTicker
+  tickerValido, tipoTicker,
+  projetarCalendario, resumoCalendario
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
 import CommandPalette from "./components/CommandPalette";
@@ -3411,6 +3412,305 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
   );
 }
 
+// ─── Tab: Calendário de Proventos ─────────────────────────────────────────────
+function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentosCarteira, dados }) {
+  const [proventosHist, setProventosHist] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [vista, setVista] = useState("calendario"); // "calendario" | "tabela"
+
+  useEffect(() => {
+    if (!userId) return;
+    carregarProventos(userId)
+      .then(setProventosHist)
+      .catch(e => console.error(e))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  // Monta mapa de preços: cotações ao vivo → fallback PM
+  const precos = useMemo(() => {
+    const m = {};
+    carteira.forEach(a => {
+      m[a.ticker] = cotacoesGlobais?.[a.ticker]?.preco || a.pm || 0;
+    });
+    return m;
+  }, [carteira, cotacoesGlobais]);
+
+  // Monta mapa de DYs: prioridade — dados IA > cache bolsai > default
+  const dys = useMemo(() => {
+    const m = {};
+    carteira.forEach(a => {
+      const posIA = dados?.posicoes?.find(p => p.ticker === a.ticker);
+      const cache = fundamentosCarteira?.[a.ticker];
+      m[a.ticker] = posIA?.dy ?? cache?.dy ?? null;
+    });
+    return m;
+  }, [carteira, dados, fundamentosCarteira]);
+
+  const calendario = useMemo(
+    () => projetarCalendario(carteira, precos, dys, proventosHist),
+    [carteira, precos, dys, proventosHist]
+  );
+
+  const resumo = useMemo(() => resumoCalendario(calendario), [calendario]);
+
+  // Escala de cor proporcional ao valor (para o heatmap)
+  const maxProj = Math.max(...calendario.map(m => m.projetado), 1);
+
+  const corMes = (mes) => {
+    if (!mes.projetado && !mes.real) return "var(--ui-bg-secondary)";
+    const intensidade = mes.projetado / maxProj;
+    return `rgba(0,229,160,${0.08 + intensidade * 0.35})`;
+  };
+
+  const bordaMes = (mes) => {
+    if (mes.isAtual) return "2px solid var(--ui-accent)";
+    if (mes.real != null && mes.real > 0) return "1px solid rgba(0,229,160,0.4)";
+    return "1px solid var(--ui-border)";
+  };
+
+  if (!carteira.length) {
+    return (
+      <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+        <Calendar size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+        <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Adicione ativos à carteira para ver o calendário de proventos</div>
+      </Card>
+    );
+  }
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+      {/* Header com resumo anual */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
+        <Card style={{textAlign:"center",padding:"18px 12px"}}>
+          <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>PROJEÇÃO ANUAL</div>
+          <div style={{fontSize:24,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resumo.totalAnual)}</div>
+          <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>próximos 12 meses</div>
+        </Card>
+        <Card style={{textAlign:"center",padding:"18px 12px"}}>
+          <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>MÉDIA MENSAL</div>
+          <div style={{fontSize:22,fontWeight:900,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resumo.mediaMensal)}</div>
+          <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>estimado</div>
+        </Card>
+        {resumo.melhorMes && (
+          <Card style={{textAlign:"center",padding:"18px 12px",background:"rgba(0,229,160,0.05)",border:"1px solid rgba(0,229,160,0.18)"}}>
+            <div style={{fontSize:9,color:"var(--ui-success)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>MELHOR MÊS</div>
+            <div style={{fontSize:20,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{resumo.melhorMes.mesAno}</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)",marginTop:2,fontWeight:600}}>{fmtBRL(resumo.melhorMes.projetado)}</div>
+          </Card>
+        )}
+        {resumo.piorMes && resumo.piorMes.mesLabel !== resumo.melhorMes?.mesLabel && (
+          <Card style={{textAlign:"center",padding:"18px 12px"}}>
+            <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2,marginBottom:6}}>MÊS MAIS FRACO</div>
+            <div style={{fontSize:20,fontWeight:900,color:"var(--ui-text-muted)",fontFamily:"'JetBrains Mono',monospace"}}>{resumo.piorMes.mesAno}</div>
+            <div style={{fontSize:12,color:"var(--ui-text-faint)",marginTop:2}}>{fmtBRL(resumo.piorMes.projetado)}</div>
+          </Card>
+        )}
+      </div>
+
+      {/* Toggle vista */}
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        {["calendario","tabela"].map(v => (
+          <button key={v} onClick={() => setVista(v)} style={{
+            background: vista === v ? "rgba(123,97,255,0.15)" : "transparent",
+            border: `1px solid ${vista === v ? "rgba(123,97,255,0.4)" : "var(--ui-border)"}`,
+            borderRadius:8,padding:"6px 14px",cursor:"pointer",fontSize:12,fontWeight:600,
+            color: vista === v ? "var(--ui-accent)" : "var(--ui-text-muted)",transition:"all .15s ease"
+          }}>
+            {v === "calendario" ? "📅 Calendário" : "📋 Por ativo"}
+          </button>
+        ))}
+        <div style={{marginLeft:"auto",fontSize:11,color:"var(--ui-text-disabled)",display:"flex",alignItems:"center",gap:8}}>
+          <span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"rgba(0,229,160,0.35)"}}/>Projetado
+          <span style={{display:"inline-block",width:10,height:10,borderRadius:2,border:"2px solid var(--ui-accent)"}}/>Mês atual
+          {proventosHist.length > 0 && <><span style={{display:"inline-block",width:10,height:10,borderRadius:2,border:"1px solid rgba(0,229,160,0.4)",background:"rgba(0,229,160,0.08)"}}/>Real registrado</>}
+        </div>
+      </div>
+
+      {vista === "calendario" && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
+          {calendario.map((m) => (
+            <div key={m.mesAno} style={{
+              background: corMes(m),
+              border: bordaMes(m),
+              borderRadius:10,padding:"14px",
+              position:"relative",
+              opacity: !m.isFuturo && !m.isAtual ? 0.75 : 1,
+              transition:"transform .15s ease",cursor:"default"
+            }}
+              onMouseEnter={e => e.currentTarget.style.transform="translateY(-2px)"}
+              onMouseLeave={e => e.currentTarget.style.transform="translateY(0)"}
+            >
+              {m.isAtual && (
+                <div style={{
+                  position:"absolute",top:8,right:8,
+                  fontSize:8,fontWeight:800,letterSpacing:1,
+                  color:"var(--ui-accent)",background:"rgba(123,97,255,0.15)",
+                  padding:"2px 6px",borderRadius:4
+                }}>ATUAL</div>
+              )}
+              {!m.isFuturo && !m.isAtual && (
+                <div style={{
+                  position:"absolute",top:8,right:8,
+                  fontSize:8,fontWeight:800,letterSpacing:1,
+                  color:"var(--ui-text-disabled)",background:"var(--ui-bg-secondary)",
+                  padding:"2px 6px",borderRadius:4
+                }}>PASSADO</div>
+              )}
+
+              <div style={{fontSize:13,fontWeight:800,color:"var(--ui-text)",marginBottom:10}}>
+                {m.mesLabel} <span style={{color:"var(--ui-text-faint)",fontWeight:400,fontSize:11}}>{m.ano}</span>
+              </div>
+
+              {/* Valor principal: real se disponível, projetado se não */}
+              {m.real != null && m.real > 0 ? (
+                <div>
+                  <div style={{fontSize:18,fontWeight:900,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(m.real)}</div>
+                  <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>recebido · proj. {fmtBRL(m.projetado)}</div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{fontSize:18,fontWeight:900,color:m.projetado > 0 ? "var(--ui-success)" : "var(--ui-text-disabled)",fontFamily:"'JetBrains Mono',monospace"}}>
+                    {m.projetado > 0 ? fmtBRL(m.projetado) : "—"}
+                  </div>
+                  <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>estimado</div>
+                </div>
+              )}
+
+              {/* Top 3 ativos do mês */}
+              {m.ativos.length > 0 && (
+                <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:4}}>
+                  {m.ativos.slice(0,3).map(a => (
+                    <div key={a.ticker} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-accent)"}}>{a.ticker}</span>
+                      <span style={{fontSize:10,color:"var(--ui-text-muted)",fontWeight:600}}>{fmtBRL(a.valor)}</span>
+                    </div>
+                  ))}
+                  {m.ativos.length > 3 && (
+                    <div style={{fontSize:9,color:"var(--ui-text-disabled)",textAlign:"right"}}>+{m.ativos.length - 3} mais</div>
+                  )}
+                </div>
+              )}
+
+              {/* Barra proporcional ao máximo */}
+              {m.projetado > 0 && (
+                <div style={{marginTop:10,height:3,background:"var(--ui-bg-secondary)",borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${(m.projetado/maxProj)*100}%`,background:"var(--ui-success)",borderRadius:2,opacity:0.8,transition:"width 0.8s ease"}}/>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {vista === "tabela" && (
+        <Card>
+          <STitle>PROJEÇÃO POR ATIVO (próximos 12 meses)</STitle>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+              <thead>
+                <tr style={{borderBottom:"2px solid var(--ui-border)"}}>
+                  <th style={{textAlign:"left",padding:"8px 10px",color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,fontSize:9,whiteSpace:"nowrap"}}>ATIVO</th>
+                  <th style={{textAlign:"right",padding:"8px 6px",color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,fontSize:9}}>DY</th>
+                  {calendario.map(m => (
+                    <th key={m.mesAno} style={{
+                      textAlign:"right",padding:"8px 6px",
+                      color: m.isAtual ? "var(--ui-accent)" : "var(--ui-text-faint)",
+                      fontWeight: m.isAtual ? 800 : 700,fontSize:9,whiteSpace:"nowrap"
+                    }}>{m.mesLabel}</th>
+                  ))}
+                  <th style={{textAlign:"right",padding:"8px 10px",color:"var(--ui-success)",fontWeight:800,fontSize:9}}>TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {carteira.map(a => {
+                  const dy = dys[a.ticker];
+                  const totalAtivo = calendario.reduce((s, m) => {
+                    const at = m.ativos.find(x => x.ticker === a.ticker);
+                    return s + (at?.valor || 0);
+                  }, 0);
+                  if (totalAtivo === 0) return null;
+                  return (
+                    <tr key={a.ticker} style={{borderBottom:"1px solid var(--ui-border)"}}>
+                      <td style={{padding:"8px 10px"}}>
+                        <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:800,color:"var(--ui-accent)",fontSize:12}}>{a.ticker}</span>
+                      </td>
+                      <td style={{padding:"8px 6px",textAlign:"right",color:"var(--ui-warning)",fontWeight:700}}>
+                        {dy != null ? `${fmt(dy,1)}%` : "–"}
+                      </td>
+                      {calendario.map(m => {
+                        const at = m.ativos.find(x => x.ticker === a.ticker);
+                        const val = at?.valor || 0;
+                        return (
+                          <td key={m.mesAno} style={{
+                            padding:"8px 6px",textAlign:"right",
+                            color: val > 0 ? "var(--ui-text-muted)" : "var(--ui-text-disabled)",
+                            background: val > 0 && m.isAtual ? "rgba(123,97,255,0.06)" : "transparent",
+                            fontFamily: val > 0 ? "'JetBrains Mono',monospace" : "inherit",
+                            fontSize: val > 0 ? 11 : 10
+                          }}>
+                            {val > 0 ? fmtBRL(val) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td style={{padding:"8px 10px",textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-success)",fontSize:12}}>
+                        {fmtBRL(totalAtivo)}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Linha de totais */}
+                <tr style={{borderTop:"2px solid var(--ui-border)",background:"rgba(0,229,160,0.04)"}}>
+                  <td style={{padding:"10px 10px",fontWeight:800,fontSize:12,color:"var(--ui-text)"}}>TOTAL</td>
+                  <td/>
+                  {calendario.map(m => (
+                    <td key={m.mesAno} style={{
+                      padding:"10px 6px",textAlign:"right",
+                      fontFamily:"'JetBrains Mono',monospace",fontWeight:800,
+                      color: m.isAtual ? "var(--ui-accent)" : "var(--ui-success)",
+                      fontSize:11
+                    }}>
+                      {m.projetado > 0 ? fmtBRL(m.projetado) : "—"}
+                    </td>
+                  ))}
+                  <td style={{padding:"10px 10px",textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:900,color:"var(--ui-success)",fontSize:13}}>
+                    {fmtBRL(resumo.totalAnual)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Gráfico de barras dos 12 meses */}
+      <Card>
+        <STitle>DISTRIBUIÇÃO MENSAL DE PROVENTOS</STitle>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={calendario.map(m => ({
+            name: m.mesAno,
+            Projetado: m.projetado,
+            Real: m.real || 0,
+          }))} margin={{left:0,right:0,top:5,bottom:5}}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
+            <XAxis dataKey="name" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>v>0?`R$${(v/1000).toFixed(0)}k`:""} width={44}/>
+            <Tooltip formatter={(v,name)=>[fmtBRL(v),name]} labelFormatter={l=>`${l}`}/>
+            <Legend iconSize={8} wrapperStyle={{fontSize:10}}/>
+            <Bar dataKey="Projetado" fill="rgba(0,229,160,0.6)" radius={[3,3,0,0]}/>
+            {proventosHist.length > 0 && <Bar dataKey="Real" fill="var(--ui-success)" radius={[3,3,0,0]}/>}
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <div style={{fontSize:11,color:"var(--ui-text-disabled)",textAlign:"center",padding:"4px 0"}}>
+        Projeção baseada no DY atual de cada ativo e sazonalidade histórica da B3.
+        Registre proventos recebidos na aba Proventos para ver o comparativo real vs projetado.
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: Patrimônio (evolução histórica) ─────────────────────────────────────
 function TabPatrimonio({ userId, dados }) {
   const [snapshots, setSnapshots] = useState([]);
@@ -4553,6 +4853,7 @@ export default function App({ session, onLogout }) {
           "r": "risco",
           "e": "renda",
           "b": "rebalanceamento",
+          "k": "calendario",
         };
         if (navMap[e.key]) {
           e.preventDefault();
@@ -4986,6 +5287,7 @@ Regras:
     {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"var(--ui-accent)",grupo:"analysis"},
     {k:"historico",icon:History,label:"Histórico",cor:"var(--ui-warning)",grupo:"control"},
     {k:"proventos",icon:Coins,label:"Proventos",cor:"var(--ui-warning)",grupo:"control"},
+    {k:"calendario",icon:Calendar,label:"Calendário",cor:"var(--ui-warning)",grupo:"control"},
     {k:"watchlist",icon:Eye,label:"Watchlist",cor:"var(--ui-warning)",grupo:"control"},
     {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
     {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
@@ -5399,6 +5701,7 @@ Regras:
           {tab==="renda" && <TabRendaPassiva dados={dados} carteira={carteira} cotacoesGlobais={cotacoesGlobais}/>}
           {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
+          {tab==="calendario" && <TabCalendarioProventos userId={userId} carteira={carteira} cotacoesGlobais={cotacoesGlobais} fundamentosCarteira={fundamentosCarteira} dados={dados}/>}
           {tab==="meta" && <TabMeta dados={dados}/>}
           {tab==="cenarios" && <TabCenarios dados={dados}/>}
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
@@ -5488,6 +5791,7 @@ Regras:
                     <KeyRow keys={["g","o"]} desc="Oportunidades"/>
                     <KeyRow keys={["g","h"]} desc="Histórico"/>
                     <KeyRow keys={["g","d"]} desc="Proventos (Dividendos)"/>
+                    <KeyRow keys={["g","k"]} desc="Calendário de Proventos"/>
                     <KeyRow keys={["g","w"]} desc="Watchlist"/>
                     <KeyRow keys={["g","u"]} desc="Universo"/>
                     <KeyRow keys={["g","m"]} desc="1º Milhão"/>
