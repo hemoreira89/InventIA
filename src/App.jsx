@@ -5349,14 +5349,21 @@ Regras:
     }).catch(() => {});
   }, [userId, dados?.totalCarteira]);
 
-  // Relógio em tempo real
-  const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+  // Relógio em tempo real + status do pregão B3
+  const [agora, setAgora] = useState(new Date());
   useEffect(() => {
-    const interval = setInterval(() => {
-      setHoraAtual(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
-    }, 1000);
+    const interval = setInterval(() => setAgora(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+  const horaAtual = agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const statusMercado = (() => {
+    const dia = agora.getDay(); // 0=dom, 6=sáb
+    const min = agora.getHours()*60 + agora.getMinutes();
+    if (dia === 0 || dia === 6) return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
+    if (min >= 600 && min < 1020) return { label:"MERCADO ABERTO", cor:"var(--ui-success)", aberto:true }; // 10:00-17:00
+    if (min >= 1050 && min < 1080) return { label:"AFTER-MARKET", cor:"var(--ui-warning)", aberto:true }; // 17:30-18:00
+    return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
+  })();
 
   return (
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
@@ -5385,6 +5392,8 @@ Regras:
         .tab-btn:hover{background:var(--ui-bg-secondary)!important;color:var(--ui-text-secondary)!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
         .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-1px)}
+        .metric-clickable{cursor:pointer;padding:4px 8px;margin:-4px -8px;border-radius:6px;transition:background .15s}
+        .metric-clickable:hover{background:var(--ui-bg-secondary)}
 
         /* Inputs e selects respeitam tema globalmente */
         input, select, textarea {
@@ -5424,7 +5433,7 @@ Regras:
           display:"flex",alignItems:"center",justifyContent:"space-between",
           padding:"10px 24px",gap:24,flexWrap:"wrap"
         }}>
-          {/* Brand */}
+          {/* Brand + Seletor de Portfólio */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <div style={{
               width:36,height:36,borderRadius:8,
@@ -5438,6 +5447,83 @@ Regras:
               </div>
               <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>
+
+            {/* Dropdown de portfólio */}
+            {carteiras.length > 0 && (() => {
+              const carteiraAtual = carteiras.find(c => c.id === carteiraId) || carteiras[0];
+              const isAberto = dropdownAberto === "portfolio";
+              return (
+                <div style={{position:"relative",zIndex:isAberto?100:1,marginLeft:6}}>
+                  <button
+                    onClick={()=>setDropdownAberto(isAberto?null:"portfolio")}
+                    title="Trocar portfólio"
+                    style={{
+                      background:"var(--ui-bg-secondary)",
+                      border:"1px solid var(--ui-border)",
+                      borderRadius:8,padding:"6px 10px",cursor:"pointer",
+                      display:"flex",alignItems:"center",gap:8,
+                      color:"var(--ui-text)",fontSize:12,fontWeight:600,
+                      whiteSpace:"nowrap"
+                    }}>
+                    <Briefcase size={12} color="var(--ui-accent)"/>
+                    <span>{carteiraAtual?.nome || "Portfólio"}</span>
+                    <ChevronDown size={11} style={{
+                      opacity:0.5,
+                      transform:isAberto?"rotate(180deg)":"none",
+                      transition:"transform .15s"
+                    }}/>
+                  </button>
+
+                  {isAberto && (
+                    <div style={{
+                      position:"absolute",top:"100%",left:0,marginTop:4,
+                      background:"var(--ui-bg-card)",
+                      border:"1px solid var(--ui-border)",
+                      borderRadius:10,padding:6,
+                      boxShadow:"0 8px 24px rgba(0,0,0,0.25)",
+                      minWidth:200,zIndex:101
+                    }}>
+                      {carteiras.map(c => {
+                        const ativo = c.id === carteiraId;
+                        return (
+                          <button key={c.id}
+                            onClick={()=>{trocarCarteira(c.id);setDropdownAberto(null);}}
+                            style={{
+                              display:"flex",alignItems:"center",gap:10,
+                              width:"100%",padding:"9px 12px",
+                              background:ativo?"var(--ui-bg-secondary)":"transparent",
+                              border:"none",borderRadius:7,
+                              cursor:"pointer",fontSize:13,fontWeight:ativo?700:500,
+                              color:ativo?"var(--ui-text)":"var(--ui-text-secondary)",
+                              textAlign:"left"
+                            }}>
+                            <Briefcase size={13} color={ativo?"var(--ui-accent)":"var(--ui-text-muted)"}/>
+                            {c.nome || `Portfólio ${carteiras.indexOf(c)+1}`}
+                          </button>
+                        );
+                      })}
+                      <div style={{height:1,background:"var(--ui-border)",margin:"6px 4px"}}/>
+                      <button
+                        onClick={()=>{
+                          setDropdownAberto(null);
+                          const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
+                          if (nome?.trim()) novaCarteira(nome.trim());
+                        }}
+                        style={{
+                          display:"flex",alignItems:"center",gap:10,
+                          width:"100%",padding:"9px 12px",
+                          background:"transparent",border:"none",borderRadius:7,
+                          cursor:"pointer",fontSize:13,fontWeight:600,
+                          color:"var(--ui-accent)",textAlign:"left"
+                        }}>
+                        <Plus size={13}/>
+                        Criar novo portfólio
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Métricas centralizadas com sparklines */}
@@ -5448,17 +5534,29 @@ Regras:
               accent={metricaCarteira>0?"var(--ui-success)":null}
               sparkline={sparkPatrimonio}
               sparkColor="auto"
+              onClick={() => setTab("patrimonio")}
+              title="Ver evolução do patrimônio"
             />
-            <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}/>
-            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"var(--ui-warning)":null}/>
-            <Metric label="WATCHLIST" value={watchlist.length||"—"}/>
+            <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}
+              onClick={() => setTab("carteira")}
+              title="Ver carteira"/>
+            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"}
+              accent={metricaDY>=8?"var(--ui-success)":metricaDY>=4?"var(--ui-info)":null}
+              onClick={() => setTab("proventos")}
+              title="Ver proventos"/>
+            <Metric label="WATCHLIST" value={watchlist.length||"—"}
+              onClick={() => setTab("watchlist")}
+              title="Ver watchlist"/>
           </div>
 
           {/* Status à direita */}
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--ui-text-faint)"}}>
-              <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"var(--ui-success)"}}/>
-              <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
+            <div title={`${statusMercado.label} · ${horaAtual}`}
+              style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:statusMercado.cor,fontWeight:700,letterSpacing:0.5}}>
+              <span className={statusMercado.aberto ? "blink" : undefined}
+                style={{width:6,height:6,borderRadius:"50%",background:statusMercado.cor,opacity:statusMercado.aberto?1:0.5}}/>
+              <span>{statusMercado.label}</span>
+              <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"var(--ui-text-faint)",marginLeft:2}}>{horaAtual}</span>
             </div>
             {savedMsg && (
               <span style={{fontSize:11,color:"var(--ui-success)",fontWeight:600}}>{savedMsg}</span>
@@ -5541,40 +5639,6 @@ Regras:
             }}><LogOut size={14}/></button>
           </div>
         </div>
-
-        {/* Linha 1.5: Seletor de portfólios (quando há mais de 1) */}
-        {carteiras.length > 0 && (
-          <div style={{
-            display:"flex",padding:"4px 24px",gap:8,alignItems:"center",
-            borderTop:"1px solid var(--ui-border)",
-            background:"var(--ui-bg-secondary)",
-            overflowX:"auto"
-          }}>
-            <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,whiteSpace:"nowrap"}}>PORTFÓLIO:</span>
-            {carteiras.map(c => (
-              <button key={c.id} onClick={() => trocarCarteira(c.id)} style={{
-                background: carteiraId === c.id ? "rgba(123,97,255,0.15)" : "transparent",
-                border: `1px solid ${carteiraId === c.id ? "rgba(123,97,255,0.4)" : "var(--ui-border)"}`,
-                borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:12,fontWeight:600,
-                color: carteiraId === c.id ? "var(--ui-accent)" : "var(--ui-text-muted)",
-                whiteSpace:"nowrap",transition:"all .15s ease"
-              }}>
-                {c.nome || `Portfólio ${carteiras.indexOf(c)+1}`}
-              </button>
-            ))}
-            <button onClick={() => {
-              const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
-              if (nome?.trim()) novaCarteira(nome.trim());
-            }} style={{
-              background:"transparent",border:"1px dashed var(--ui-border)",borderRadius:6,
-              padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600,
-              color:"var(--ui-text-disabled)",display:"flex",alignItems:"center",gap:4,
-              whiteSpace:"nowrap"
-            }}>
-              <Plus size={10}/> Novo
-            </button>
-          </div>
-        )}
 
         {/* Linha 2: Tabs agrupadas em dropdowns */}
         <div style={{
@@ -5926,9 +5990,11 @@ Regras:
 }
 
 // Componente Metric para a barra superior
-function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)" }) {
+function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)", onClick, title }) {
   return (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
+    <div onClick={onClick} title={title}
+      className={onClick ? "metric-clickable" : undefined}
+      style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
       <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{
