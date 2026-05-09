@@ -4792,6 +4792,7 @@ export default function App({ session, onLogout }) {
   // Atalhos globais de teclado
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [dropdownAberto, setDropdownAberto] = useState(null);
   useEffect(() => {
     let lastKey = null;
     let lastKeyTime = 0;
@@ -5299,6 +5300,15 @@ Regras:
     {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
   ];
 
+  const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
+  const GRUPOS_NAV = [
+    { k:"solo",      tabs:["carteira"] },
+    { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",  tabs:["analise","ticker","comparador","oportunidades","risco"] },
+    { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",    tabs:["rebalanceamento","meta","renda","cenarios","ir"] },
+    { k:"registros", label:"Registros", cor:"var(--ui-warning)", tabs:["patrimonio","historico","proventos","calendario"] },
+    { k:"listas",    label:"Listas",    cor:"var(--ui-text-muted)", tabs:["watchlist","universo"] },
+  ];
+
   // Métricas para a barra superior
   // Usa dados da análise IA se disponível (mais completo, com peso ponderado).
   // Se não, calcula em tempo real direto da carteira + cotações ao vivo (brapi).
@@ -5621,39 +5631,99 @@ Regras:
           );
         })()}
 
-        {/* Linha 2: Tabs com agrupamento por cor */}
+        {/* Linha 2: Tabs agrupadas em dropdowns */}
         <div style={{
           display:"flex",padding:"0 24px",gap:0,
           borderTop:"1px solid var(--ui-border)",
-          alignItems:"center",overflowX:"auto"
+          alignItems:"center",position:"relative"
         }}>
-          {TABS.map((t, i) => {
-            const Icon = t.icon;
-            const ativo = tab === t.k;
-            const grupoAtual = t.grupo;
-            const grupoAnterior = i > 0 ? TABS[i-1].grupo : null;
-            const novoGrupo = grupoAnterior && grupoAnterior !== grupoAtual;
+          {dropdownAberto && (
+            <div onClick={()=>setDropdownAberto(null)}
+              style={{position:"fixed",inset:0,zIndex:99}}/>
+          )}
 
-            return (
-              <div key={t.k} style={{display:"flex",alignItems:"center"}}>
-                {novoGrupo && (
-                  <div style={{
-                    width:1,height:18,background:"var(--ui-border)",margin:"0 8px"
-                  }}/>
-                )}
-                <button onClick={()=>setTab(t.k)} className="tab-btn"
+          {GRUPOS_NAV.map((grupo, gi) => {
+            const tabAtiva = grupo.tabs.find(k => k === tab);
+            const tabAtivaInfo = tabAtiva ? TAB_MAP[tabAtiva] : null;
+            const isAberto = dropdownAberto === grupo.k;
+
+            if (grupo.k === "solo") {
+              const t = TAB_MAP["carteira"];
+              const ativo = tab === "carteira";
+              const Icon = t.icon;
+              return (
+                <button key="carteira" onClick={()=>setTab("carteira")} className="tab-btn"
                   style={{
                     background:"transparent",border:"none",cursor:"pointer",
                     padding:"12px 14px",fontSize:13,fontWeight:600,
-                    color:ativo ? "var(--ui-text)" : "var(--ui-text-muted)",
-                    borderBottom:`2px solid ${ativo ? t.cor : "transparent"}`,
-                    display:"flex",alignItems:"center",gap:7,
-                    whiteSpace:"nowrap",
-                    position:"relative"
+                    color:ativo?"var(--ui-text)":"var(--ui-text-muted)",
+                    borderBottom:`2px solid ${ativo?t.cor:"transparent"}`,
+                    display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap"
                   }}>
-                  <Icon size={14} strokeWidth={2} color={ativo ? t.cor : undefined}/>
+                  <Icon size={14} strokeWidth={2} color={ativo?t.cor:undefined}/>
                   <span>{t.label}</span>
                 </button>
+              );
+            }
+
+            const IconAtiva = tabAtivaInfo?.icon;
+            return (
+              <div key={grupo.k} style={{position:"relative",zIndex:isAberto?100:1,display:"flex",alignItems:"center"}}>
+                {gi > 0 && (
+                  <div style={{width:1,height:18,background:"var(--ui-border)",margin:"0 4px"}}/>
+                )}
+                <button
+                  onClick={()=>setDropdownAberto(isAberto?null:grupo.k)}
+                  className="tab-btn"
+                  style={{
+                    background:"transparent",border:"none",cursor:"pointer",
+                    padding:"12px 14px",fontSize:13,fontWeight:600,
+                    color:tabAtiva?"var(--ui-text)":"var(--ui-text-muted)",
+                    borderBottom:`2px solid ${tabAtiva?grupo.cor:"transparent"}`,
+                    display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap"
+                  }}>
+                  {IconAtiva && <IconAtiva size={14} strokeWidth={2} color={grupo.cor}/>}
+                  <span>{tabAtivaInfo?tabAtivaInfo.label:grupo.label}</span>
+                  <ChevronDown size={12} style={{
+                    opacity:0.5,
+                    transform:isAberto?"rotate(180deg)":"none",
+                    transition:"transform .15s"
+                  }}/>
+                </button>
+
+                {isAberto && (
+                  <div style={{
+                    position:"absolute",top:"100%",left:0,
+                    background:"var(--ui-bg-card)",
+                    border:"1px solid var(--ui-border)",
+                    borderRadius:10,padding:6,
+                    boxShadow:"0 8px 24px rgba(0,0,0,0.25)",
+                    minWidth:190,zIndex:101
+                  }}>
+                    {grupo.tabs.map(k => {
+                      const t = TAB_MAP[k];
+                      if (!t) return null;
+                      const Icon = t.icon;
+                      const ativo = tab === k;
+                      return (
+                        <button key={k}
+                          onClick={()=>{setTab(k);setDropdownAberto(null);}}
+                          style={{
+                            display:"flex",alignItems:"center",gap:10,
+                            width:"100%",padding:"9px 12px",
+                            background:ativo?"var(--ui-bg-secondary)":"transparent",
+                            border:"none",borderRadius:7,
+                            cursor:"pointer",fontSize:13,fontWeight:ativo?700:500,
+                            color:ativo?"var(--ui-text)":"var(--ui-text-secondary)",
+                            textAlign:"left"
+                          }}>
+                          <Icon size={14} strokeWidth={2} color={ativo?grupo.cor:"var(--ui-text-muted)"}/>
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
