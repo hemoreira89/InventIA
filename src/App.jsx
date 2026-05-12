@@ -247,7 +247,7 @@ function Card({ children, style={}, accent=false, className="" }) {
   return (
     <div className={`card-hover ${className}`} style={{
       background:"var(--ui-bg-card)",
-      border:`1px solid ${accent?"var(--ui-border-accent)":"var(--ui-border)"}`,
+      border:`1px solid ${accent?"rgba(123,97,255,0.27)":"var(--ui-border)"}`,
       borderRadius:10,padding:"16px",
       boxShadow:"var(--ui-shadow-sm)",
       ...style
@@ -5366,10 +5366,10 @@ Regras:
   })();
 
   return (
-    <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'DM Sans',sans-serif",color:"var(--ui-text)"}}>
+    <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         body{background:var(--ui-bg);transition:background .2s ease}
         ::-webkit-scrollbar{width:8px;height:8px}
@@ -5399,12 +5399,12 @@ Regras:
         .ticker-tape:hover .ticker-tape-track{animation-play-state:paused}
         .ticker-tape-item{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
         input,select,button,textarea{outline:none;font-family:inherit}
-        input:focus,select:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px var(--ui-focus-ring)}
+        input:focus,select:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
         button:hover:not(:disabled){filter:brightness(1.1)}
         .tab-btn{transition:all .15s ease}
         .tab-btn:hover{background:var(--ui-bg-secondary)!important;color:var(--ui-text-secondary)!important}
-        .card-hover{transition:border-color .25s ease,transform .25s ease,box-shadow .25s ease}
-        .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-2px);box-shadow:var(--ui-shadow-md)!important}
+        .card-hover{transition:border-color .2s ease,transform .2s ease}
+        .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-1px)}
         .metric-clickable{cursor:pointer;padding:4px 8px;margin:-4px -8px;border-radius:6px;transition:background .15s}
         .metric-clickable:hover{background:var(--ui-bg-secondary)}
 
@@ -5436,7 +5436,7 @@ Regras:
       {/* TOP BAR - Estilo TradingView */}
       <div style={{
         position:"sticky",top:0,zIndex:100,
-        background: themeApi.isLight ? "rgba(240,235,224,0.97)" : "rgba(6,9,15,0.95)",
+        background: themeApi.isLight ? "rgba(255,255,255,0.96)" : "rgba(0,0,0,0.92)",
         backdropFilter:"blur(20px)",
         borderBottom:"1px solid var(--ui-border)",
         boxShadow: themeApi.isLight ? "0 1px 3px rgba(0,0,0,0.04)" : "none"
@@ -5450,12 +5450,12 @@ Regras:
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <div style={{
               width:36,height:36,borderRadius:8,
-              background:"linear-gradient(135deg,#c99038,#f0c050)",
+              background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
               display:"flex",alignItems:"center",justifyContent:"center",
               color:"#ffffff"
             }}><Sparkles size={20} strokeWidth={2.5}/></div>
             <div>
-              <div style={{fontSize:15,fontWeight:700,letterSpacing:-0.5,color:"var(--ui-text)",fontFamily:"'Bricolage Grotesque',sans-serif"}}>
+              <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
                 InvestIA <span style={{color:"var(--ui-accent)"}}>Pro</span>
               </div>
               <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
@@ -5666,8 +5666,8 @@ Regras:
               borderTop:"1px solid var(--ui-border)",
               borderBottom:"1px solid var(--ui-border)",
               background: themeApi.isLight
-                ? "linear-gradient(90deg, rgba(168,112,32,0.10), rgba(168,112,32,0.05))"
-                : "linear-gradient(90deg, rgba(201,144,56,0.14), rgba(201,144,56,0.07))",
+                ? "linear-gradient(90deg, rgba(123,97,255,0.18), rgba(0,229,160,0.18))"
+                : "linear-gradient(90deg, rgba(123,97,255,0.22), rgba(0,229,160,0.18))",
               padding:"7px 0"
             }}>
               <div className="ticker-tape-track" style={{
