@@ -4,7 +4,6 @@
 export const config = { maxDuration: 30 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE";
 const CODE_PATTERN = /^INV-[A-Z0-9]{6}$/i;
 
 // ─── Supabase REST helpers ────────────────────────────────────────────────────
@@ -65,7 +64,7 @@ async function supaPatch(table, query, body, key) {
 async function supaUpsert(table, body, onConflict, key) {
   try {
     await fetch(
-      `${SUPABASE_URL}/rest/v1/${table}`,
+      `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`,
       { method: "POST", headers: { ...supaHeaders(key), "Prefer": `resolution=merge-duplicates,return=minimal` }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) }
     );
   } catch (e) {
@@ -164,12 +163,10 @@ PERGUNTA: ${pergunta}`;
 }
 
 async function handleVinculo(chatId, code, serviceKey, botToken) {
-  // Usa service_role direto no header REST — bypassa RLS sem depender do SDK
-  const key = serviceKey || SUPABASE_ANON_KEY;
   const link = await supaGet(
     "telegram_link_codes",
     `code=eq.${encodeURIComponent(code.toUpperCase())}&select=user_id,expires_at,used&limit=1`,
-    key
+    serviceKey
   );
 
   if (!link) {
@@ -186,8 +183,8 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
   }
 
   await Promise.all([
-    supaPatch("telegram_link_codes", `code=eq.${encodeURIComponent(code.toUpperCase())}`, { used: true }, key),
-    supaUpsert("telegram_links", { user_id: link.user_id, chat_id: chatId }, "user_id", key)
+    supaPatch("telegram_link_codes", `code=eq.${encodeURIComponent(code.toUpperCase())}`, { used: true }, serviceKey),
+    supaUpsert("telegram_links", { user_id: link.user_id, chat_id: chatId }, "user_id", serviceKey)
   ]);
 
   await enviarMensagem(
@@ -211,14 +208,10 @@ export default async function handler(req, res) {
   const geminiKey = process.env.GEMINI_API_KEY;
   const brapiToken = process.env.BRAPI_TOKEN;
 
-  if (!botToken || !geminiKey) {
-    console.error("[TELEGRAM] Variáveis obrigatórias ausentes");
+  if (!botToken || !geminiKey || !serviceKey) {
+    console.error("[TELEGRAM] Variáveis obrigatórias ausentes (botToken/geminiKey/serviceKey)");
     return res.status(200).json({ ok: true });
   }
-
-  // Para tabelas de vínculo Telegram, usa sempre anon key + políticas abertas.
-  // service_role só é usado para carteiras/ativos (bypassa RLS de outros usuários).
-  const dbKey = SUPABASE_ANON_KEY;
 
   try {
     const { message } = req.body || {};
@@ -228,12 +221,12 @@ export default async function handler(req, res) {
     const texto = message.text.trim();
 
     if (CODE_PATTERN.test(texto)) {
-      await handleVinculo(chatId, texto, dbKey, botToken);
+      await handleVinculo(chatId, texto, serviceKey, botToken);
       return res.status(200).json({ ok: true });
     }
 
     // Busca usuário pelo chat_id
-    const linkData = await supaGet("telegram_links", `chat_id=eq.${chatId}&select=user_id&limit=1`, dbKey);
+    const linkData = await supaGet("telegram_links", `chat_id=eq.${chatId}&select=user_id&limit=1`, serviceKey);
 
     if (!linkData?.user_id) {
       await enviarMensagem(
@@ -244,13 +237,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // Carteira e ativos (service_role necessário para bypasear RLS de outros usuários)
-    // Carteiras e ativos precisam de service_role para bypasear RLS de outros usuários
-    const adminKey = serviceKey || SUPABASE_ANON_KEY;
-    const carteira = await supaGet("carteiras", `user_id=eq.${linkData.user_id}&select=id&order=created_at&limit=1`, adminKey);
+    // Carteiras e ativos: service_role para bypasear RLS de outros usuários.
+    const carteira = await supaGet("carteiras", `user_id=eq.${linkData.user_id}&select=id&order=created_at&limit=1`, serviceKey);
     let ativos = [];
     if (carteira?.id) {
-      ativos = await supaList("ativos", `carteira_id=eq.${carteira.id}&select=ticker,qtd,pm`, adminKey);
+      ativos = await supaList("ativos", `carteira_id=eq.${carteira.id}&select=ticker,qtd,pm`, serviceKey);
     }
 
     const cotacoes = await buscarCotacoes(ativos.map(a => a.ticker), brapiToken);
