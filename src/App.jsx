@@ -4792,6 +4792,7 @@ export default function App({ session, onLogout }) {
   // Atalhos globais de teclado
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [dropdownAberto, setDropdownAberto] = useState(null);
   useEffect(() => {
     let lastKey = null;
     let lastKeyTime = 0;
@@ -5299,6 +5300,15 @@ Regras:
     {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
   ];
 
+  const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
+  const GRUPOS_NAV = [
+    { k:"solo",      tabs:["carteira"] },
+    { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",  tabs:["analise","ticker","comparador","oportunidades","risco"] },
+    { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",    tabs:["rebalanceamento","meta","renda","cenarios","ir"] },
+    { k:"registros", label:"Registros", cor:"var(--ui-warning)", tabs:["patrimonio","historico","proventos","calendario"] },
+    { k:"listas",    label:"Listas",    cor:"var(--ui-text-muted)", tabs:["watchlist","universo"] },
+  ];
+
   // Métricas para a barra superior
   // Usa dados da análise IA se disponível (mais completo, com peso ponderado).
   // Se não, calcula em tempo real direto da carteira + cotações ao vivo (brapi).
@@ -5339,14 +5349,21 @@ Regras:
     }).catch(() => {});
   }, [userId, dados?.totalCarteira]);
 
-  // Relógio em tempo real
-  const [horaAtual, setHoraAtual] = useState(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+  // Relógio em tempo real + status do pregão B3
+  const [agora, setAgora] = useState(new Date());
   useEffect(() => {
-    const interval = setInterval(() => {
-      setHoraAtual(new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
-    }, 1000);
+    const interval = setInterval(() => setAgora(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+  const horaAtual = agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const statusMercado = (() => {
+    const dia = agora.getDay(); // 0=dom, 6=sáb
+    const min = agora.getHours()*60 + agora.getMinutes();
+    if (dia === 0 || dia === 6) return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
+    if (min >= 600 && min < 1020) return { label:"MERCADO ABERTO", cor:"var(--ui-success)", aberto:true }; // 10:00-17:00
+    if (min >= 1050 && min < 1080) return { label:"AFTER-MARKET", cor:"var(--ui-warning)", aberto:true }; // 17:30-18:00
+    return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
+  })();
 
   return (
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
@@ -5365,9 +5382,22 @@ Regras:
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
+        @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         .anim{animation:fadeUp .35s ease both}
         .spin{animation:spin .9s linear infinite}
         .blink{animation:blink 2s ease infinite}
+        .ticker-tape{
+          position:relative;overflow:hidden;
+          mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 40px),transparent 100%);
+          -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 40px),transparent 100%);
+        }
+        .ticker-tape-track{
+          display:inline-flex;gap:32px;white-space:nowrap;
+          animation:marquee 60s linear infinite;
+          will-change:transform;
+        }
+        .ticker-tape:hover .ticker-tape-track{animation-play-state:paused}
+        .ticker-tape-item{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
         input,select,button,textarea{outline:none;font-family:inherit}
         input:focus,select:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px rgba(123,97,255,0.15)}
         button:hover:not(:disabled){filter:brightness(1.1)}
@@ -5375,6 +5405,8 @@ Regras:
         .tab-btn:hover{background:var(--ui-bg-secondary)!important;color:var(--ui-text-secondary)!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
         .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-1px)}
+        .metric-clickable{cursor:pointer;padding:4px 8px;margin:-4px -8px;border-radius:6px;transition:background .15s}
+        .metric-clickable:hover{background:var(--ui-bg-secondary)}
 
         /* Inputs e selects respeitam tema globalmente */
         input, select, textarea {
@@ -5414,7 +5446,7 @@ Regras:
           display:"flex",alignItems:"center",justifyContent:"space-between",
           padding:"10px 24px",gap:24,flexWrap:"wrap"
         }}>
-          {/* Brand */}
+          {/* Brand + Seletor de Portfólio */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <div style={{
               width:36,height:36,borderRadius:8,
@@ -5428,6 +5460,83 @@ Regras:
               </div>
               <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>
+
+            {/* Dropdown de portfólio */}
+            {carteiras.length > 0 && (() => {
+              const carteiraAtual = carteiras.find(c => c.id === carteiraId) || carteiras[0];
+              const isAberto = dropdownAberto === "portfolio";
+              return (
+                <div style={{position:"relative",zIndex:isAberto?100:1,marginLeft:6}}>
+                  <button
+                    onClick={()=>setDropdownAberto(isAberto?null:"portfolio")}
+                    title="Trocar portfólio"
+                    style={{
+                      background:"var(--ui-bg-secondary)",
+                      border:"1px solid var(--ui-border)",
+                      borderRadius:8,padding:"6px 10px",cursor:"pointer",
+                      display:"flex",alignItems:"center",gap:8,
+                      color:"var(--ui-text)",fontSize:12,fontWeight:600,
+                      whiteSpace:"nowrap"
+                    }}>
+                    <Briefcase size={12} color="var(--ui-accent)"/>
+                    <span>{carteiraAtual?.nome || "Portfólio"}</span>
+                    <ChevronDown size={11} style={{
+                      opacity:0.5,
+                      transform:isAberto?"rotate(180deg)":"none",
+                      transition:"transform .15s"
+                    }}/>
+                  </button>
+
+                  {isAberto && (
+                    <div style={{
+                      position:"absolute",top:"100%",left:0,marginTop:4,
+                      background:"var(--ui-bg-card)",
+                      border:"1px solid var(--ui-border)",
+                      borderRadius:10,padding:6,
+                      boxShadow:"0 8px 24px rgba(0,0,0,0.25)",
+                      minWidth:200,zIndex:101
+                    }}>
+                      {carteiras.map(c => {
+                        const ativo = c.id === carteiraId;
+                        return (
+                          <button key={c.id}
+                            onClick={()=>{trocarCarteira(c.id);setDropdownAberto(null);}}
+                            style={{
+                              display:"flex",alignItems:"center",gap:10,
+                              width:"100%",padding:"9px 12px",
+                              background:ativo?"var(--ui-bg-secondary)":"transparent",
+                              border:"none",borderRadius:7,
+                              cursor:"pointer",fontSize:13,fontWeight:ativo?700:500,
+                              color:ativo?"var(--ui-text)":"var(--ui-text-secondary)",
+                              textAlign:"left"
+                            }}>
+                            <Briefcase size={13} color={ativo?"var(--ui-accent)":"var(--ui-text-muted)"}/>
+                            {c.nome || `Portfólio ${carteiras.indexOf(c)+1}`}
+                          </button>
+                        );
+                      })}
+                      <div style={{height:1,background:"var(--ui-border)",margin:"6px 4px"}}/>
+                      <button
+                        onClick={()=>{
+                          setDropdownAberto(null);
+                          const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
+                          if (nome?.trim()) novaCarteira(nome.trim());
+                        }}
+                        style={{
+                          display:"flex",alignItems:"center",gap:10,
+                          width:"100%",padding:"9px 12px",
+                          background:"transparent",border:"none",borderRadius:7,
+                          cursor:"pointer",fontSize:13,fontWeight:600,
+                          color:"var(--ui-accent)",textAlign:"left"
+                        }}>
+                        <Plus size={13}/>
+                        Criar novo portfólio
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Métricas centralizadas com sparklines */}
@@ -5438,17 +5547,29 @@ Regras:
               accent={metricaCarteira>0?"var(--ui-success)":null}
               sparkline={sparkPatrimonio}
               sparkColor="auto"
+              onClick={() => setTab("patrimonio")}
+              title="Ver evolução do patrimônio"
             />
-            <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}/>
-            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"} accent={metricaDY>5?"var(--ui-warning)":null}/>
-            <Metric label="WATCHLIST" value={watchlist.length||"—"}/>
+            <Metric label="POSIÇÕES" value={metricaPosicoes||"—"}
+              onClick={() => setTab("carteira")}
+              title="Ver carteira"/>
+            <Metric label="DY MÉDIO" value={metricaPosicoes?`${fmt(metricaDY,2)}%`:"—"}
+              accent={metricaDY>=8?"var(--ui-success)":metricaDY>=4?"var(--ui-info)":null}
+              onClick={() => setTab("proventos")}
+              title="Ver proventos"/>
+            <Metric label="WATCHLIST" value={watchlist.length||"—"}
+              onClick={() => setTab("watchlist")}
+              title="Ver watchlist"/>
           </div>
 
           {/* Status à direita */}
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--ui-text-faint)"}}>
-              <span className="blink" style={{width:6,height:6,borderRadius:"50%",background:"var(--ui-success)"}}/>
-              <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{horaAtual}</span>
+            <div title={`${statusMercado.label} · ${horaAtual}`}
+              style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:statusMercado.cor,fontWeight:700,letterSpacing:0.5}}>
+              <span className={statusMercado.aberto ? "blink" : undefined}
+                style={{width:6,height:6,borderRadius:"50%",background:statusMercado.cor,opacity:statusMercado.aberto?1:0.5}}/>
+              <span>{statusMercado.label}</span>
+              <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"var(--ui-text-faint)",marginLeft:2}}>{horaAtual}</span>
             </div>
             {savedMsg && (
               <span style={{fontSize:11,color:"var(--ui-success)",fontWeight:600}}>{savedMsg}</span>
@@ -5532,73 +5653,141 @@ Regras:
           </div>
         </div>
 
-        {/* Linha 1.5: Seletor de portfólios (quando há mais de 1) */}
-        {carteiras.length > 0 && (
-          <div style={{
-            display:"flex",padding:"4px 24px",gap:8,alignItems:"center",
-            borderTop:"1px solid var(--ui-border)",
-            background:"var(--ui-bg-secondary)",
-            overflowX:"auto"
-          }}>
-            <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1,whiteSpace:"nowrap"}}>PORTFÓLIO:</span>
-            {carteiras.map(c => (
-              <button key={c.id} onClick={() => trocarCarteira(c.id)} style={{
-                background: carteiraId === c.id ? "rgba(123,97,255,0.15)" : "transparent",
-                border: `1px solid ${carteiraId === c.id ? "rgba(123,97,255,0.4)" : "var(--ui-border)"}`,
-                borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:12,fontWeight:600,
-                color: carteiraId === c.id ? "var(--ui-accent)" : "var(--ui-text-muted)",
-                whiteSpace:"nowrap",transition:"all .15s ease"
-              }}>
-                {c.nome || `Portfólio ${carteiras.indexOf(c)+1}`}
-              </button>
-            ))}
-            <button onClick={() => {
-              const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
-              if (nome?.trim()) novaCarteira(nome.trim());
-            }} style={{
-              background:"transparent",border:"1px dashed var(--ui-border)",borderRadius:6,
-              padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600,
-              color:"var(--ui-text-disabled)",display:"flex",alignItems:"center",gap:4,
-              whiteSpace:"nowrap"
+        {/* Linha 1.7: Ticker tape animado (estilo TradingView) */}
+        {(() => {
+          const tickersComCotacao = tickersCarteira
+            .map(t => ({ ticker: t, c: cotacoesGlobais?.[t] }))
+            .filter(x => x.c?.preco != null);
+          if (tickersComCotacao.length === 0) return null;
+          // Duplica a lista pra loop infinito sem cortes
+          const loop = [...tickersComCotacao, ...tickersComCotacao];
+          return (
+            <div className="ticker-tape" style={{
+              borderTop:"1px solid var(--ui-border)",
+              borderBottom:"1px solid var(--ui-border)",
+              background: themeApi.isLight
+                ? "linear-gradient(90deg, rgba(123,97,255,0.18), rgba(0,229,160,0.18))"
+                : "linear-gradient(90deg, rgba(123,97,255,0.22), rgba(0,229,160,0.18))",
+              padding:"7px 0"
             }}>
-              <Plus size={10}/> Novo
-            </button>
-          </div>
-        )}
+              <div className="ticker-tape-track" style={{
+                animationDuration: `${Math.max(30, tickersComCotacao.length * 6)}s`
+              }}>
+                {loop.map((x, i) => {
+                  const pct = x.c.variacaoPct;
+                  const sobe = pct != null && pct >= 0;
+                  const cor = pct == null ? "var(--ui-text-muted)" : (sobe ? "var(--ui-success)" : "var(--ui-danger)");
+                  return (
+                    <span key={`${x.ticker}-${i}`} className="ticker-tape-item">
+                      <span style={{color:"var(--ui-text)",fontWeight:700}}>{x.ticker}</span>
+                      <span style={{color:"var(--ui-text-muted)"}}>{fmtBRL(x.c.preco)}</span>
+                      {pct != null && (
+                        <span style={{color:cor,display:"inline-flex",alignItems:"center",gap:2}}>
+                          {sobe ? <ArrowUp size={11} strokeWidth={3}/> : <ArrowDown size={11} strokeWidth={3}/>}
+                          {Math.abs(pct).toFixed(2)}%
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* Linha 2: Tabs com agrupamento por cor */}
+        {/* Linha 2: Tabs agrupadas em dropdowns */}
         <div style={{
           display:"flex",padding:"0 24px",gap:0,
           borderTop:"1px solid var(--ui-border)",
-          alignItems:"center",overflowX:"auto"
+          alignItems:"center",position:"relative"
         }}>
-          {TABS.map((t, i) => {
-            const Icon = t.icon;
-            const ativo = tab === t.k;
-            const grupoAtual = t.grupo;
-            const grupoAnterior = i > 0 ? TABS[i-1].grupo : null;
-            const novoGrupo = grupoAnterior && grupoAnterior !== grupoAtual;
+          {dropdownAberto && (
+            <div onClick={()=>setDropdownAberto(null)}
+              style={{position:"fixed",inset:0,zIndex:99}}/>
+          )}
 
-            return (
-              <div key={t.k} style={{display:"flex",alignItems:"center"}}>
-                {novoGrupo && (
-                  <div style={{
-                    width:1,height:18,background:"var(--ui-border)",margin:"0 8px"
-                  }}/>
-                )}
-                <button onClick={()=>setTab(t.k)} className="tab-btn"
+          {GRUPOS_NAV.map((grupo, gi) => {
+            const tabAtiva = grupo.tabs.find(k => k === tab);
+            const tabAtivaInfo = tabAtiva ? TAB_MAP[tabAtiva] : null;
+            const isAberto = dropdownAberto === grupo.k;
+
+            if (grupo.k === "solo") {
+              const t = TAB_MAP["carteira"];
+              const ativo = tab === "carteira";
+              const Icon = t.icon;
+              return (
+                <button key="carteira" onClick={()=>setTab("carteira")} className="tab-btn"
                   style={{
                     background:"transparent",border:"none",cursor:"pointer",
                     padding:"12px 14px",fontSize:13,fontWeight:600,
-                    color:ativo ? "var(--ui-text)" : "var(--ui-text-muted)",
-                    borderBottom:`2px solid ${ativo ? t.cor : "transparent"}`,
-                    display:"flex",alignItems:"center",gap:7,
-                    whiteSpace:"nowrap",
-                    position:"relative"
+                    color:ativo?"var(--ui-text)":"var(--ui-text-muted)",
+                    borderBottom:`2px solid ${ativo?t.cor:"transparent"}`,
+                    display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap"
                   }}>
-                  <Icon size={14} strokeWidth={2} color={ativo ? t.cor : undefined}/>
+                  <Icon size={14} strokeWidth={2} color={ativo?t.cor:undefined}/>
                   <span>{t.label}</span>
                 </button>
+              );
+            }
+
+            const IconAtiva = tabAtivaInfo?.icon;
+            return (
+              <div key={grupo.k} style={{position:"relative",zIndex:isAberto?100:1,display:"flex",alignItems:"center"}}>
+                {gi > 0 && (
+                  <div style={{width:1,height:18,background:"var(--ui-border)",margin:"0 4px"}}/>
+                )}
+                <button
+                  onClick={()=>setDropdownAberto(isAberto?null:grupo.k)}
+                  className="tab-btn"
+                  style={{
+                    background:"transparent",border:"none",cursor:"pointer",
+                    padding:"12px 14px",fontSize:13,fontWeight:600,
+                    color:tabAtiva?"var(--ui-text)":"var(--ui-text-muted)",
+                    borderBottom:`2px solid ${tabAtiva?grupo.cor:"transparent"}`,
+                    display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap"
+                  }}>
+                  {IconAtiva && <IconAtiva size={14} strokeWidth={2} color={grupo.cor}/>}
+                  <span>{tabAtivaInfo?tabAtivaInfo.label:grupo.label}</span>
+                  <ChevronDown size={12} style={{
+                    opacity:0.5,
+                    transform:isAberto?"rotate(180deg)":"none",
+                    transition:"transform .15s"
+                  }}/>
+                </button>
+
+                {isAberto && (
+                  <div style={{
+                    position:"absolute",top:"100%",left:0,
+                    background:"var(--ui-bg-card)",
+                    border:"1px solid var(--ui-border)",
+                    borderRadius:10,padding:6,
+                    boxShadow:"0 8px 24px rgba(0,0,0,0.25)",
+                    minWidth:190,zIndex:101
+                  }}>
+                    {grupo.tabs.map(k => {
+                      const t = TAB_MAP[k];
+                      if (!t) return null;
+                      const Icon = t.icon;
+                      const ativo = tab === k;
+                      return (
+                        <button key={k}
+                          onClick={()=>{setTab(k);setDropdownAberto(null);}}
+                          style={{
+                            display:"flex",alignItems:"center",gap:10,
+                            width:"100%",padding:"9px 12px",
+                            background:ativo?"var(--ui-bg-secondary)":"transparent",
+                            border:"none",borderRadius:7,
+                            cursor:"pointer",fontSize:13,fontWeight:ativo?700:500,
+                            color:ativo?"var(--ui-text)":"var(--ui-text-secondary)",
+                            textAlign:"left"
+                          }}>
+                          <Icon size={14} strokeWidth={2} color={ativo?grupo.cor:"var(--ui-text-muted)"}/>
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -5856,9 +6045,11 @@ Regras:
 }
 
 // Componente Metric para a barra superior
-function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)" }) {
+function Metric({ label, value, accent, sparkline, sparkColor = "var(--ui-accent)", onClick, title }) {
   return (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
+    <div onClick={onClick} title={title}
+      className={onClick ? "metric-clickable" : undefined}
+      style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
       <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:800,letterSpacing:1.2}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{
