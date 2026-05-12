@@ -64,7 +64,7 @@ async function supaPatch(table, query, body, key) {
 async function supaUpsert(table, body, onConflict, key) {
   try {
     await fetch(
-      `${SUPABASE_URL}/rest/v1/${table}`,
+      `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`,
       { method: "POST", headers: { ...supaHeaders(key), "Prefer": `resolution=merge-duplicates,return=minimal` }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) }
     );
   } catch (e) {
@@ -163,13 +163,10 @@ PERGUNTA: ${pergunta}`;
 }
 
 async function handleVinculo(chatId, code, serviceKey, botToken) {
-  // service_role obrigatório: as tabelas de vínculo agora têm RLS estrita
-  // (sem políticas permissivas para anon), então anon key não consegue ler/escrever.
-  const key = serviceKey;
   const link = await supaGet(
     "telegram_link_codes",
     `code=eq.${encodeURIComponent(code.toUpperCase())}&select=user_id,expires_at,used&limit=1`,
-    key
+    serviceKey
   );
 
   if (!link) {
@@ -186,8 +183,8 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
   }
 
   await Promise.all([
-    supaPatch("telegram_link_codes", `code=eq.${encodeURIComponent(code.toUpperCase())}`, { used: true }, key),
-    supaUpsert("telegram_links", { user_id: link.user_id, chat_id: chatId }, "user_id", key)
+    supaPatch("telegram_link_codes", `code=eq.${encodeURIComponent(code.toUpperCase())}`, { used: true }, serviceKey),
+    supaUpsert("telegram_links", { user_id: link.user_id, chat_id: chatId }, "user_id", serviceKey)
   ]);
 
   await enviarMensagem(
@@ -216,10 +213,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  // Service_role para tudo. As tabelas Telegram têm RLS estrita (apenas service_role
-  // acessa); carteiras/ativos precisam bypasear RLS para responder pelo usuário vinculado.
-  const dbKey = serviceKey;
-
   try {
     const { message } = req.body || {};
     if (!message?.text || !message?.chat?.id) return res.status(200).json({ ok: true });
@@ -228,12 +221,12 @@ export default async function handler(req, res) {
     const texto = message.text.trim();
 
     if (CODE_PATTERN.test(texto)) {
-      await handleVinculo(chatId, texto, dbKey, botToken);
+      await handleVinculo(chatId, texto, serviceKey, botToken);
       return res.status(200).json({ ok: true });
     }
 
     // Busca usuário pelo chat_id
-    const linkData = await supaGet("telegram_links", `chat_id=eq.${chatId}&select=user_id&limit=1`, dbKey);
+    const linkData = await supaGet("telegram_links", `chat_id=eq.${chatId}&select=user_id&limit=1`, serviceKey);
 
     if (!linkData?.user_id) {
       await enviarMensagem(
