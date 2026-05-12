@@ -4,7 +4,6 @@
 export const config = { maxDuration: 30 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE";
 const CODE_PATTERN = /^INV-[A-Z0-9]{6}$/i;
 
 // ─── Supabase REST helpers ────────────────────────────────────────────────────
@@ -164,8 +163,9 @@ PERGUNTA: ${pergunta}`;
 }
 
 async function handleVinculo(chatId, code, serviceKey, botToken) {
-  // Usa service_role direto no header REST — bypassa RLS sem depender do SDK
-  const key = serviceKey || SUPABASE_ANON_KEY;
+  // service_role obrigatório: as tabelas de vínculo agora têm RLS estrita
+  // (sem políticas permissivas para anon), então anon key não consegue ler/escrever.
+  const key = serviceKey;
   const link = await supaGet(
     "telegram_link_codes",
     `code=eq.${encodeURIComponent(code.toUpperCase())}&select=user_id,expires_at,used&limit=1`,
@@ -211,14 +211,14 @@ export default async function handler(req, res) {
   const geminiKey = process.env.GEMINI_API_KEY;
   const brapiToken = process.env.BRAPI_TOKEN;
 
-  if (!botToken || !geminiKey) {
-    console.error("[TELEGRAM] Variáveis obrigatórias ausentes");
+  if (!botToken || !geminiKey || !serviceKey) {
+    console.error("[TELEGRAM] Variáveis obrigatórias ausentes (botToken/geminiKey/serviceKey)");
     return res.status(200).json({ ok: true });
   }
 
-  // Para tabelas de vínculo Telegram, usa sempre anon key + políticas abertas.
-  // service_role só é usado para carteiras/ativos (bypassa RLS de outros usuários).
-  const dbKey = SUPABASE_ANON_KEY;
+  // Service_role para tudo. As tabelas Telegram têm RLS estrita (apenas service_role
+  // acessa); carteiras/ativos precisam bypasear RLS para responder pelo usuário vinculado.
+  const dbKey = serviceKey;
 
   try {
     const { message } = req.body || {};
@@ -244,13 +244,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // Carteira e ativos (service_role necessário para bypasear RLS de outros usuários)
-    // Carteiras e ativos precisam de service_role para bypasear RLS de outros usuários
-    const adminKey = serviceKey || SUPABASE_ANON_KEY;
-    const carteira = await supaGet("carteiras", `user_id=eq.${linkData.user_id}&select=id&order=created_at&limit=1`, adminKey);
+    // Carteiras e ativos: service_role para bypasear RLS de outros usuários.
+    const carteira = await supaGet("carteiras", `user_id=eq.${linkData.user_id}&select=id&order=created_at&limit=1`, serviceKey);
     let ativos = [];
     if (carteira?.id) {
-      ativos = await supaList("ativos", `carteira_id=eq.${carteira.id}&select=ticker,qtd,pm`, adminKey);
+      ativos = await supaList("ativos", `carteira_id=eq.${carteira.id}&select=ticker,qtd,pm`, serviceKey);
     }
 
     const cotacoes = await buscarCotacoes(ativos.map(a => a.ticker), brapiToken);
