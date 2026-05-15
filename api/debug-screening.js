@@ -27,14 +27,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const bolsaiKey = process.env.BOLSAI_TOKEN || process.env.BOLSAI_API_KEY;
+
   // ── Modo dry-run: testa o mapeamento real pra 1 ticker, sem escrever ──
   // Custa apenas 2 reqs bolsai (fundamentals + companies, ou fiis + companies)
   // Útil pra validar mudanças no mapeamento antes de rodar o cron inteiro
   const dryrunTicker = req.query?.dryrun;
   if (dryrunTicker) {
-    const apiKey = process.env.BOLSAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "BOLSAI_API_KEY não configurado" });
+    if (!bolsaiKey) {
+      return res.status(500).json({ error: "BOLSAI_TOKEN não configurado" });
     }
 
     const ticker = String(dryrunTicker).toUpperCase().trim();
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
 
     try {
       const inicio = Date.now();
-      const resultado = await buscarTicker(ticker, tipoChute, apiKey);
+      const resultado = await buscarTicker(ticker, tipoChute, bolsaiKey);
       const duracao_ms = Date.now() - inicio;
 
       return res.status(200).json({
@@ -72,10 +73,10 @@ export default async function handler(req, res) {
   // Custo: até 6 reqs bolsai (4-5 retornam 404 rápido, 1-2 sucessos).
   const exploreTicker = req.query?.explore_dividends;
   if (exploreTicker) {
-    const apiKey = process.env.BOLSAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "BOLSAI_API_KEY não configurado" });
+    if (!bolsaiKey) {
+      return res.status(500).json({ error: "BOLSAI_TOKEN não configurado" });
     }
+    const apiKey = bolsaiKey;
 
     const ticker = String(exploreTicker).toUpperCase().trim();
     const BOLSAI = "https://api.usebolsai.com/api/v1";
@@ -158,13 +159,13 @@ export default async function handler(req, res) {
   const diag = {
     env: {
       BRAPI_TOKEN: !!process.env.BRAPI_TOKEN,
-      BOLSAI_API_KEY: !!process.env.BOLSAI_API_KEY,
+      BOLSAI_TOKEN: !!bolsaiKey,
       GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
       SUPABASE_SERVICE_ROLE: !!process.env.SUPABASE_SERVICE_ROLE,
       CRON_SECRET: !!process.env.CRON_SECRET,
     },
     env_lengths: {
-      BOLSAI_API_KEY: process.env.BOLSAI_API_KEY?.length || 0,
+      BOLSAI_TOKEN: bolsaiKey?.length || 0,
       SUPABASE_SERVICE_ROLE: process.env.SUPABASE_SERVICE_ROLE?.length || 0,
     },
     tabelas: {},
@@ -200,7 +201,7 @@ export default async function handler(req, res) {
   try {
     const inicio = Date.now();
     const r = await fetch("https://api.usebolsai.com/api/v1/fundamentals/PETR4", {
-      headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+      headers: { "X-API-Key": bolsaiKey || "" },
       signal: AbortSignal.timeout(15000), // 15s — bolsai pode estar lenta
     });
     const duracao_ms = Date.now() - inicio;
@@ -217,7 +218,7 @@ export default async function handler(req, res) {
   // Consulta uso atual da chave bolsai (cota diária restante, etc)
   try {
     const r = await fetch("https://api.usebolsai.com/api/v1/keys/usage", {
-      headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+      headers: { "X-API-Key": bolsaiKey || "" },
       signal: AbortSignal.timeout(10000),
     });
     if (r.ok) {
@@ -244,7 +245,7 @@ export default async function handler(req, res) {
     // Ação (PETR4)
     try {
       const r = await fetch("https://api.usebolsai.com/api/v1/fundamentals/PETR4", {
-        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        headers: { "X-API-Key": bolsaiKey || "" },
         signal: AbortSignal.timeout(15000),
       });
       if (r.ok) {
@@ -259,7 +260,7 @@ export default async function handler(req, res) {
     // FII (MXRF11)
     try {
       const r = await fetch("https://api.usebolsai.com/api/v1/fiis/MXRF11", {
-        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        headers: { "X-API-Key": bolsaiKey || "" },
         signal: AbortSignal.timeout(15000),
       });
       if (r.ok) {
@@ -274,7 +275,7 @@ export default async function handler(req, res) {
     // Companies (PETR4 — pra setor)
     try {
       const r = await fetch("https://api.usebolsai.com/api/v1/companies/PETR4", {
-        headers: { "X-API-Key": process.env.BOLSAI_API_KEY || "" },
+        headers: { "X-API-Key": bolsaiKey || "" },
         signal: AbortSignal.timeout(15000),
       });
       if (r.ok) {

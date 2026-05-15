@@ -2293,8 +2293,8 @@ function TabComparador({ chamarIAComSearch }) {
       setFase(`Buscando dados de ${ts.length} ativos (B3/CVM)...`);
 
       const [cotacoes, fundamentos] = await Promise.all([
-        buscarCotacoes(ts).catch(() => ({})),
-        buscarFundamentos(ts).catch(() => ({})),
+        buscarCotacoes(ts).catch(e => { console.warn("[comparador] cotações falhou:", e?.message); return {}; }),
+        buscarFundamentos(ts).catch(e => { console.warn("[comparador] fundamentos falhou:", e?.message); return {}; }),
       ]);
 
       // Verifica se conseguiu pelo menos algum dado
@@ -2365,7 +2365,7 @@ Responda APENAS este JSON (sem markdown, sem inventar números):
 
 Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem que recebeu.`;
 
-      const teseIA = await chamarIAComSearch(promptIA).catch(() => ({}));
+      const teseIA = await chamarIAComSearch(promptIA).catch(e => { console.warn("[comparador] IA falhou, usando fallback:", e?.message); return {}; });
 
       // ── PASSO 3: monta resultado final ──
       // Combina dados reais (ativosReais) com análise qualitativa da IA (ativos_extra)
