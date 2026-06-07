@@ -251,10 +251,10 @@ export default async function handler(req, res) {
   }
 
   const inicio = Date.now();
-  const apiKey = process.env.BOLSAI_API_KEY;
+  const apiKey = process.env.BOLSAI_TOKEN || process.env.BOLSAI_API_KEY;
   const supaKey = process.env.SUPABASE_SERVICE_ROLE;
 
-  if (!apiKey) return res.status(500).json({ error: "BOLSAI_API_KEY não configurado" });
+  if (!apiKey) return res.status(500).json({ error: "BOLSAI_TOKEN não configurado" });
   if (!supaKey) return res.status(500).json({ error: "SUPABASE_SERVICE_ROLE não configurado" });
 
   const supabase = createClient(SUPABASE_URL, supaKey, {

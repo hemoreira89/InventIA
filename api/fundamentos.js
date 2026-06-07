@@ -170,9 +170,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.BOLSAI_API_KEY;
+  const apiKey = process.env.BOLSAI_TOKEN || process.env.BOLSAI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'BOLSAI_API_KEY não configurada' });
+    return res.status(500).json({ error: 'BOLSAI_TOKEN não configurada' });
   }
 
   const tickersParam = (req.query.tickers || '').trim().toUpperCase();
