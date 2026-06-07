@@ -884,7 +884,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
             </label>
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,320px),1fr))",gap:14}}>
         {carteira.map((a,i) => {
           const pos = dados?.posicoes?.find(p => p.ticker === a.ticker);
           const cotacao = cotacoes[a.ticker];
@@ -1546,7 +1546,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
       )}
 
       {enriched.length > 0 ? (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,340px),1fr))",gap:14}}>
           {enriched.map(w => (
             <Card key={w.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1791,7 +1791,7 @@ function TabAnalise({ dados, aporte, loading, fase }) {
       </Card>
 
       {/* Alertas em grid */}
-      {a.alertas?.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
+      {a.alertas?.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:10}}>
       {a.alertas?.map((al,i) => (
         <div key={i} style={{background:al.tipo==="perigo"?"rgba(255,77,109,0.06)":al.tipo==="atencao"?"rgba(255,214,10,0.06)":"rgba(0,229,160,0.06)",border:`1px solid ${al.tipo==="perigo"?"rgba(255,77,109,0.18)":al.tipo==="atencao"?"rgba(255,214,10,0.18)":"rgba(0,229,160,0.18)"}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{flexShrink:0,marginTop:1}}>
@@ -1812,7 +1812,7 @@ function TabAnalise({ dados, aporte, loading, fase }) {
       {/* Recomendações */}
       {a.recomendacoes?.length > 0 && <>
         <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,380px),1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => {
           // Usa avaliação pré-calculada (enriquecimento) ou calcula se for análise antiga
           const avaliacao = r.avaliacaoCriterios || avaliarRecomendacao(r);
@@ -2524,7 +2524,7 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
 
           {/* Pontos fortes/fracos */}
           {resultado.ativos?.length > 0 && (
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,280px),1fr))",gap:12}}>
               {resultado.ativos.map((a,i) => (
                 <Card key={i}>
                   <div style={{fontWeight:800,fontSize:15,color:"var(--ui-text)",marginBottom:10}}>{a.ticker}</div>
@@ -4698,7 +4698,7 @@ Responda APENAS este JSON (sem markdown):
           {resultado.oportunidades?.length > 0 && (
             <>
               <STitle>{resultado.oportunidades.length} OPORTUNIDADES IDENTIFICADAS</STitle>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,360px),1fr))",gap:12}}>
                 {resultado.oportunidades.map((o,i) => (
                   <Card key={i} className="card-hover" style={{position:"relative",overflow:"hidden"}}>
                     {/* Score badge */}
@@ -5442,6 +5442,8 @@ Regras:
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
+        /* Evita rolagem horizontal no mobile. 'clip' não quebra position:sticky. */
+        html,body,#root{max-width:100%;overflow-x:clip}
         body{background:var(--ui-bg);transition:background .2s ease}
         ::-webkit-scrollbar{width:8px;height:8px}
         ::-webkit-scrollbar-track{background:var(--ui-bg)}
@@ -5515,7 +5517,7 @@ Regras:
         {/* Linha 1: Brand + Métricas + Status */}
         <div style={{
           display:"flex",alignItems:"center",justifyContent:"space-between",
-          padding:"10px 24px",gap:24,flexWrap:"wrap"
+          padding:"10px clamp(12px,3vw,24px)",gap:"clamp(10px,2vw,24px)",flexWrap:"wrap"
         }}>
           {/* Brand + Seletor de Portfólio */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
@@ -5611,7 +5613,7 @@ Regras:
           </div>
 
           {/* Métricas centralizadas com sparklines */}
-          <div style={{display:"flex",alignItems:"center",gap:32,flex:1,justifyContent:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"clamp(14px,3vw,32px)",flex:"1 1 240px",justifyContent:"center",flexWrap:"wrap",rowGap:8}}>
             <Metric
               label="PATRIMÔNIO"
               value={metricaCarteira>0 ? (privacy.hidden ? "R$●●●●" : fmtK(metricaCarteira)) : "—"}
@@ -5634,7 +5636,7 @@ Regras:
           </div>
 
           {/* Status à direita */}
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",justifyContent:"flex-end",rowGap:8}}>
             <div title={`${statusMercado.label} · ${horaAtual}`}
               style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:statusMercado.cor,fontWeight:700,letterSpacing:0.5}}>
               <span className={statusMercado.aberto ? "blink" : undefined}
@@ -5768,9 +5770,9 @@ Regras:
 
         {/* Linha 2: Tabs agrupadas em dropdowns */}
         <div style={{
-          display:"flex",padding:"0 24px",gap:0,
+          display:"flex",padding:"0 clamp(8px,3vw,24px)",gap:0,
           borderTop:"1px solid var(--ui-border)",
-          alignItems:"center",position:"relative"
+          alignItems:"center",position:"relative",flexWrap:"wrap"
         }}>
           {dropdownAberto && (
             <div onClick={()=>setDropdownAberto(null)}
@@ -5866,7 +5868,7 @@ Regras:
       </div>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <div style={{padding:"20px 24px",maxWidth:1600,margin:"0 auto"}}>
+      <div style={{padding:"20px clamp(12px,4vw,24px)",maxWidth:1600,margin:"0 auto"}}>
         {/* PAINEL DE ANÁLISE - Horizontal (apenas na aba Análise IA) */}
         {tab === "analise" && (
         <div className="anim" style={{
