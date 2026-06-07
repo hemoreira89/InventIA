@@ -160,8 +160,8 @@ export default async function handler(req, res) {
     log('Sequência de tentativas', tentativas.map(([m, s]) => `${m}${s ? '+search' : ''}`));
 
     let lastError = null;
-    let lastDetail = null;
     let rateLimited = false;
+    const erros = []; // motivo de CADA tentativa (diagnóstico — não só a última)
 
     for (const [modelId, comSearch] of tentativas) {
       const r = await chamarGemini(modelId, prompt, comSearch, apiKey, log);
@@ -175,7 +175,9 @@ export default async function handler(req, res) {
       }
 
       lastError = r.error;
-      lastDetail = r.detail;
+      const linha = `${modelId}${comSearch ? '+search' : ''}: ${r.error}${r.detail ? ` — ${String(r.detail).slice(0, 220)}` : ''}`;
+      erros.push(linha);
+      log(`FALHA ${linha}`);
       if (r.rateLimited) rateLimited = true;
 
       // Erros não-retentáveis (auth, prompt malformado): para imediatamente
@@ -185,7 +187,7 @@ export default async function handler(req, res) {
       }
     }
 
-    log(`ALL_FAILED → último erro: ${lastError}`, { detail: lastDetail, rateLimited });
+    log(`ALL_FAILED → ${erros.length} tentativa(s)`, { erros, rateLimited });
     // Mensagem model-agnóstica quando é limite de cota: evita citar "pro" só
     // por ele ter sido a última tentativa, e orienta o tempo de espera.
     const msg = rateLimited
@@ -194,7 +196,7 @@ export default async function handler(req, res) {
     return res.status(503).json({
       error: msg,
       rateLimited,
-      _debug: lastDetail
+      _debug: erros // array com o motivo de cada modelo (visível no console do navegador)
     });
 
   } catch (err) {
