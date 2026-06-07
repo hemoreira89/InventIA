@@ -136,30 +136,37 @@ CARTEIRA (${hoje}):
 ${contexto}
 
 PERGUNTA: ${pergunta}`;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 2048,
-            temperature: 0.4,
-            thinkingConfig: { thinkingBudget: 0 } // desabilita raciocínio interno (consome tokens do output)
-          }
-        }),
-        signal: AbortSignal.timeout(20000)
-      }
-    );
-    if (!res.ok) return "Não consegui gerar uma resposta agora. Tente novamente.";
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || "Não consegui gerar uma resposta. Tente novamente.";
-  } catch (e) {
-    console.error("[TELEGRAM] Gemini falhou:", e.message);
-    return "Não consegui gerar uma resposta agora. Tente novamente.";
+  // Alinhado ao /api/analyze: respeita GEMINI_MODEL (mesmo default 3.5-flash),
+  // com fallback automático para o 2.5-flash (caminho do Telegram não tem cascata).
+  const modelos = [...new Set([process.env.GEMINI_MODEL || "gemini-3.5-flash", "gemini-2.5-flash"])];
+  for (const modelId of modelos) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              maxOutputTokens: 2048,
+              temperature: 0.4,
+              thinkingConfig: { thinkingBudget: 0 } // desabilita raciocínio interno (consome tokens do output)
+            }
+          }),
+          signal: AbortSignal.timeout(20000)
+        }
+      );
+      if (!res.ok) { console.warn(`[TELEGRAM] ${modelId} HTTP ${res.status} — tentando fallback`); continue; }
+      const data = await res.json();
+      const txt = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
+      if (txt) return txt;
+      console.warn(`[TELEGRAM] ${modelId} retornou vazio — tentando fallback`);
+    } catch (e) {
+      console.error(`[TELEGRAM] ${modelId} falhou:`, e.message);
+    }
   }
+  return "Não consegui gerar uma resposta agora. Tente novamente.";
 }
 
 async function handleVinculo(chatId, code, serviceKey, botToken) {

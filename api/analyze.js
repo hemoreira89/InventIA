@@ -88,6 +88,25 @@ async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
       };
     }
 
+    // Rede de segurança: /api/analyze só serve respostas JSON. Se o modelo
+    // respondeu mas sem JSON parseável, trata como falha retentável → a cascata
+    // cai no próximo modelo (fallback p/ o 2.5-flash comprovado) em vez de
+    // devolver algo que o front não consegue interpretar.
+    const limpoJson = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+    const blocoJson = limpoJson.match(/\{[\s\S]*\}/) || limpoJson.match(/\[[\s\S]*\]/);
+    let jsonOk = false;
+    if (blocoJson) {
+      try { JSON.parse(blocoJson[0]); jsonOk = true; }
+      catch {
+        try { JSON.parse(blocoJson[0].replace(/,\s*([}\]])/g, "$1")); jsonOk = true; }
+        catch { jsonOk = false; }
+      }
+    }
+    if (!jsonOk) {
+      log(`${modelId} respondeu sem JSON parseável (${text.length} chars)`);
+      return { ok: false, error: `${modelId} retornou resposta sem JSON válido`, detail: text.slice(0, 200), retryable: true };
+    }
+
     log(`SUCCESS ${modelId} (${text.length} chars, ${Date.now() - tStart}ms total)`);
     return { ok: true, text, modelId };
 
