@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -38,6 +38,10 @@ import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
+
+// Contexto do modo privacidade: o <Stat/> (usado em quase todas as abas) mascara
+// automaticamente os valores quando o modo apresentação está ligado.
+const PrivacyContext = createContext({ hidden: false, masked: (v) => v });
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import TickerAutocomplete from "./components/TickerAutocomplete";
@@ -420,11 +424,12 @@ function STitle({ children, color="var(--ui-accent)" }) {
 }
 
 function Stat({ label, value, color, mono=false }) {
+  const { masked } = useContext(PrivacyContext);
   return (
     <div style={{background:"var(--ui-bg-secondary)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--ui-border)"}}>
       <div style={{fontSize:9,color:"var(--ui-text-faint)",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
       <div style={{fontSize:14,fontWeight:700,color:color||"var(--ui-text)",
-        fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
+        fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{masked(value)}</div>
     </div>
   );
 }
@@ -5640,6 +5645,7 @@ Regras:
   }, [agora]);
 
   return (
+   <PrivacyContext.Provider value={privacy}>
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
       <style>{`
@@ -6292,6 +6298,7 @@ Regras:
         </div>
       </div>
     </div>
+   </PrivacyContext.Provider>
   );
 }
 
