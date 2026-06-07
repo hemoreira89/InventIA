@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import Login from './Login.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { supabase, getSession, signOut } from './supabase.js'
 
 function Root() {
@@ -59,6 +60,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Root/>
+    <ErrorBoundary>
+      <Root/>
+    </ErrorBoundary>
   </React.StrictMode>
 )
