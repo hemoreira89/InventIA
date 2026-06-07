@@ -1,0 +1,34 @@
+name: Radar de alertas (Telegram)
+
+# Roda algumas vezes ao dia em dias úteis, dentro/junto ao pregão da B3
+# (BRT = UTC-3). O endpoint só dispara mensagem quando há EVENTO FORTE.
+on:
+  schedule:
+    - cron: "30 12 * * 1-5"   # ~09:30 BRT (pré-abertura)
+    - cron: "0 15 * * 1-5"    # ~12:00 BRT
+    - cron: "0 18 * * 1-5"    # ~15:00 BRT
+    - cron: "30 19 * * 1-5"   # ~16:30 BRT (perto do fechamento)
+  workflow_dispatch:
+
+concurrency:
+  group: cron-alertas
+  cancel-in-progress: true
+
+jobs:
+  alertas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Disparar radar de alertas
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" --max-time 120 -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://invent-ia.vercel.app/api/cron-alertas")
+          body=$(echo "$response" | head -n -1)
+          status=$(echo "$response" | tail -n 1)
+          echo "Status HTTP: $status"
+          echo "Resposta: $body"
+          if [ "$status" != "200" ]; then
+            echo "::error::cron-alertas falhou (status $status)"
+            exit 1
+          fi

@@ -200,7 +200,31 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
     "Agora é só me perguntar qualquer coisa sobre sua carteira:\n\n" +
     "• _Como está minha carteira hoje?_\n" +
     "• _Vale a pena comprar mais MXRF11?_\n" +
-    "• _Qual meu ativo com melhor desempenho?_",
+    "• _Qual meu ativo com melhor desempenho?_\n\n" +
+    "🔔 Também te aviso sobre *eventos fortes* (notícias, quedas/altas bruscas, dividendos) na sua carteira e watchlist. Silenciar a qualquer momento: /alertas off",
+    botToken
+  );
+}
+
+async function handleAlertasCmd(chatId, userId, texto, serviceKey, botToken) {
+  const arg = texto.replace(/^\/alertas\s*/i, "").trim().toLowerCase();
+
+  if (arg === "off" || arg === "desligar" || arg === "parar") {
+    await supaUpsert("alertas_config", { user_id: userId, ativo: false, atualizado_em: new Date().toISOString() }, "user_id", serviceKey);
+    await enviarMensagem(chatId, "🔕 Alertas *desativados*. Você não receberá mais avisos de eventos. Reative com /alertas on", botToken);
+    return;
+  }
+  if (arg === "on" || arg === "ligar" || arg === "ativar") {
+    await supaUpsert("alertas_config", { user_id: userId, ativo: true, atualizado_em: new Date().toISOString() }, "user_id", serviceKey);
+    await enviarMensagem(chatId, "🔔 Alertas *ativados*. Vou te avisar quando houver evento forte na sua carteira ou watchlist.", botToken);
+    return;
+  }
+  // status (padrão)
+  const cfg = await supaGet("alertas_config", `user_id=eq.${userId}&select=ativo&limit=1`, serviceKey);
+  const ativo = !cfg || cfg.ativo !== false;
+  await enviarMensagem(
+    chatId,
+    `${ativo ? "🔔 Alertas *ativados*" : "🔕 Alertas *desativados*"}.\n\nComandos:\n• /alertas on — ativar\n• /alertas off — silenciar\n• /alertas — ver status`,
     botToken
   );
 }
@@ -241,6 +265,12 @@ export default async function handler(req, res) {
         "👋 Olá! Para usar o assistente do InvestIA, primeiro vincule sua conta.\n\nAbra o app, clique no ícone do Telegram no canto superior direito e envie o código que aparecer aqui.",
         botToken
       );
+      return res.status(200).json({ ok: true });
+    }
+
+    // Comando de controle dos alertas proativos (/alertas on|off|status)
+    if (/^\/alertas\b/i.test(texto)) {
+      await handleAlertasCmd(chatId, linkData.user_id, texto, serviceKey, botToken);
       return res.status(200).json({ ok: true });
     }
 
