@@ -13,10 +13,6 @@
 
 import { supabase } from "../supabase.js";
 
-const CACHE_TTL_MS = 30 * 60 * 1000;
-let cacheLista = null;
-let cacheTs = 0;
-
 /**
  * Busca fundamentos pré-cacheados de múltiplos tickers (1 query só).
  * Retorna mapa ticker → objeto compatível com formato bolsai.

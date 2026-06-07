@@ -203,7 +203,7 @@ export async function buscarTicker(ticker, tipoCatalogo, apiKey) {
       atualizado_em: new Date().toISOString(),
       fonte: "bolsai",
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 }

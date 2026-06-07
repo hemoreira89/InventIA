@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 const STORAGE_KEY = "inventia_privacy_mode";
