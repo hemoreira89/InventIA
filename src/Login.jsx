@@ -3,6 +3,10 @@ import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { signIn, signUp } from "./supabase";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 
+// Cadastros fechados: ferramenta de uso pessoal por enquanto.
+// Para reabrir no futuro, troque para true (e reative o signup no painel do Supabase).
+const SIGNUP_ENABLED = false;
+
 export default function Login({ onAuth }) {
   const themeApi = useTheme();
   const [modo, setModo] = useState("login"); // login | signup
@@ -14,6 +18,10 @@ export default function Login({ onAuth }) {
 
   const submit = async (e) => {
     e?.preventDefault();
+    if (modo === "signup" && !SIGNUP_ENABLED) {
+      setErro("Cadastros estão fechados no momento.");
+      return;
+    }
     if (!email || !senha) {
       setErro("Preencha email e senha");
       return;
@@ -258,7 +266,9 @@ export default function Login({ onAuth }) {
             </button>
 
             <div style={{ textAlign: "center", fontSize: 12, color: "var(--ui-text-faint)" }}>
-              {modo === "login" ? (
+              {!SIGNUP_ENABLED ? (
+                <span>Cadastros fechados no momento — ferramenta de uso pessoal.</span>
+              ) : modo === "login" ? (
                 <>Não tem conta?{" "}
                   <button
                     type="button"

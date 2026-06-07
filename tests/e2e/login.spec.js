@@ -9,15 +9,12 @@ test.describe('Tela de Login', () => {
     await expect(page.getByRole('button', { name: /Entrar/i })).toBeVisible();
   });
 
-  test('alterna entre login e cadastro', async ({ page }) => {
+  test('cadastros estão fechados (uso pessoal)', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
-
-    await page.getByRole('button', { name: /Criar agora/i }).click();
-    await expect(page.getByRole('heading', { name: /Criar conta/i })).toBeVisible();
-
-    await page.getByRole('button', { name: /Fazer login/i }).click();
-    await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
+    await expect(page.getByText(/Cadastros fechados no momento/i)).toBeVisible();
+    // Não deve existir o atalho de criar conta
+    await expect(page.getByRole('button', { name: /Criar agora/i })).toHaveCount(0);
   });
 
   test('valida campos obrigatórios', async ({ page }) => {

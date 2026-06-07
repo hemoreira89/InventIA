@@ -22,15 +22,7 @@ test.describe('Fluxo principal autenticado', () => {
 
     await page.waitForTimeout(2000);
 
-    // Se ainda estiver na tela de login, tenta criar conta
-    const ainda_na_login = await page.getByRole('heading', { name: 'Entrar' })
-      .isVisible().catch(() => false);
-    if (ainda_na_login) {
-      await page.getByRole('button', { name: /Criar agora/i }).click();
-      await page.getByRole('button', { name: /Criar conta/i }).click();
-      await page.waitForTimeout(2000);
-    }
-
+    // Cadastros estão fechados: a conta de teste precisa existir (via seed.yml).
     // Aguarda app carregar — botão de logout só existe após login
     await expect(page.locator('button[title="Sair"]')).toBeVisible({ timeout: 15000 });
   });
