@@ -28,7 +28,8 @@ import {
   CDI_ANO, IBOV_HIST, PALETTE,
   fmt, fmtBRL, fmtK, sleep, extrairJSON,
   juroCompostos, gerarProjecao,
-  projetarCalendario, resumoCalendario
+  projetarCalendario, resumoCalendario,
+  dividendoMensal, magicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
 import CommandPalette from "./components/CommandPalette";
@@ -2018,6 +2019,22 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
 
       setStep(4);
 
+      // ── Valuation: Magic Number (bola de neve) + preço-teto (Bazin/Graham) ──
+      // DY da bolsai (FIIs) ou da brapi (ações, quando disponível no free tier).
+      const dyCalc = fundamentos?.dy ?? cotacao?.dy ?? null;
+      const divMensalCalc = dividendoMensal(cotacao?.preco, dyCalc);
+      const divAnualCalc = (cotacao?.preco && dyCalc) ? cotacao.preco * (dyCalc / 100) : null;
+      const tetoBazin = precoTetoBazin(divAnualCalc);
+      const justoGraham = precoJustoGraham(fundamentos?.lpa, fundamentos?.vpa);
+      const mn = magicNumber(cotacao?.preco, divMensalCalc);
+      const valuation = (mn || tetoBazin || justoGraham) ? {
+        magicNumber: mn,
+        precoTetoBazin: tetoBazin,
+        margemBazin: margemSeguranca(cotacao?.preco, tetoBazin),
+        precoJustoGraham: justoGraham,
+        margemGraham: margemSeguranca(cotacao?.preco, justoGraham),
+      } : null;
+
       // ── PASSO 4: monta resultado final unindo dados reais + tese da IA ──
       const resultadoFinal = {
         ticker: t,
@@ -2040,6 +2057,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
           max52: cotacao?.max52,
           canal52: cotacao?.canal52,
         },
+        valuation,
         // Sparkline com últimos 30 dias
         historico: historico?.pontos || [],
         // Texto qualitativo da IA
@@ -2137,6 +2155,23 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
                 {resultado.indicadores.min52 != null && <Stat label="MÍN 52S" value={fmtBRL(resultado.indicadores.min52)} color="var(--ui-danger)" mono/>}
                 {resultado.indicadores.max52 != null && <Stat label="MÁX 52S" value={fmtBRL(resultado.indicadores.max52)} color="var(--ui-success)" mono/>}
                 {resultado.indicadores.canal52 != null && <Stat label="CANAL 52S" value={resultado.indicadores.canal52+"%"} color={resultado.indicadores.canal52<=30?"var(--ui-success)":resultado.indicadores.canal52<=70?"var(--ui-warning)":"var(--ui-danger)"} mono/>}
+              </div>
+            </Card>
+          )}
+
+          {/* Valuation: Magic Number + preço-teto (Bazin/Graham) */}
+          {resultado.valuation && (
+            <Card>
+              <STitle>VALUATION & BOLA DE NEVE</STitle>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
+                {resultado.valuation.magicNumber != null && <Stat label="MAGIC NUMBER" value={resultado.valuation.magicNumber.toLocaleString("pt-BR")+" cotas"} color="var(--ui-accent)" mono/>}
+                {resultado.valuation.precoTetoBazin != null && <Stat label="PREÇO-TETO (BAZIN 6%)" value={fmtBRL(resultado.valuation.precoTetoBazin)} color="var(--ui-warning)" mono/>}
+                {resultado.valuation.margemBazin != null && <Stat label="MARGEM vs BAZIN" value={(resultado.valuation.margemBazin>=0?"+":"")+fmt(resultado.valuation.margemBazin,1)+"%"} color={resultado.valuation.margemBazin>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>}
+                {resultado.valuation.precoJustoGraham != null && <Stat label="PREÇO JUSTO (GRAHAM)" value={fmtBRL(resultado.valuation.precoJustoGraham)} color="var(--ui-accent)" mono/>}
+                {resultado.valuation.margemGraham != null && <Stat label="MARGEM vs GRAHAM" value={(resultado.valuation.margemGraham>=0?"+":"")+fmt(resultado.valuation.margemGraham,1)+"%"} color={resultado.valuation.margemGraham>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>}
+              </div>
+              <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
+                Magic Number: nº de cotas p/ os dividendos comprarem 1 nova cota (bola de neve). Bazin: dividendo anual ÷ 6%. Graham: √(22,5 × LPA × VPA). Margem positiva = preço atual abaixo do teto (desconto).
               </div>
             </Card>
           )}

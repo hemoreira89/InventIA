@@ -438,3 +438,84 @@ export function resumoCalendario(calendario) {
 
   return { totalAnual, mediaMensal, melhorMes, piorMes };
 }
+
+// ─── Magic Number (efeito bola de neve) ───────────────────────────────────────
+
+/**
+ * Estima o dividendo mensal por cota a partir do DY anual (%).
+ * @param {number} preco - Preço da cota/ação
+ * @param {number} dyAnual - Dividend yield anual em % (ex.: 9 para 9%)
+ * @returns {number|null} Dividendo mensal por cota em R$, ou null se inválido
+ */
+export function dividendoMensal(preco, dyAnual) {
+  if (!preco || preco <= 0 || !dyAnual || dyAnual <= 0) return null;
+  return (preco * (dyAnual / 100)) / 12;
+}
+
+/**
+ * Magic Number: quantidade de cotas necessárias para que os dividendos de um
+ * período comprem 1 nova cota sozinhos (efeito bola de neve).
+ * @param {number} precoCota - Preço da cota/ação
+ * @param {number} dividendoPorPeriodo - Dividendo por cota no período (ex.: mensal)
+ * @returns {number|null} Nº de cotas (arredondado p/ cima), ou null se inválido
+ */
+export function magicNumber(precoCota, dividendoPorPeriodo) {
+  if (!precoCota || precoCota <= 0) return null;
+  if (!dividendoPorPeriodo || dividendoPorPeriodo <= 0) return null;
+  return Math.ceil(precoCota / dividendoPorPeriodo);
+}
+
+/**
+ * Progresso rumo ao Magic Number.
+ * @param {number} qtdAtual - Cotas que o investidor já possui
+ * @param {number} magic - Magic Number alvo
+ * @returns {{percentual:number, atingido:boolean, faltam:number}|null}
+ */
+export function progressoMagicNumber(qtdAtual, magic) {
+  if (!magic || magic <= 0) return null;
+  const q = Number(qtdAtual) || 0;
+  const pct = (q / magic) * 100;
+  return {
+    percentual: Math.min(100, Math.round(pct * 10) / 10),
+    atingido: q >= magic,
+    faltam: Math.max(0, magic - q),
+  };
+}
+
+// ─── Preço-teto / preço justo ──────────────────────────────────────────────────
+
+/**
+ * Preço-teto pelo método Bazin: dividendo anual ÷ yield mínimo desejado.
+ * @param {number} dividendoAnual - Dividendo por cota nos últimos 12 meses (R$)
+ * @param {number} yieldMinimo - Yield mínimo aceitável em % (default 6, clássico de Bazin)
+ * @returns {number|null} Preço-teto em R$, ou null se inválido
+ */
+export function precoTetoBazin(dividendoAnual, yieldMinimo = 6) {
+  if (!dividendoAnual || dividendoAnual <= 0) return null;
+  if (!yieldMinimo || yieldMinimo <= 0) return null;
+  return dividendoAnual / (yieldMinimo / 100);
+}
+
+/**
+ * Preço justo pela fórmula de Graham: √(22.5 × LPA × VPA).
+ * Só faz sentido para ações com lucro e patrimônio positivos.
+ * @param {number} lpa - Lucro por ação (R$)
+ * @param {number} vpa - Valor patrimonial por ação (R$)
+ * @returns {number|null} Preço justo em R$, ou null se inválido
+ */
+export function precoJustoGraham(lpa, vpa) {
+  if (!lpa || lpa <= 0 || !vpa || vpa <= 0) return null;
+  return Math.sqrt(22.5 * lpa * vpa);
+}
+
+/**
+ * Margem de segurança: quanto o preço atual está abaixo (+) ou acima (−) do
+ * preço-teto/justo, em %. Positivo = desconto (oportunidade).
+ * @param {number} precoAtual
+ * @param {number} precoTeto
+ * @returns {number|null} Margem em %, ou null se inválido
+ */
+export function margemSeguranca(precoAtual, precoTeto) {
+  if (!precoAtual || precoAtual <= 0 || !precoTeto || precoTeto <= 0) return null;
+  return ((precoTeto - precoAtual) / precoAtual) * 100;
+}
