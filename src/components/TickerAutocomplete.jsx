@@ -144,6 +144,9 @@ export default function TickerAutocomplete({
         disabled={disabled}
         autoComplete="off"
         spellCheck={false}
+        role="combobox"
+        aria-expanded={aberto}
+        aria-autocomplete="list"
         style={{
           width: "100%",
           background: "var(--ui-bg-input)",

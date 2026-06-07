@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useMemo, createContext, useContext, useRef } from "react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -1309,7 +1309,7 @@ function VisualizacoesCarteira({ dados }) {
               </linearGradient></defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
               <XAxis dataKey="mes" tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
+              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>"R$"+(v>=1000?Math.round(v/1000)+"k":v)} width={48}/>
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="var(--ui-success)" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
@@ -1392,7 +1392,7 @@ function TabMeta({ dados }) {
   };
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card accent style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1476,7 +1476,7 @@ function TabCenarios({ dados }) {
   };
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-info)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1620,7 +1620,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
   const atingiram = enriched.filter(w => w.atingiu);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-accent)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -2128,11 +2128,13 @@ function TabTicker({ chamarIAComSearch }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const reqRef = useRef(0);
   const analisar = () => analisarTicker(ticker);
 
   const analisarTicker = async (tickerArg) => {
     const t = (tickerArg || "").toUpperCase().trim();
     if (!t) { setErro("Digite um ticker"); return; }
+    const id = ++reqRef.current; // ignora resultados de análises antigas (race condition)
     setErro(""); setLoading(true); setResultado(null); setStep(0);
     try {
       // ── PASSO 1-2: dados quantitativos via APIs (paralelo, ~1-2s total) ──
@@ -2266,13 +2268,15 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
         aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Tese gerada por IA. Confirme antes de operar.",
       };
 
-      setResultado(resultadoFinal);
+      if (reqRef.current === id) setResultado(resultadoFinal);
     } catch (e) {
-      setErro(e.message || "Erro na análise");
+      if (reqRef.current === id) setErro(e.message || "Erro na análise");
     } finally {
-      setLoading(false);
-      setFase("");
-      setTimeout(() => setStep(0), 500);
+      if (reqRef.current === id) {
+        setLoading(false);
+        setFase("");
+        setTimeout(() => setStep(0), 500);
+      }
     }
   };
 
@@ -2523,8 +2527,8 @@ function TabComparador({ chamarIAComSearch }) {
   const [fase, setFase] = useState("");
 
   const comparar = async () => {
-    const ts = tickers.map(t=>t.toUpperCase().trim()).filter(Boolean);
-    if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers"); return; }
+    const ts = [...new Set(tickers.map(t=>t.toUpperCase().trim()).filter(Boolean))];
+    if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers diferentes"); return; }
     setErro(""); setLoading(true); setResultado(null);
     try {
       // ── PASSO 1: dados quantitativos via APIs (paralelo) ──
@@ -3007,7 +3011,7 @@ function TabProventos({ userId }) {
   const topTickers = Object.entries(porTicker).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       {/* Coluna esquerda: registrar + stats */}
       <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
         <Card>
@@ -3052,7 +3056,7 @@ function TabProventos({ userId }) {
               <BarChart data={meses} margin={{left:0,right:0,top:5,bottom:5}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
                 <XAxis dataKey="mes" tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
+                <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>"R$"+(v>=1000?Math.round(v/1000)+"k":v)}/>
                 <Tooltip content={<TTip/>}/>
                 <Bar dataKey="valor" name="Proventos" fill="var(--ui-success)" radius={[4,4,0,0]}/>
               </BarChart>
@@ -3103,7 +3107,7 @@ function TabProventos({ userId }) {
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-success)",fontSize:14}}>{fmtBRL(p.valor)}</span>
-                    <button onClick={()=>remover(p.id)} style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
+                    <button onClick={()=>remover(p.id)} aria-label={`Remover provento de ${p.ticker}`} style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
                   </div>
                 </div>
               ))}
@@ -3342,7 +3346,7 @@ function TabRendaPassiva({ dados }) {
   const rendaMensalAtual = (Number(patrimonio) * (Number(dyEsperado)/100)) / 12;
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>PROJEÇÃO DE RENDA PASSIVA</span></STitle>
 
@@ -4830,7 +4834,7 @@ Responda APENAS este JSON (sem markdown):
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
-          Filtra os ~750 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
+          Filtra mais de 1.400 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
         </div>
 
         {/* Tipo de oportunidade */}
