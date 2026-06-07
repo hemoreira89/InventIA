@@ -48,6 +48,7 @@ import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
 import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
 import { buscarFundamentosCached } from "./lib/fundamentosCached";
 import { buscarHistorico, buscarHistoricos } from "./lib/historico";
+import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
@@ -3723,6 +3724,7 @@ function TabPatrimonio({ userId, dados }) {
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState(90);
+  const [ibovSeries, setIbovSeries] = useState([]);
 
   const carregar = async () => {
     if (!userId) return;
@@ -3736,6 +3738,13 @@ function TabPatrimonio({ userId, dados }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [userId, periodo]);
+
+  // Busca o histórico real do IBOV (^BVSP) com cache esperto (~semanal).
+  useEffect(() => {
+    if (!snapshots.length) return;
+    const maisRecente = new Date(snapshots[snapshots.length - 1].data).getTime();
+    buscarIbovHistorico(maisRecente).then(setIbovSeries).catch(() => {});
+  }, [snapshots]);
 
   const salvarHoje = async () => {
     if (!dados?.totalCarteira) {
@@ -3754,24 +3763,32 @@ function TabPatrimonio({ userId, dados }) {
   const variacao = primeiro && ultimo ? ((ultimo.valor - primeiro.valor) / primeiro.valor) * 100 : 0;
   const ganho = primeiro && ultimo ? Number(ultimo.valor) - Number(primeiro.valor) : 0;
 
-  // Comparação com benchmarks (CDI e IBOV) projetados a partir do 1º snapshot.
-  // Taxas de referência fixas (não o índice ao vivo) — ver nota no gráfico.
+  // Comparação com benchmarks. CDI = taxa de referência fixa; IBOV = índice real
+  // (^BVSP) quando disponível, com fallback gracioso para taxa de referência.
   const base = primeiro ? Number(primeiro.valor) : 0;
   const t0 = primeiro ? new Date(primeiro.data).getTime() : 0;
   const diasPeriodo = primeiro ? (new Date(ultimo.data) - new Date(primeiro.data)) / (1000*60*60*24) : 0;
   const fatorCDI = Math.pow(1 + CDI_ANO/100, diasPeriodo/365) - 1;
-  const fatorIBOV = Math.pow(1 + IBOV_HIST/100, diasPeriodo/365) - 1;
   const cdiAcumulado = base * fatorCDI;
-  const ibovAcumulado = base * fatorIBOV;
+
+  // IBOV real: normaliza o índice pelo valor no 1º snapshot (mesmo ponto inicial)
+  const ibovBase = ibovSeries.length ? ibovNaData(ibovSeries, t0) : null;
+  const ibovReal = !!(base && ibovBase);
+  const ibovFim = ibovReal ? ibovNaData(ibovSeries, new Date(ultimo.data).getTime()) : null;
+  const fatorIBOV = Math.pow(1 + IBOV_HIST/100, diasPeriodo/365) - 1;
+  const ibovAcumulado = (ibovReal && ibovFim) ? base * (ibovFim / ibovBase - 1) : base * fatorIBOV;
 
   // Linhas do gráfico: patrimônio real + curvas de CDI e IBOV no mesmo ponto inicial
   const dadosGrafico = snapshots.map(s => {
-    const dias = (new Date(s.data).getTime() - t0) / (1000*60*60*24);
+    const dMs = new Date(s.data).getTime();
+    const dias = (dMs - t0) / (1000*60*60*24);
+    const ibovClose = ibovReal ? ibovNaData(ibovSeries, dMs) : null;
     return {
       data: new Date(s.data).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
       valor: Number(s.valor),
       cdi: base ? Math.round(base * Math.pow(1 + CDI_ANO/100, dias/365)) : null,
-      ibov: base ? Math.round(base * Math.pow(1 + IBOV_HIST/100, dias/365)) : null,
+      ibov: (ibovReal && ibovClose) ? Math.round(base * (ibovClose / ibovBase))
+            : (base ? Math.round(base * Math.pow(1 + IBOV_HIST/100, dias/365)) : null),
     };
   });
 
@@ -3844,13 +3861,14 @@ function TabPatrimonio({ userId, dados }) {
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="var(--ui-accent)" strokeWidth={2} fill="url(#gradPatrimonio)"/>
               <Line type="monotone" dataKey="cdi" name="CDI (ref.)" stroke="var(--ui-warning)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
-              <Line type="monotone" dataKey="ibov" name="IBOV (ref.)" stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
+              <Line type="monotone" dataKey="ibov" name={ibovReal ? "IBOV" : "IBOV (ref.)"} stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
               <Legend wrapperStyle={{fontSize:11}}/>
             </AreaChart>
           </ResponsiveContainer>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
-            Linhas CDI/IBOV são projeções a partir do 1º snapshot usando taxas de referência fixas
-            (CDI {fmt(CDI_ANO,2)}% a.a. · IBOV {fmt(IBOV_HIST,1)}% a.a. histórico) — não o índice ao vivo.
+            CDI: projeção por taxa de referência fixa ({fmt(CDI_ANO,2)}% a.a.). IBOV: {ibovReal
+              ? "índice real (^BVSP via brapi), normalizado no 1º snapshot"
+              : `referência ${fmt(IBOV_HIST,1)}% a.a. (índice real indisponível no momento)`}.
           </div>
         </Card>
       )}
