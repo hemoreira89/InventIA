@@ -157,11 +157,34 @@ function simularCenarios(pv, pmt, anos) {
   return { pts, cenarios };
 }
 
+function ehTickerFII(ticker) { return /11$/.test((ticker || "").toUpperCase()); }
+
+// Apuração de IR por MÊS-calendário, separando ações de FIIs:
+//  - Ações: isenção de R$ 20.000/mês em vendas; acima disso, 15% sobre o lucro.
+//  - FIIs: 20% sobre o ganho, SEM isenção.
+// Limitações: não cobre day-trade (20%) nem compensação de prejuízos de meses anteriores.
 function calcIR(vendas) {
-  const totalVendas = vendas.reduce((s,v) => s + v.qtd * v.precoVenda, 0);
-  const lucro = vendas.reduce((s,v) => s + v.qtd * (v.precoVenda - (v.pm||0)), 0);
-  const isento = totalVendas <= 20000;
-  return { totalVendas, lucro, isento, ir: isento || lucro <= 0 ? 0 : lucro * 0.15, restante: 20000 - totalVendas };
+  const valorDe = v => (Number(v.qtd)||0) * (Number(v.precoVenda)||0);
+  const lucroDe = v => (Number(v.qtd)||0) * ((Number(v.precoVenda)||0) - (Number(v.pm)||0));
+  const porMes = {};
+  for (const v of vendas) {
+    const mes = (v.data || "").slice(0, 7) || "sem data";
+    if (!porMes[mes]) porMes[mes] = { acoes: [], fiis: [] };
+    (ehTickerFII(v.ticker) ? porMes[mes].fiis : porMes[mes].acoes).push(v);
+  }
+  const meses = Object.entries(porMes).map(([mes, g]) => {
+    const vendasAcoes = g.acoes.reduce((s,v)=>s+valorDe(v),0);
+    const lucroAcoes = g.acoes.reduce((s,v)=>s+lucroDe(v),0);
+    const isentoAcoes = vendasAcoes <= 20000;
+    const irAcoes = isentoAcoes || lucroAcoes <= 0 ? 0 : lucroAcoes * 0.15;
+    const lucroFii = g.fiis.reduce((s,v)=>s+lucroDe(v),0);
+    const irFii = lucroFii > 0 ? lucroFii * 0.20 : 0;
+    return { mes, vendasAcoes, lucroAcoes, isentoAcoes, irAcoes, lucroFii, irFii, irMes: irAcoes + irFii, temFii: g.fiis.length > 0 };
+  }).sort((a,b) => (a.mes < b.mes ? 1 : -1));
+  const totalVendas = vendas.reduce((s,v)=>s+valorDe(v),0);
+  const lucro = vendas.reduce((s,v)=>s+lucroDe(v),0);
+  const irTotal = meses.reduce((s,m)=>s+m.irMes,0);
+  return { totalVendas, lucro, irTotal, meses };
 }
 
 /**
@@ -1664,60 +1687,108 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
 
 // ─── Tab: IR ──────────────────────────────────────────────────────────────────
 function TabIR({ dados }) {
-  const [vendas,setVendas]=useState([]); const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState(""); const [precoV,setPrecoV]=useState("");
+  const [vendas,setVendas]=useState([]);
+  const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState(""); const [precoV,setPrecoV]=useState("");
+  const [pmManual,setPmManual]=useState(""); const [mes,setMes]=useState(() => new Date().toISOString().slice(0,7));
+
+  const fmtMes = (m) => { const [a,me]=(m||"").split("-"); return me ? `${me}/${a}` : m; };
 
   const addVenda = () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !qtd || !precoV) return;
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(qtd) > 0)) { showToast("Quantidade deve ser maior que zero", "error"); return; }
+    if (!(Number(precoV) > 0)) { showToast("Preço de venda deve ser maior que zero", "error"); return; }
+    if (!mes) { showToast("Informe o mês da venda", "error"); return; }
     const pos = dados?.posicoes?.find(p => p.ticker === t);
-    setVendas(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:pos?.pm||0, precoVenda:Number(precoV) }]);
-    setTicker(""); setQtd(""); setPrecoV("");
+    const pm = pmManual !== "" ? Number(pmManual) : (pos?.pm || 0);
+    if (pmManual === "" && !pos?.pm) showToast(`PM de ${t} não encontrado na carteira — informe o PM manualmente para o IR ficar correto`, "warning");
+    setVendas(prev => [...prev, { ticker:t, qtd:Number(qtd), pm, precoVenda:Number(precoV), data:mes }]);
+    setTicker(""); setQtd(""); setPrecoV(""); setPmManual("");
   };
 
   const ir = calcIR(vendas);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"minmax(min(100%,420px),1fr) 2fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.7,marginBottom:12}}>
-          Ações têm isenção de IR para vendas até <b style={{color:"var(--ui-warning)"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
+          <b style={{color:"var(--ui-warning)"}}>Ações:</b> isenção até R$ 20.000 vendidos/mês; acima, 15% sobre o lucro.<br/>
+          <b style={{color:"var(--ui-info)"}}>FIIs:</b> 20% sobre o ganho, sem isenção.
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-          {[{p:"Ticker",v:ticker,s:setTicker,up:true},{p:"Qtd",v:qtd,s:setQtd,t:"number"},{p:"Preço venda R$",v:precoV,s:setPrecoV,t:"number"}].map((f,i) => (
-            <input key={i} type={f.t||"text"} placeholder={f.p} value={f.v}
-              onChange={e=>f.s(f.up?e.target.value.toUpperCase():e.target.value)}
-              style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
-          ))}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+          <input type="text" placeholder="Ticker" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="number" min="0" placeholder="Qtd" value={qtd} onChange={e=>setQtd(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="number" min="0" placeholder="Preço venda" value={precoV} onChange={e=>setPrecoV(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <input type="number" min="0" placeholder="PM (opcional)" value={pmManual} onChange={e=>setPmManual(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="month" value={mes} onChange={e=>setMes(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
         <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"11px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:"0 2px 8px rgba(123,97,255,0.25)"}}>
-          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
+          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Adicionar Venda</>
         </button>
+        <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:10,lineHeight:1.5}}>
+          Estimativa. Não cobre day-trade (20%) nem compensação de prejuízos de meses anteriores.
+        </div>
       </Card>
 
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {vendas.length === 0 && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <Receipt size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Adicione vendas (com o mês) para estimar o IR. Ações e FIIs são apurados separadamente, mês a mês.</div>
+        </Card>
+      )}
       {vendas.length > 0 && <>
         <Card>
-          <STitle>VENDAS SIMULADAS</STitle>
+          <STitle>VENDAS ADICIONADAS</STitle>
           {vendas.map((v,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"var(--ui-warning)"}}>{v.ticker}</span><span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
+              <div>
+                <span style={{fontWeight:700,color:"var(--ui-warning)"}}>{v.ticker}</span>
+                <span style={{fontSize:9,fontWeight:700,marginLeft:6,padding:"1px 5px",borderRadius:4,background:ehTickerFII(v.ticker)?"rgba(0,180,216,0.12)":"rgba(0,229,160,0.12)",color:ehTickerFII(v.ticker)?"var(--ui-info)":"var(--ui-success)"}}>{ehTickerFII(v.ticker)?"FII":"Ação"}</span>
+                <span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)} · {fmtMes(v.data)}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
+                <button onClick={()=>setVendas(prev=>prev.filter((_,j)=>j!==i))} aria-label={`Remover venda ${v.ticker}`} style={{background:"none",border:"none",color:"var(--ui-text-faint)",cursor:"pointer",padding:2,display:"flex"}}><X size={13}/></button>
+              </div>
             </div>
           ))}
           <button onClick={()=>setVendas([])} style={{fontSize:11,color:"var(--ui-danger)",background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginTop:4}}><Trash2 size={11}/>Limpar vendas</button>
         </Card>
 
-        <div style={{background:ir.isento?"rgba(0,229,160,0.06)":"rgba(255,77,109,0.06)",border:`1px solid ${ir.isento?"rgba(0,229,160,0.18)":"rgba(255,77,109,0.18)"}`,borderRadius:16,padding:"18px 16px"}}>
-          <STitle color={ir.isento?"var(--ui-success)":"var(--ui-danger)"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.isento?<><CheckCircle2 size={12} strokeWidth={2.5}/>ISENTO DE IR</>:<><AlertTriangle size={12} strokeWidth={2.5}/>IR DEVIDO ESTE MÊS</>}</span></STitle>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{background:ir.irTotal>0?"rgba(255,77,109,0.06)":"rgba(0,229,160,0.06)",border:`1px solid ${ir.irTotal>0?"rgba(255,77,109,0.18)":"rgba(0,229,160,0.18)"}`,borderRadius:16,padding:"18px 16px"}}>
+          <STitle color={ir.irTotal>0?"var(--ui-danger)":"var(--ui-success)"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.irTotal>0?<><AlertTriangle size={12} strokeWidth={2.5}/>IR TOTAL DEVIDO</>:<><CheckCircle2 size={12} strokeWidth={2.5}/>SEM IR A PAGAR</>}</span></STitle>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
             <Stat label="Total de vendas" value={fmtBRL(ir.totalVendas)} mono/>
-            <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
-            <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"var(--ui-danger)":"var(--ui-success)"} mono/>
-            <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"var(--ui-warning)":"var(--ui-danger)"} mono/>
+            <Stat label="Lucro total" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+            <Stat label="IR a pagar" value={fmtBRL(ir.irTotal)} color={ir.irTotal>0?"var(--ui-danger)":"var(--ui-success)"} mono/>
           </div>
-          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"var(--ui-danger)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
+          {ir.irTotal > 0 && <div style={{marginTop:12,fontSize:12,color:"var(--ui-danger)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF (código 6015) até o último dia útil do mês seguinte a cada apuração.</div>}
         </div>
+
+        <Card>
+          <STitle>APURAÇÃO POR MÊS</STitle>
+          {ir.meses.map(m => (
+            <div key={m.mes} style={{borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:8,marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontWeight:700,color:"var(--ui-text)"}}>{fmtMes(m.mes)}</span>
+                <span style={{fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.irMes>0?"var(--ui-danger)":"var(--ui-success)"}}>{m.irMes>0?fmtBRL(m.irMes):"isento"}</span>
+              </div>
+              <div style={{fontSize:11,color:"var(--ui-text-faint)",lineHeight:1.6}}>
+                {m.vendasAcoes>0 && <div>Ações: vendeu {fmtBRL(m.vendasAcoes)} · lucro {fmtBRL(m.lucroAcoes)} · {m.isentoAcoes?"isento (≤ R$20k)":`IR 15% = ${fmtBRL(m.irAcoes)}`}</div>}
+                {m.temFii && <div>FIIs: lucro {fmtBRL(m.lucroFii)} · IR 20% = {fmtBRL(m.irFii)} (sem isenção)</div>}
+              </div>
+            </div>
+          ))}
+        </Card>
       </>}
       </div>
     </div>
