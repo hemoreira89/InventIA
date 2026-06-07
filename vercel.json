@@ -21,6 +21,9 @@
     },
     "api/cron-screening.js": {
       "maxDuration": 60
+    },
+    "api/cron-alertas.js": {
+      "maxDuration": 60
     }
   },
   "crons": [

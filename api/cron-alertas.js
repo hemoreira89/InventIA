@@ -14,7 +14,8 @@
 export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const GEMINI_MODELS = [...new Set([process.env.GEMINI_MODEL || "gemini-3.5-flash", "gemini-2.5-flash"])];
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const GEMINI_TIMEOUT_MS = 35000; // Google Search é lento; precisa caber no teto de 60s da função
 const MAX_USUARIOS = 25;       // teto defensivo por execução
 const DEDUP_HORAS = 72;        // não repetir a mesma notícia por 3 dias
 
@@ -77,25 +78,26 @@ async function buscarCotacoes(tickers, brapiToken) {
 
 // ─── Gemini com Google Search (cascata) ─────────────────────────────────────────
 async function chamarGeminiSearch(apiKey, prompt) {
-  for (const modelId of GEMINI_MODELS) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          tools: [{ googleSearch: {} }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0.3, responseMimeType: "text/plain" },
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-      if (!r.ok) { console.warn(`[ALERTAS] ${modelId} HTTP ${r.status}`); continue; }
-      const d = await r.json();
-      const txt = d.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
-      if (txt) return txt;
-    } catch (e) { console.error(`[ALERTAS] ${modelId}:`, e.message); }
+  // Uma única tentativa com Search: a busca demora ~20-35s e a função tem teto
+  // de 60s. Sem cascata (2x30s estourava). Se falhar, o próximo run agendado tenta.
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        tools: [{ googleSearch: {} }],
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.3, responseMimeType: "text/plain" },
+      }),
+      signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+    });
+    if (!r.ok) { console.warn(`[ALERTAS] ${GEMINI_MODEL} HTTP ${r.status}`); return null; }
+    const d = await r.json();
+    return d.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || null;
+  } catch (e) {
+    console.error(`[ALERTAS] ${GEMINI_MODEL}:`, e.message);
+    return null;
   }
-  return null;
 }
 
 function extrairJSONArray(texto) {
@@ -178,11 +180,13 @@ export default async function handler(req, res) {
   const brapiToken = process.env.BRAPI_TOKEN;
   if (!botToken || !serviceKey || !geminiKey) return res.status(500).json({ error: "env ausente" });
 
+  const inicio = Date.now();
   const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
   const links = (await supaList("telegram_links", "select=user_id,chat_id", serviceKey)).slice(0, MAX_USUARIOS);
 
   let usuarios = 0, enviados = 0;
   for (const link of links) {
+    if (Date.now() - inicio > 50000) { console.warn("[ALERTAS] orçamento de tempo esgotado; restantes ficam para o próximo run"); break; }
     try {
       const cfg = await supaGet("alertas_config", `user_id=eq.${link.user_id}&select=ativo&limit=1`, serviceKey);
       if (cfg && cfg.ativo === false) continue;
