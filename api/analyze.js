@@ -60,7 +60,8 @@ async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
       const err = await geminiRes.json().catch(() => ({}));
       const errMsg = err?.error?.message || `Erro ${geminiRes.status}`;
       const detail = JSON.stringify(err).slice(0, 500);
-      return { ok: false, error: `${modelId}: ${errMsg}`, detail, retryable: false };
+      // 404 = modelo inexistente → não aborta a cascata, cai pro próximo modelo
+      return { ok: false, error: `${modelId}: ${errMsg}`, detail, retryable: geminiRes.status === 404 };
     }
 
     const data = await geminiRes.json();
@@ -143,18 +144,22 @@ export default async function handler(req, res) {
     // Sem search é rápido (5-15s), então cabem várias tentativas em 60s.
     // Com search é lento (30-50s), então só 1 tentativa.
     // Cada item: [modelId, useSearch]
+    // Modelo principal configurável por env (GEMINI_MODEL); default = 3.5-flash
+    // (avaliado A/B: mais rápido, menos tokens e tese levemente melhor que o 2.5).
+    // 2.5-flash e 2.5-flash-lite ficam como fallback automático (rede de segurança).
+    const PRIMARY = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
     const tentativas = useSearch
       ? [
           // Search: tentamos só uma vez (lento). Se falhar, cai pra sem search.
-          ['gemini-2.5-flash', true],
-          ['gemini-2.5-flash', false],
-          ['gemini-2.5-flash-lite', false]
+          [PRIMARY, true],
+          [PRIMARY, false],
+          ['gemini-2.5-flash', false]
         ]
       : [
-          // Sem search: ordem rápida → boa, fallback se quota
+          // Sem search: principal → fallback 2.5 → fallback leve
+          [PRIMARY, false],
           ['gemini-2.5-flash', false],
-          ['gemini-2.5-flash-lite', false],
-          ['gemini-2.5-pro', false] // pro é lento mas é fallback final
+          ['gemini-2.5-flash-lite', false]
         ];
 
     log('Sequência de tentativas', tentativas.map(([m, s]) => `${m}${s ? '+search' : ''}`));
