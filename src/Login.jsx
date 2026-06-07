@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { signIn, signUp } from "./supabase";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 
@@ -87,14 +87,8 @@ export default function Login({ onAuth }) {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 10,
-            background: "linear-gradient(135deg,#7b61ff,#00e5a0)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#ffffff"
-          }}>
-            <Sparkles size={22} strokeWidth={2.5}/>
-          </div>
+          <img src="/icons/icon-192.png" alt="InvestIA" width={44} height={44}
+            style={{ width: 44, height: 44, borderRadius: 10, display: "block", objectFit: "contain" }}/>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>
               InvestIA <span style={{ color: "var(--ui-accent)" }}>Pro</span>
