@@ -274,7 +274,7 @@ export function projetarRendaPassiva({ patrimonioInicial, aporteMensal, dyAnual,
 
   const pontos = [];
   for (let a = 0; a <= n; a++) {
-    const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+    const patrimonioAnual = juroCompostos(pv, pmt, Number(taxaCrescimento), a * 12);
     const rendaMensal = (patrimonioAnual * dy) / 12;
     pontos.push({
       ano: `${a}a`,

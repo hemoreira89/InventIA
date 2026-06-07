@@ -86,7 +86,7 @@ export default function EmptyState({
           border: "none",
           borderRadius: 10,
           padding: "12px 24px",
-          color: "var(--ui-text)",
+          color: "#ffffff",
           fontWeight: 700,
           fontSize: 13,
           cursor: "pointer",

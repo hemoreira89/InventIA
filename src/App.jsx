@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, createContext, useContext, useRef } from "react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -30,7 +30,7 @@ import {
   juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario,
   dividendoMensal, magicNumber, progressoMagicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
-  xirr, fluxosCarteira
+  xirr, fluxosCarteira, tickerValido
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
 import CommandPalette from "./components/CommandPalette";
@@ -38,6 +38,10 @@ import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
+
+// Contexto do modo privacidade: o <Stat/> (usado em quase todas as abas) mascara
+// automaticamente os valores quando o modo apresentação está ligado.
+const PrivacyContext = createContext({ hidden: false, masked: (v) => v });
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import TickerAutocomplete from "./components/TickerAutocomplete";
@@ -157,11 +161,34 @@ function simularCenarios(pv, pmt, anos) {
   return { pts, cenarios };
 }
 
+function ehTickerFII(ticker) { return /11$/.test((ticker || "").toUpperCase()); }
+
+// Apuração de IR por MÊS-calendário, separando ações de FIIs:
+//  - Ações: isenção de R$ 20.000/mês em vendas; acima disso, 15% sobre o lucro.
+//  - FIIs: 20% sobre o ganho, SEM isenção.
+// Limitações: não cobre day-trade (20%) nem compensação de prejuízos de meses anteriores.
 function calcIR(vendas) {
-  const totalVendas = vendas.reduce((s,v) => s + v.qtd * v.precoVenda, 0);
-  const lucro = vendas.reduce((s,v) => s + v.qtd * (v.precoVenda - (v.pm||0)), 0);
-  const isento = totalVendas <= 20000;
-  return { totalVendas, lucro, isento, ir: isento || lucro <= 0 ? 0 : lucro * 0.15, restante: 20000 - totalVendas };
+  const valorDe = v => (Number(v.qtd)||0) * (Number(v.precoVenda)||0);
+  const lucroDe = v => (Number(v.qtd)||0) * ((Number(v.precoVenda)||0) - (Number(v.pm)||0));
+  const porMes = {};
+  for (const v of vendas) {
+    const mes = (v.data || "").slice(0, 7) || "sem data";
+    if (!porMes[mes]) porMes[mes] = { acoes: [], fiis: [] };
+    (ehTickerFII(v.ticker) ? porMes[mes].fiis : porMes[mes].acoes).push(v);
+  }
+  const meses = Object.entries(porMes).map(([mes, g]) => {
+    const vendasAcoes = g.acoes.reduce((s,v)=>s+valorDe(v),0);
+    const lucroAcoes = g.acoes.reduce((s,v)=>s+lucroDe(v),0);
+    const isentoAcoes = vendasAcoes <= 20000;
+    const irAcoes = isentoAcoes || lucroAcoes <= 0 ? 0 : lucroAcoes * 0.15;
+    const lucroFii = g.fiis.reduce((s,v)=>s+lucroDe(v),0);
+    const irFii = lucroFii > 0 ? lucroFii * 0.20 : 0;
+    return { mes, vendasAcoes, lucroAcoes, isentoAcoes, irAcoes, lucroFii, irFii, irMes: irAcoes + irFii, temFii: g.fiis.length > 0 };
+  }).sort((a,b) => (a.mes < b.mes ? 1 : -1));
+  const totalVendas = vendas.reduce((s,v)=>s+valorDe(v),0);
+  const lucro = vendas.reduce((s,v)=>s+lucroDe(v),0);
+  const irTotal = meses.reduce((s,m)=>s+m.irMes,0);
+  return { totalVendas, lucro, irTotal, meses };
 }
 
 /**
@@ -397,11 +424,12 @@ function STitle({ children, color="var(--ui-accent)" }) {
 }
 
 function Stat({ label, value, color, mono=false }) {
+  const { masked } = useContext(PrivacyContext);
   return (
     <div style={{background:"var(--ui-bg-secondary)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--ui-border)"}}>
       <div style={{fontSize:9,color:"var(--ui-text-faint)",marginBottom:4,fontWeight:600,letterSpacing:1}}>{label}</div>
       <div style={{fontSize:14,fontWeight:700,color:color||"var(--ui-text)",
-        fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{value}</div>
+        fontFamily:mono?"'JetBrains Mono',monospace":"inherit"}}>{masked(value)}</div>
     </div>
   );
 }
@@ -636,6 +664,9 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
     const preco = cotacoes[a.ticker]?.preco ?? a.pm ?? 0;
     return s + (Number(a.qtd) || 0) * preco;
   }, 0);
+  // XIRR só é confiável com cotação ao vivo de TODOS os ativos — senão usa PM como
+  // "preço atual" (fallback acima) e distorce o retorno.
+  const cotacoesCompletas = carteira.length > 0 && carteira.every(a => cotacoes[a.ticker]?.preco != null);
   const fluxosXirr = fluxosCarteira(historico, valorAtualCarteira);
   const totalAportado = fluxosXirr.reduce((s, f) => s + (f.amount < 0 ? -f.amount : 0), 0);
   const rentabilidadeReal = xirr(fluxosXirr); // decimal a.a. ou null
@@ -885,7 +916,12 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
       {carteira.length > 0 ? <>
-        {rentabilidadeReal != null && (
+        {rentabilidadeReal != null && !cotacoesCompletas && (
+          <Card>
+            <div style={{fontSize:11,color:"var(--ui-text-muted)"}}>Rentabilidade real (XIRR) aguardando cotações ao vivo de todos os ativos para não distorcer o cálculo.</div>
+          </Card>
+        )}
+        {rentabilidadeReal != null && cotacoesCompletas && (
           <Card>
             <STitle>RENTABILIDADE REAL (XIRR)</STitle>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,150px),1fr))",gap:10}}>
@@ -1273,7 +1309,7 @@ function VisualizacoesCarteira({ dados }) {
               </linearGradient></defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
               <XAxis dataKey="mes" tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`} width={48}/>
+              <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>"R$"+(v>=1000?Math.round(v/1000)+"k":v)} width={48}/>
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="dividendos" name="Dividendos" stroke="var(--ui-success)" strokeWidth={2} fill="url(#gd)"/>
             </AreaChart>
@@ -1343,17 +1379,20 @@ function TabMeta({ dados }) {
   const pv = dados?.totalCarteira || 0;
 
   const calcular = () => {
-    const M=Number(meta)||1e6; const pmt=Number(aporteMensal)||0; const taxa=Number(taxaAnual)||12;
-    let meses = 0;
-    while (meses < 1200) { meses++; if (juroCompostos(pv,pmt,taxa,meses) >= M) break; }
+    const M=Number.isFinite(Number(meta))&&Number(meta)>0?Number(meta):1e6;
+    const pmt=Number.isFinite(Number(aporteMensal))?Math.max(0,Number(aporteMensal)):0;
+    const taxa=Number.isFinite(Number(taxaAnual))?Number(taxaAnual):12;
+    let meses = 0, atingiu = false;
+    while (meses < 1200) { meses++; if (juroCompostos(pv,pmt,taxa,meses) >= M) { atingiu = true; break; } }
+    if (!atingiu) { setResultado({ inatingivel:true, meta:M }); return; }
     const anos = meses/12;
     const totalAportado = pv + pmt*meses;
     const projecao = gerarProjecao(pv, pmt, taxa, Math.ceil(anos)+2);
-    setResultado({ meses, anos, totalAportado, totalJuros:M-totalAportado, projecao, divMensal:M*(taxa/100/12), meta:M });
+    setResultado({ inatingivel:false, meses, anos, totalAportado, totalJuros:M-totalAportado, projecao, divMensal:M*(taxa/100/12), meta:M });
   };
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card accent style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1379,7 +1418,16 @@ function TabMeta({ dados }) {
         </button>
       </Card>
 
-      {resultado && <>
+      {resultado?.inatingivel && (
+        <Card style={{padding:"20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"var(--ui-warning)",marginBottom:6}}>Meta não atingível com esses parâmetros</div>
+          <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>
+            Com o aporte e a taxa informados, o patrimônio não alcança {fmtBRL(resultado.meta)} em até 100 anos.
+            Aumente o aporte mensal ou a taxa esperada (ou reduza a meta) e calcule de novo.
+          </div>
+        </Card>
+      )}
+      {resultado && !resultado.inatingivel && <>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
             <div style={{fontSize:32,fontWeight:900,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
@@ -1428,7 +1476,7 @@ function TabCenarios({ dados }) {
   };
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-info)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1490,7 +1538,9 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
 
   const add = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !alvo || !userId) return;
+    if (!userId) return;
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(alvo) > 0)) { showToast("Informe um preço-alvo maior que zero", "error"); return; }
     setSalvando(true);
     try {
       const novoItem = await salvarWatchlist(userId, {
@@ -1544,7 +1594,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
         await promessaDelete;
         const novo = await salvarWatchlist(userId, {
           ticker: itemBackup.ticker,
-          alvo: itemBackup.alvo,
+          preco_alvo: itemBackup.alvo,
           nota: itemBackup.nota,
           precoIA: itemBackup.precoIA
         });
@@ -1570,7 +1620,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
   const atingiram = enriched.filter(w => w.atingiu);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-accent)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1642,60 +1692,108 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
 
 // ─── Tab: IR ──────────────────────────────────────────────────────────────────
 function TabIR({ dados }) {
-  const [vendas,setVendas]=useState([]); const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState(""); const [precoV,setPrecoV]=useState("");
+  const [vendas,setVendas]=useState([]);
+  const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState(""); const [precoV,setPrecoV]=useState("");
+  const [pmManual,setPmManual]=useState(""); const [mes,setMes]=useState(() => new Date().toISOString().slice(0,7));
+
+  const fmtMes = (m) => { const [a,me]=(m||"").split("-"); return me ? `${me}/${a}` : m; };
 
   const addVenda = () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !qtd || !precoV) return;
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(qtd) > 0)) { showToast("Quantidade deve ser maior que zero", "error"); return; }
+    if (!(Number(precoV) > 0)) { showToast("Preço de venda deve ser maior que zero", "error"); return; }
+    if (!mes) { showToast("Informe o mês da venda", "error"); return; }
     const pos = dados?.posicoes?.find(p => p.ticker === t);
-    setVendas(prev => [...prev, { ticker:t, qtd:Number(qtd), pm:pos?.pm||0, precoVenda:Number(precoV) }]);
-    setTicker(""); setQtd(""); setPrecoV("");
+    const pm = pmManual !== "" ? Number(pmManual) : (pos?.pm || 0);
+    if (pmManual === "" && !pos?.pm) showToast(`PM de ${t} não encontrado na carteira — informe o PM manualmente para o IR ficar correto`, "warning");
+    setVendas(prev => [...prev, { ticker:t, qtd:Number(qtd), pm, precoVenda:Number(precoV), data:mes }]);
+    setTicker(""); setQtd(""); setPrecoV(""); setPmManual("");
   };
 
   const ir = calcIR(vendas);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"minmax(min(100%,420px),1fr) 2fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.7,marginBottom:12}}>
-          Ações têm isenção de IR para vendas até <b style={{color:"var(--ui-warning)"}}>R$ 20.000/mês</b>. Acima disso, incide 15% sobre o lucro.
+          <b style={{color:"var(--ui-warning)"}}>Ações:</b> isenção até R$ 20.000 vendidos/mês; acima, 15% sobre o lucro.<br/>
+          <b style={{color:"var(--ui-info)"}}>FIIs:</b> 20% sobre o ganho, sem isenção.
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-          {[{p:"Ticker",v:ticker,s:setTicker,up:true},{p:"Qtd",v:qtd,s:setQtd,t:"number"},{p:"Preço venda R$",v:precoV,s:setPrecoV,t:"number"}].map((f,i) => (
-            <input key={i} type={f.t||"text"} placeholder={f.p} value={f.v}
-              onChange={e=>f.s(f.up?e.target.value.toUpperCase():e.target.value)}
-              style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px 10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
-          ))}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+          <input type="text" placeholder="Ticker" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="number" min="0" placeholder="Qtd" value={qtd} onChange={e=>setQtd(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="number" min="0" placeholder="Preço venda" value={precoV} onChange={e=>setPrecoV(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <input type="number" min="0" placeholder="PM (opcional)" value={pmManual} onChange={e=>setPmManual(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
+          <input type="month" value={mes} onChange={e=>setMes(e.target.value)}
+            style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:9,padding:"10px",fontSize:13,color:"var(--ui-text)",width:"100%"}}/>
         </div>
         <button onClick={addVenda} style={{width:"100%",background:"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:9,padding:"11px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:"0 2px 8px rgba(123,97,255,0.25)"}}>
-          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Simular Venda</>
+          <><Plus size={14} strokeWidth={2.5} style={{display:"inline",verticalAlign:"middle",marginRight:6}}/>Adicionar Venda</>
         </button>
+        <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:10,lineHeight:1.5}}>
+          Estimativa. Não cobre day-trade (20%) nem compensação de prejuízos de meses anteriores.
+        </div>
       </Card>
 
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {vendas.length === 0 && (
+        <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
+          <Receipt size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Adicione vendas (com o mês) para estimar o IR. Ações e FIIs são apurados separadamente, mês a mês.</div>
+        </Card>
+      )}
       {vendas.length > 0 && <>
         <Card>
-          <STitle>VENDAS SIMULADAS</STitle>
+          <STitle>VENDAS ADICIONADAS</STitle>
           {vendas.map((v,i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
-              <div><span style={{fontWeight:700,color:"var(--ui-warning)"}}>{v.ticker}</span><span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)}</span></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:7,marginBottom:7}}>
+              <div>
+                <span style={{fontWeight:700,color:"var(--ui-warning)"}}>{v.ticker}</span>
+                <span style={{fontSize:9,fontWeight:700,marginLeft:6,padding:"1px 5px",borderRadius:4,background:ehTickerFII(v.ticker)?"rgba(0,180,216,0.12)":"rgba(0,229,160,0.12)",color:ehTickerFII(v.ticker)?"var(--ui-info)":"var(--ui-success)"}}>{ehTickerFII(v.ticker)?"FII":"Ação"}</span>
+                <span style={{fontSize:11,color:"var(--ui-text-faint)",marginLeft:8}}>{v.qtd} × {fmtBRL(v.precoVenda)} · {fmtMes(v.data)}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{textAlign:"right"}}><div style={{fontSize:12}}>{fmtBRL(v.qtd*v.precoVenda)}</div><Badge val={v.pm?((v.precoVenda-v.pm)/v.pm*100):null}/></div>
+                <button onClick={()=>setVendas(prev=>prev.filter((_,j)=>j!==i))} aria-label={`Remover venda ${v.ticker}`} style={{background:"none",border:"none",color:"var(--ui-text-faint)",cursor:"pointer",padding:2,display:"flex"}}><X size={13}/></button>
+              </div>
             </div>
           ))}
           <button onClick={()=>setVendas([])} style={{fontSize:11,color:"var(--ui-danger)",background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginTop:4}}><Trash2 size={11}/>Limpar vendas</button>
         </Card>
 
-        <div style={{background:ir.isento?"rgba(0,229,160,0.06)":"rgba(255,77,109,0.06)",border:`1px solid ${ir.isento?"rgba(0,229,160,0.18)":"rgba(255,77,109,0.18)"}`,borderRadius:16,padding:"18px 16px"}}>
-          <STitle color={ir.isento?"var(--ui-success)":"var(--ui-danger)"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.isento?<><CheckCircle2 size={12} strokeWidth={2.5}/>ISENTO DE IR</>:<><AlertTriangle size={12} strokeWidth={2.5}/>IR DEVIDO ESTE MÊS</>}</span></STitle>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{background:ir.irTotal>0?"rgba(255,77,109,0.06)":"rgba(0,229,160,0.06)",border:`1px solid ${ir.irTotal>0?"rgba(255,77,109,0.18)":"rgba(0,229,160,0.18)"}`,borderRadius:16,padding:"18px 16px"}}>
+          <STitle color={ir.irTotal>0?"var(--ui-danger)":"var(--ui-success)"}><span style={{display:"inline-flex",alignItems:"center",gap:6}}>{ir.irTotal>0?<><AlertTriangle size={12} strokeWidth={2.5}/>IR TOTAL DEVIDO</>:<><CheckCircle2 size={12} strokeWidth={2.5}/>SEM IR A PAGAR</>}</span></STitle>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
             <Stat label="Total de vendas" value={fmtBRL(ir.totalVendas)} mono/>
-            <Stat label="Lucro" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
-            <Stat label="IR a pagar" value={fmtBRL(ir.ir)} color={ir.ir>0?"var(--ui-danger)":"var(--ui-success)"} mono/>
-            <Stat label="Margem isenção" value={ir.restante>0?fmtBRL(ir.restante):"Esgotada"} color={ir.restante>0?"var(--ui-warning)":"var(--ui-danger)"} mono/>
+            <Stat label="Lucro total" value={fmtBRL(ir.lucro)} color={ir.lucro>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+            <Stat label="IR a pagar" value={fmtBRL(ir.irTotal)} color={ir.irTotal>0?"var(--ui-danger)":"var(--ui-success)"} mono/>
           </div>
-          {ir.ir > 0 && <div style={{marginTop:12,fontSize:12,color:"var(--ui-danger)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF até o último dia útil do mês seguinte. Código DARF: 6015.</div>}
+          {ir.irTotal > 0 && <div style={{marginTop:12,fontSize:12,color:"var(--ui-danger)",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}><AlertCircle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>Recolher via DARF (código 6015) até o último dia útil do mês seguinte a cada apuração.</div>}
         </div>
+
+        <Card>
+          <STitle>APURAÇÃO POR MÊS</STitle>
+          {ir.meses.map(m => (
+            <div key={m.mes} style={{borderBottom:"1px solid var(--ui-border-soft)",paddingBottom:8,marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontWeight:700,color:"var(--ui-text)"}}>{fmtMes(m.mes)}</span>
+                <span style={{fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.irMes>0?"var(--ui-danger)":"var(--ui-success)"}}>{m.irMes>0?fmtBRL(m.irMes):"isento"}</span>
+              </div>
+              <div style={{fontSize:11,color:"var(--ui-text-faint)",lineHeight:1.6}}>
+                {m.vendasAcoes>0 && <div>Ações: vendeu {fmtBRL(m.vendasAcoes)} · lucro {fmtBRL(m.lucroAcoes)} · {m.isentoAcoes?"isento (≤ R$20k)":`IR 15% = ${fmtBRL(m.irAcoes)}`}</div>}
+                {m.temFii && <div>FIIs: lucro {fmtBRL(m.lucroFii)} · IR 20% = {fmtBRL(m.irFii)} (sem isenção)</div>}
+              </div>
+            </div>
+          ))}
+        </Card>
       </>}
       </div>
     </div>
@@ -2030,11 +2128,13 @@ function TabTicker({ chamarIAComSearch }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const reqRef = useRef(0);
   const analisar = () => analisarTicker(ticker);
 
   const analisarTicker = async (tickerArg) => {
     const t = (tickerArg || "").toUpperCase().trim();
     if (!t) { setErro("Digite um ticker"); return; }
+    const id = ++reqRef.current; // ignora resultados de análises antigas (race condition)
     setErro(""); setLoading(true); setResultado(null); setStep(0);
     try {
       // ── PASSO 1-2: dados quantitativos via APIs (paralelo, ~1-2s total) ──
@@ -2168,13 +2268,15 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
         aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Tese gerada por IA. Confirme antes de operar.",
       };
 
-      setResultado(resultadoFinal);
+      if (reqRef.current === id) setResultado(resultadoFinal);
     } catch (e) {
-      setErro(e.message || "Erro na análise");
+      if (reqRef.current === id) setErro(e.message || "Erro na análise");
     } finally {
-      setLoading(false);
-      setFase("");
-      setTimeout(() => setStep(0), 500);
+      if (reqRef.current === id) {
+        setLoading(false);
+        setFase("");
+        setTimeout(() => setStep(0), 500);
+      }
     }
   };
 
@@ -2323,7 +2425,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
                   }}>{resultado.tese.tipo.toUpperCase()}</span>
                   {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
                 </div>
-                {resultado.tese.preco_alvo && (
+                {resultado.tese.preco_alvo && resultado.preco > 0 && (
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
                     <div style={{fontSize:18,fontWeight:800,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
@@ -2425,8 +2527,8 @@ function TabComparador({ chamarIAComSearch }) {
   const [fase, setFase] = useState("");
 
   const comparar = async () => {
-    const ts = tickers.map(t=>t.toUpperCase().trim()).filter(Boolean);
-    if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers"); return; }
+    const ts = [...new Set(tickers.map(t=>t.toUpperCase().trim()).filter(Boolean))];
+    if (ts.length < 2) { setErro("Adicione pelo menos 2 tickers diferentes"); return; }
     setErro(""); setLoading(true); setResultado(null);
     try {
       // ── PASSO 1: dados quantitativos via APIs (paralelo) ──
@@ -2602,16 +2704,18 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
                           <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{a.setor}</div>
                         </td>
                         <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)",fontWeight:600}}>{fmtBRL(a.preco)}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:600}}>{a.dy?fmt(a.dy,2)+"%":"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pl?fmt(a.pl,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pvp?fmt(a.pvp,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:600}}>{a.roe?fmt(a.roe,1)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:600}}>{a.dy != null ? fmt(a.dy,2)+"%" : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pl != null ? fmt(a.pl,2) : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pvp != null ? fmt(a.pvp,2) : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:600}}>{a.roe != null ? fmt(a.roe,1)+"%" : "–"}</td>
                         <td style={{textAlign:"right",padding:"12px 8px"}}>
+                          {a.score == null ? <span style={{color:"var(--ui-text-faint)"}}>–</span> : (
                           <span style={{
                             padding:"4px 10px",borderRadius:6,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
                             background:a.score>=70?"rgba(0,229,160,0.12)":a.score>=50?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
                             color:a.score>=70?"var(--ui-success)":a.score>=50?"var(--ui-warning)":"var(--ui-danger)"
                           }}>{a.score}</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2738,7 +2842,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                     <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Clock size={11}/>{data.toLocaleDateString("pt-BR")} {data.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
                     {a.perfil && <span>· {a.perfil}</span>}
                     {a.foco && <span>· {a.foco}</span>}
-                    {a.resultado?.recomendacoes?.length && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
+                    {a.resultado?.recomendacoes?.length > 0 && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
                   </div>
                 </div>
               </div>
@@ -2813,7 +2917,9 @@ function TabProventos({ userId }) {
 
   const adicionar = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !valor || !data) return;
+    if (!data) { showToast("Informe a data do provento", "error"); return; }
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(valor) > 0)) { showToast("Informe um valor maior que zero", "error"); return; }
     setSalvando(true);
     try {
       const novo = await registrarProvento(userId, {
@@ -2871,12 +2977,14 @@ function TabProventos({ userId }) {
   };
 
   // Estatísticas
-  const totalAno = proventos.filter(p => new Date(p.data_pagamento).getFullYear() === new Date().getFullYear()).reduce((s,p) => s + Number(p.valor), 0);
-  const totalMes = proventos.filter(p => {
+  // Bonificação é paga em ações/cotas (não em R$), então não entra nos somatórios de renda.
+  const proventosEmDinheiro = proventos.filter(p => p.tipo !== "bonificacao");
+  const totalAno = proventosEmDinheiro.filter(p => new Date(p.data_pagamento).getFullYear() === new Date().getFullYear()).reduce((s,p) => s + Number(p.valor), 0);
+  const totalMes = proventosEmDinheiro.filter(p => {
     const d = new Date(p.data_pagamento);
     return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
   }).reduce((s,p) => s + Number(p.valor), 0);
-  const totalGeral = proventos.reduce((s,p) => s + Number(p.valor), 0);
+  const totalGeral = proventosEmDinheiro.reduce((s,p) => s + Number(p.valor), 0);
 
   // Gráfico mensal últimos 12 meses
   const meses = [];
@@ -2903,7 +3011,7 @@ function TabProventos({ userId }) {
   const topTickers = Object.entries(porTicker).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       {/* Coluna esquerda: registrar + stats */}
       <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
         <Card>
@@ -2948,7 +3056,7 @@ function TabProventos({ userId }) {
               <BarChart data={meses} margin={{left:0,right:0,top:5,bottom:5}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
                 <XAxis dataKey="mes" tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v}`}/>
+                <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>"R$"+(v>=1000?Math.round(v/1000)+"k":v)}/>
                 <Tooltip content={<TTip/>}/>
                 <Bar dataKey="valor" name="Proventos" fill="var(--ui-success)" radius={[4,4,0,0]}/>
               </BarChart>
@@ -2961,7 +3069,7 @@ function TabProventos({ userId }) {
             <STitle>TOP 5 PAGADORES</STitle>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {topTickers.map(([t,v]) => {
-                const pct = (v / totalGeral) * 100;
+                const pct = totalGeral > 0 ? (v / totalGeral) * 100 : 0;
                 return (
                   <div key={t}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
@@ -2999,7 +3107,7 @@ function TabProventos({ userId }) {
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"var(--ui-success)",fontSize:14}}>{fmtBRL(p.valor)}</span>
-                    <button onClick={()=>remover(p.id)} style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
+                    <button onClick={()=>remover(p.id)} aria-label={`Remover provento de ${p.ticker}`} style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"5px 7px",color:"var(--ui-danger)",cursor:"pointer",display:"flex"}}><Trash2 size={12}/></button>
                   </div>
                 </div>
               ))}
@@ -3191,7 +3299,7 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
 function TabRendaPassiva({ dados }) {
   const patrimonioAtual = dados?.totalCarteira || 0;
   const dyCarteira = dados?.posicoes?.length
-    ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*(p.peso/100), 0)
+    ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*((p.peso||0)/100), 0)
     : 0;
 
   const [patrimonio, setPatrimonio] = useState(() => patrimonioAtual > 0 ? String(Math.round(patrimonioAtual)) : "100000");
@@ -3208,15 +3316,17 @@ function TabRendaPassiva({ dados }) {
   }, [patrimonioAtual, dyCarteira]);
 
   const calcular = () => {
-    const pv = Number(patrimonio) || 0;
-    const pmt = Number(aporte) || 0;
-    const dy = (Number(dyEsperado) || 8) / 100;
-    const n = Number(anos) || 20;
+    const pv = Number.isFinite(Number(patrimonio)) ? Math.max(0, Number(patrimonio)) : 0;
+    const pmt = Number.isFinite(Number(aporte)) ? Math.max(0, Number(aporte)) : 0;
+    const dyNum = Number(dyEsperado);
+    const dy = (Number.isFinite(dyNum) ? dyNum : 8) / 100;
+    const taxaCresc = Number.isFinite(Number(taxaCrescimento)) ? Number(taxaCrescimento) : 10;
+    const n = Number.isFinite(Number(anos)) && Number(anos) > 0 ? Math.round(Number(anos)) : 20;
 
     const pontos = [];
     for (let a = 0; a <= n; a++) {
-      // Patrimônio acumula com taxa de crescimento real + aportes
-      const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+      // Patrimônio acumula com taxa de crescimento real + aportes (pmt é MENSAL)
+      const patrimonioAnual = juroCompostos(pv, pmt, taxaCresc, a * 12);
       const rendaMensal = (patrimonioAnual * dy) / 12;
       pontos.push({
         ano: `${a}a`,
@@ -3236,7 +3346,7 @@ function TabRendaPassiva({ dados }) {
   const rendaMensalAtual = (Number(patrimonio) * (Number(dyEsperado)/100)) / 12;
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:16,alignItems:"start"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>PROJEÇÃO DE RENDA PASSIVA</span></STitle>
 
@@ -3396,7 +3506,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
   }
 
   const totalAtual = posicoes.reduce((s,p) => s + (p.valor||0), 0);
-  const aporteNum = Number(aporte) || 0;
+  const aporteNum = Math.max(0, Number(aporte) || 0);
   const totalComAporte = totalAtual + aporteNum;
 
   // Monta dados comparando peso atual vs peso alvo
@@ -3406,7 +3516,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
     const pesoAlvo = a.peso_alvo || 0;
     const valorAtual = pos ? (pos.valor || 0) : 0;
     const valorAlvo = pesoAlvo > 0 ? (totalComAporte * pesoAlvo / 100) : null;
-    const diferenca = valorAlvo != null ? (valorAlvo - valorAtual - (pesoAlvo/100)*aporteNum) : null;
+    const diferenca = valorAlvo != null ? (valorAlvo - valorAtual) : null;
     const delta = pesoAlvo > 0 ? (pesoAtual - pesoAlvo) : null;
 
     return {
@@ -3441,6 +3551,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
             <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>Simular aporte:</div>
             <input
               type="number"
+              min="0"
               placeholder="R$ 0"
               value={aporte}
               onChange={e=>setAporte(e.target.value)}
@@ -3512,22 +3623,24 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
                     </td>
                     {aporteNum > 0 && (
                       <td style={{padding:"10px 8px",textAlign:"right"}}>
-                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (
+                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (() => {
+                          const d = r.valorAlvo - r.valorAtual;
+                          const limiar = Math.max(50, r.valorAlvo * 0.02);
+                          const acao = d > limiar ? "Comprar" : d < -limiar ? "Reduzir" : "Manter";
+                          const cor = acao === "Comprar" ? "var(--ui-success)" : acao === "Reduzir" ? "var(--ui-warning)" : "var(--ui-text-muted)";
+                          return (
                           <div>
-                            <span style={{
-                              fontWeight:700,fontSize:12,
-                              color: r.valorAlvo > r.valorAtual ? "var(--ui-success)" : "var(--ui-danger)"
-                            }}>
-                              {r.valorAlvo > r.valorAtual ? "Comprar " : "Manter "}
-                              {r.valorAlvo > r.valorAtual ? fmtBRL(r.valorAlvo - r.valorAtual) : ""}
+                            <span style={{fontWeight:700,fontSize:12,color:cor}}>
+                              {acao}{acao !== "Manter" ? " " + fmtBRL(Math.abs(d)) : ""}
                             </span>
-                            {r.preco && r.valorAlvo > r.valorAtual && (
+                            {r.preco && acao !== "Manter" && (
                               <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>
-                                ≈ {Math.ceil((r.valorAlvo - r.valorAtual)/r.preco)} cotas
+                                ≈ {Math.ceil(Math.abs(d)/r.preco)} cotas
                               </div>
                             )}
                           </div>
-                        ) : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
+                          );
+                        })() : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
                       </td>
                     )}
                   </tr>
@@ -3893,7 +4006,7 @@ function TabPatrimonio({ userId, dados }) {
 
   const primeiro = snapshots[0];
   const ultimo = snapshots[snapshots.length-1];
-  const variacao = primeiro && ultimo ? ((ultimo.valor - primeiro.valor) / primeiro.valor) * 100 : 0;
+  const variacao = primeiro && ultimo && Number(primeiro.valor) > 0 ? ((Number(ultimo.valor) - Number(primeiro.valor)) / Number(primeiro.valor)) * 100 : 0;
   const ganho = primeiro && ultimo ? Number(ultimo.valor) - Number(primeiro.valor) : 0;
 
   // Comparação com benchmarks. CDI = taxa de referência fixa; IBOV = índice real
@@ -4721,7 +4834,7 @@ Responda APENAS este JSON (sem markdown):
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
-          Filtra os ~750 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
+          Filtra mais de 1.400 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
         </div>
 
         {/* Tipo de oportunidade */}
@@ -4757,16 +4870,16 @@ Responda APENAS este JSON (sem markdown):
           <select value={filtros.setor} onChange={e=>setFiltros({...filtros,setor:e.target.value})}
             style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer"}}>
             <option value="qualquer">Qualquer setor</option>
-            <option value="bancos">Bancos</option>
-            <option value="energia eletrica">Energia Elétrica</option>
-            <option value="saneamento">Saneamento</option>
-            <option value="petróleo e gás">Petróleo & Gás</option>
-            <option value="siderurgia">Siderurgia</option>
-            <option value="varejo">Varejo</option>
-            <option value="tecnologia">Tecnologia</option>
-            <option value="saúde">Saúde</option>
-            <option value="agro">Agronegócio</option>
-            <option value="imobiliário">Imobiliário (FIIs)</option>
+            <option value="Bancos">Bancos</option>
+            <option value="Energia Elétrica">Energia Elétrica</option>
+            <option value="Saneamento">Saneamento</option>
+            <option value="Petróleo & Gás">Petróleo & Gás</option>
+            <option value="Siderurgia">Siderurgia</option>
+            <option value="Varejo">Varejo</option>
+            <option value="Tecnologia">Tecnologia</option>
+            <option value="Saúde">Saúde</option>
+            <option value="Agronegócio">Agronegócio</option>
+            <option value="Imobiliário (FIIs)">Imobiliário (FIIs)</option>
           </select>
           <button onClick={buscar} disabled={loading} style={{
             background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,
@@ -5536,6 +5649,7 @@ Regras:
   }, [agora]);
 
   return (
+   <PrivacyContext.Provider value={privacy}>
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
       <style>{`
@@ -6188,6 +6302,7 @@ Regras:
         </div>
       </div>
     </div>
+   </PrivacyContext.Provider>
   );
 }
 
