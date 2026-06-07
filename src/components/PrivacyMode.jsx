@@ -42,6 +42,7 @@ export function PrivacyToggle({ hidden, toggle, size = 14 }) {
     <button
       onClick={toggle}
       title={hidden ? "Mostrar valores" : "Esconder valores (modo apresentação)"}
+      aria-label={hidden ? "Mostrar valores" : "Esconder valores"}
       style={{
         background: hidden ? "rgba(123,97,255,0.12)" : "var(--ui-bg-secondary)",
         border: `1px solid ${hidden ? "rgba(123,97,255,0.31)" : "var(--ui-border)"}`,
