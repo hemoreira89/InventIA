@@ -8,7 +8,7 @@
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
 
-const SRC = "src/premium_bull_icon.png"; // arte-mestre 2048x2048 RGBA
+const SRC = "assets-src/logo-bull-master.png"; // arte-mestre 2048x2048 RGBA
 const OUT = "public/icons";
 mkdirSync(OUT, { recursive: true });
 
