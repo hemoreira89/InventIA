@@ -519,3 +519,72 @@ export function margemSeguranca(precoAtual, precoTeto) {
   if (!precoAtual || precoAtual <= 0 || !precoTeto || precoTeto <= 0) return null;
   return ((precoTeto - precoAtual) / precoAtual) * 100;
 }
+
+// ─── Rentabilidade real (XIRR / retorno ponderado pelo tempo dos aportes) ──────
+
+/**
+ * XIRR: taxa interna de retorno anualizada de fluxos de caixa em datas
+ * irregulares (considera o timing de cada aporte). Aportes = valores negativos
+ * (dinheiro que entrou no investimento); valor atual = positivo.
+ * @param {Array<{date: (Date|string|number), amount: number}>} cashflows
+ * @param {number} [guess=0.1] - chute inicial (decimal)
+ * @returns {number|null} Taxa anual em decimal (0.12 = 12% a.a.), ou null
+ */
+export function xirr(cashflows, guess = 0.1) {
+  if (!Array.isArray(cashflows) || cashflows.length < 2) return null;
+  const flows = cashflows
+    .map(c => ({ t: new Date(c.date).getTime(), amount: Number(c.amount) }))
+    .filter(c => Number.isFinite(c.t) && Number.isFinite(c.amount))
+    .sort((a, b) => a.t - b.t);
+  if (flows.length < 2) return null;
+  if (!flows.some(f => f.amount > 0) || !flows.some(f => f.amount < 0)) return null;
+
+  const t0 = flows[0].t;
+  const MS_ANO = 365 * 24 * 3600 * 1000;
+  const anos = t => (t - t0) / MS_ANO;
+  const npv = r => flows.reduce((s, f) => s + f.amount / Math.pow(1 + r, anos(f.t)), 0);
+  const dnpv = r => flows.reduce((s, f) => {
+    const y = anos(f.t);
+    return s - (y * f.amount) / Math.pow(1 + r, y + 1);
+  }, 0);
+
+  // Newton-Raphson
+  let r = guess;
+  for (let i = 0; i < 100; i++) {
+    const f = npv(r), d = dnpv(r);
+    if (!Number.isFinite(f) || !Number.isFinite(d) || d === 0) break;
+    const rNext = r - f / d;
+    if (!Number.isFinite(rNext) || rNext <= -0.9999) break;
+    if (Math.abs(rNext - r) < 1e-7) return rNext;
+    r = rNext;
+  }
+
+  // Fallback: bisseção em [-0.9999, 10]
+  let lo = -0.9999, hi = 10;
+  let flo = npv(lo), fhi = npv(hi);
+  if (!Number.isFinite(flo) || !Number.isFinite(fhi) || flo * fhi > 0) return null;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const fmid = npv(mid);
+    if (!Number.isFinite(fmid)) return null;
+    if (Math.abs(fmid) < 1e-7) return mid;
+    if (flo * fmid < 0) { hi = mid; } else { lo = mid; flo = fmid; }
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * Monta os fluxos de caixa da carteira para o XIRR: cada compra é um aporte
+ * (saída de caixa, negativo) na sua data; o valor atual é a entrada final.
+ * @param {Array<{qtd:number, pm:number, data:(string|Date)}>} compras
+ * @param {number} valorAtual - valor de mercado atual da carteira
+ * @param {Date} [hoje=new Date()]
+ * @returns {Array<{date:any, amount:number}>}
+ */
+export function fluxosCarteira(compras, valorAtual, hoje = new Date()) {
+  const fluxos = (compras || [])
+    .filter(c => c?.data && Number(c.qtd) > 0 && Number(c.pm) > 0)
+    .map(c => ({ date: c.data, amount: -(Number(c.qtd) * Number(c.pm)) }));
+  if (valorAtual > 0) fluxos.push({ date: hoje, amount: valorAtual });
+  return fluxos;
+}
