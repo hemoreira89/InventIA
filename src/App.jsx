@@ -29,7 +29,7 @@ import {
   fmt, fmtBRL, fmtK, sleep, extrairJSON,
   juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario,
-  dividendoMensal, magicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
+  dividendoMensal, magicNumber, progressoMagicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
   xirr, fluxosCarteira
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
@@ -606,7 +606,7 @@ function LoadingCard({ fase }) {
 }
 
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
-function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId }) {
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId, fundamentosCarteira }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
@@ -917,6 +917,10 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           const valorTotal = precoAtual ? precoAtual * a.qtd : null;
           const variacaoPctPM = a.pm && precoAtual ? (precoAtual - a.pm) / a.pm * 100 : null;
           const variacaoDia = cotacao?.variacaoPct;
+          // Magic Number (bola de neve): cotas p/ os dividendos comprarem 1 nova cota
+          const dyAtivo = pos?.dy ?? fundamentosCarteira?.[a.ticker]?.dy ?? cotacao?.dy ?? null;
+          const mn = magicNumber(precoAtual, dividendoMensal(precoAtual, dyAtivo));
+          const progMN = progressoMagicNumber(a.qtd, mn);
           return (
             <Card key={a.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -980,8 +984,24 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                 </div>
               )}
 
+              {progMN && (
+                <div style={{marginTop:8}} title={`Magic Number: você precisa de ${mn} cotas para os dividendos comprarem 1 nova cota sozinhos`}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:10,marginBottom:3}}>
+                    <span style={{fontWeight:700,letterSpacing:0.5,color:progMN.atingido?"var(--ui-success)":"var(--ui-text-faint)"}}>
+                      MAGIC NUMBER{progMN.atingido?" ✓ ATINGIDO":""}
+                    </span>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text-muted)"}}>
+                      {a.qtd}/{mn} · {fmt(progMN.percentual,0)}%
+                    </span>
+                  </div>
+                  <div style={{height:5,background:"var(--ui-bg-secondary)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${progMN.percentual}%`,background:progMN.atingido?"var(--ui-success)":"var(--ui-accent)",borderRadius:3,transition:"width .3s"}}/>
+                  </div>
+                </div>
+              )}
+
               {pos && (
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
                   {pos.dy>0 && <span style={{fontSize:10,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
                   {pos.pl && <span style={{fontSize:10,background:"rgba(123,97,255,0.07)",color:"var(--ui-accent)",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
                   {pos.setor && <span style={{fontSize:10,background:"rgba(255,255,255,0.03)",color:"var(--ui-text-muted)",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
@@ -5979,7 +5999,7 @@ Regras:
         )}
 
         <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
-          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
+          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao} fundamentosCarteira={fundamentosCarteira}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
