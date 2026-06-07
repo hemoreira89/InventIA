@@ -263,8 +263,12 @@ export default async function handler(req, res) {
 
   try {
     // ── Pagina o catálogo (Hobby tem 60s — divide em chunks de 500) ──
-    const offset = parseInt(req.query?.offset || "0", 10);
-    const limit = parseInt(req.query?.limit || "500", 10);
+    // Clamp para valores sãos: offset >= 0 e limit entre 1 e 1000 (evita
+    // range inválido / payload gigante caso o parâmetro venha malformado).
+    const offsetRaw = parseInt(req.query?.offset || "0", 10);
+    const limitRaw = parseInt(req.query?.limit || "500", 10);
+    const offset = Number.isFinite(offsetRaw) ? Math.max(0, offsetRaw) : 0;
+    const limit = Number.isFinite(limitRaw) ? Math.min(1000, Math.max(1, limitRaw)) : 500;
 
     const { data: tickers, error: errTickers } = await supabase
       .from("screening_catalogo")
