@@ -5620,12 +5620,8 @@ Regras:
         }}>
           {/* Brand + Seletor de Portfólio */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <div style={{
-              width:36,height:36,borderRadius:8,
-              background:"linear-gradient(135deg,#7b61ff,#00e5a0)",
-              display:"flex",alignItems:"center",justifyContent:"center",
-              color:"#ffffff"
-            }}><Sparkles size={20} strokeWidth={2.5}/></div>
+            <img src="/icons/icon-192.png" alt="InvestIA" width={44} height={44}
+              style={{width:44,height:44,borderRadius:10,display:"block",objectFit:"contain"}}/>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
                 InvestIA <span style={{color:"var(--ui-accent)"}}>Pro</span>
