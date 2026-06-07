@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, Briefcase, Brain, FileSearch, GitCompare,
-  Lightbulb, History, Coins, Eye, Target, TrendingUp, Receipt,
+  Lightbulb, History, Coins, Eye, Target, Receipt,
   Activity, ArrowRight, Globe, Shield, Scale, Calendar
 } from "lucide-react";
 
@@ -29,9 +29,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
     { id: "tab-calendario", group: "Navegação", icon: Calendar, label: "Ir para Calendário", action: "navigate", target: "calendario" },
     { id: "tab-watchlist", group: "Navegação", icon: Eye, label: "Ir para Watchlist", action: "navigate", target: "watchlist" },
     { id: "tab-universo", group: "Navegação", icon: Globe, label: "Ir para Universo", action: "navigate", target: "universo" },
-    { id: "tab-meta", group: "Navegação", icon: Target, label: "Ir para 1º Milhão", action: "navigate", target: "meta" },
-    { id: "tab-renda", group: "Navegação", icon: Coins, label: "Ir para Renda Passiva", action: "navigate", target: "renda" },
-    { id: "tab-cenarios", group: "Navegação", icon: TrendingUp, label: "Ir para Cenários", action: "navigate", target: "cenarios" },
+    { id: "tab-planejamento", group: "Navegação", icon: Target, label: "Ir para Planejamento", action: "navigate", target: "planejamento" },
     { id: "tab-ir", group: "Navegação", icon: Receipt, label: "Ir para Calculadora IR", action: "navigate", target: "ir" },
   ], []);
 

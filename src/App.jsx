@@ -1242,7 +1242,41 @@ function VisualizacoesCarteira({ dados }) {
   );
 }
 
-// ─── Tab: Primeiro Milhão ─────────────────────────────────────────────────────
+// ─── Tab: Planejamento (consolida 1º Milhão, Renda Passiva e Cenários) ─────────
+function TabPlanejamento({ dados, sub, setSub }) {
+  const SUBS = [
+    { k: "meta", label: "1º Milhão", icon: Target },
+    { k: "renda", label: "Renda Passiva", icon: Coins },
+    { k: "cenarios", label: "Cenários", icon: TrendingUp },
+  ];
+  const atual = SUBS.some(s => s.k === sub) ? sub : "meta";
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {SUBS.map(s => {
+          const Icon = s.icon;
+          const ativo = atual === s.k;
+          return (
+            <button key={s.k} onClick={() => setSub(s.k)} aria-label={s.label} style={{
+              display:"flex",alignItems:"center",gap:6,
+              background: ativo ? "var(--ui-info)" : "var(--ui-bg-secondary)",
+              border:`1px solid ${ativo ? "var(--ui-info)" : "var(--ui-border)"}`,
+              borderRadius:8, padding:"8px 14px",
+              color: ativo ? "#ffffff" : "var(--ui-text-secondary)",
+              fontSize:13, fontWeight:700, cursor:"pointer",
+            }}>
+              <Icon size={14} strokeWidth={2.5}/>{s.label}
+            </button>
+          );
+        })}
+      </div>
+      {atual === "meta" && <TabMeta dados={dados}/>}
+      {atual === "renda" && <TabRendaPassiva dados={dados}/>}
+      {atual === "cenarios" && <TabCenarios dados={dados}/>}
+    </div>
+  );
+}
+
 function TabMeta({ dados }) {
   const [meta,setMeta]=useState("1000000"); const [aporteMensal,setAporteMensal]=useState("1000");
   const [taxaAnual,setTaxaAnual]=useState("12"); const [resultado,setResultado]=useState(null);
@@ -4798,15 +4832,13 @@ const TABS = [
   {k:"watchlist",icon:Eye,label:"Watchlist",cor:"var(--ui-warning)",grupo:"control"},
   {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
   {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
-  {k:"meta",icon:Target,label:"1º Milhão",cor:"var(--ui-info)",grupo:"planning"},
-  {k:"renda",icon:Coins,label:"Renda Passiva",cor:"var(--ui-info)",grupo:"planning"},
-  {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
+  {k:"planejamento",icon:Target,label:"Planejamento",cor:"var(--ui-info)",grupo:"planning"},
 ];
 const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
 const GRUPOS_NAV = [
   { k:"solo",      tabs:["carteira"] },
   { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",     tabs:["analise","ticker","comparador","oportunidades","risco"] },
-  { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",       tabs:["rebalanceamento","meta","renda","cenarios","ir"] },
+  { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",       tabs:["rebalanceamento","planejamento","ir"] },
   { k:"registros", label:"Registros", cor:"var(--ui-warning)",    tabs:["patrimonio","historico","proventos","calendario"] },
   { k:"listas",    label:"Listas",    cor:"var(--ui-text-muted)", tabs:["watchlist","universo"] },
 ];
@@ -4814,6 +4846,7 @@ const GRUPOS_NAV = [
 // ─── App Principal ────────────────────────────────────────────────────────────
 export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("carteira");
+  const [planejSub, setPlanejSub] = useState("meta"); // sub-aba do Planejamento
   const [carteira, setCarteira] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
@@ -4923,17 +4956,20 @@ export default function App({ session, onLogout }) {
           "d": "proventos", // d de Dividendos
           "w": "watchlist",
           "u": "universo",
-          "m": "meta",
+          "m": "planejamento",
           "i": "ir",
-          "x": "cenarios",
+          "x": "planejamento",
           "r": "risco",
-          "e": "renda",
+          "e": "planejamento",
           "b": "rebalanceamento",
           "k": "calendario",
         };
+        // g+m/e/x abrem Planejamento já na sub-aba correspondente
+        const subMap = { "m": "meta", "e": "renda", "x": "cenarios" };
         if (navMap[e.key]) {
           e.preventDefault();
           setTab(navMap[e.key]);
+          if (subMap[e.key]) setPlanejSub(subMap[e.key]);
           lastKey = null;
           return;
         }
@@ -5942,12 +5978,10 @@ Regras:
           {tab==="patrimonio" && <TabPatrimonio userId={userId} dados={dados}/>}
           {tab==="risco" && <TabRisco carteira={carteira} cotacoesGlobais={cotacoesGlobais} dados={dados}/>}
           {tab==="rebalanceamento" && <TabRebalanceamento carteira={carteira} dados={dados} cotacoesGlobais={cotacoesGlobais}/>}
-          {tab==="renda" && <TabRendaPassiva dados={dados} carteira={carteira} cotacoesGlobais={cotacoesGlobais}/>}
           {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="calendario" && <TabCalendarioProventos userId={userId} carteira={carteira} cotacoesGlobais={cotacoesGlobais} fundamentosCarteira={fundamentosCarteira} dados={dados}/>}
-          {tab==="meta" && <TabMeta dados={dados}/>}
-          {tab==="cenarios" && <TabCenarios dados={dados}/>}
+          {tab==="planejamento" && <TabPlanejamento dados={dados} sub={planejSub} setSub={setPlanejSub}/>}
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="universo" && <TabUniverso userId={userId}/>}
           {tab==="ir" && <TabIR dados={dados}/>}
