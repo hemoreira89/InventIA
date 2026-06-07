@@ -7,32 +7,27 @@ import {
 } from "recharts";
 import {
   Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
-  Sparkles, Save, FileDown, Plus, X, Trash2, Calendar, AlertTriangle,
-  CheckCircle2, AlertCircle, Activity, DollarSign, Wallet, PieChart as PieIcon,
-  Search, ArrowUp, ArrowDown, Zap, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
-  Building2, Landmark, Factory, LogOut, User, History, Coins, GitCompare,
-  FileSearch, Bell, Download, Upload, ExternalLink, Clock, Lightbulb,
-  RefreshCw, FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
+  Sparkles, Save, Plus, X, Trash2, Calendar, AlertTriangle,
+  CheckCircle2, AlertCircle, Activity, DollarSign, PieChart as PieIcon,
+  Search, ArrowUp, ArrowDown, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
+  Building2, Factory, LogOut, User, History, Coins, GitCompare,
+  FileSearch, Download, ExternalLink, Clock, Lightbulb,
+  FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
   MessageCircle
 } from "lucide-react";
 import {
-  carregarCarteiraPrincipal, listarCarteiras, criarCarteira, renomearCarteira, deletarCarteira,
+  carregarCarteiraPrincipal, listarCarteiras, criarCarteira,
   carregarAtivos, salvarAtivo, removerAtivo,
   registrarCompra, carregarCompras,
   carregarWatchlist, salvarWatchlist, removerWatchlist,
   salvarAnalise, carregarAnalises, removerAnalise,
   registrarProvento, carregarProventos, removerProvento,
-  registrarVenda, carregarVendas,
-  salvarSnapshotPatrimonio, carregarSnapshotsPatrimonio,
-  getCachedPrice, setCachedPrice, clearPriceCache
+  salvarSnapshotPatrimonio, carregarSnapshotsPatrimonio
 } from "./supabase";
 import {
   CDI_ANO, IBOV_HIST, PALETTE,
   fmt, fmtBRL, fmtK, sleep, extrairJSON,
-  juroCompostos, gerarProjecao, calcularIR,
-  calcularPesos, novoPrecoMedio, quantidadeComprável,
-  dyMedioCarteira, alertasRebalanceamento,
-  tickerValido, tipoTicker,
+  juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
@@ -57,13 +52,6 @@ import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const SK = "investia_v4";
-
-// ─── Storage — agora usamos Supabase, mantemos localStorage como cache ──────
-const store = {
-  save: async d => { try { localStorage.setItem(SK, JSON.stringify(d)); return true; } catch(_) { return false; } },
-  load: async () => { try { const r = localStorage.getItem(SK); return r ? JSON.parse(r) : null; } catch(_) { return null; } }
-};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // extrairJSON agora vem de ./lib/calc
@@ -130,24 +118,6 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
     }
     throw e;
   }
-}
-
-async function chamarIA(prompt) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, useSearch: false, model: "flash" })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 504) {
-      throw new Error("A análise demorou muito (timeout). Tente novamente.");
-    }
-    throw new Error(err.error || `Erro ${res.status} na API`);
-  }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return extrairJSON(data.text);
 }
 
 // ─── Cálculos ────────────────────────────────────────────────────────────────
@@ -633,11 +603,11 @@ function LoadingCard({ fase }) {
 }
 
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
-function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId, pedirConfirmacao }) {
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
-  const [salvando,setSalvando]=useState(false);
+  const [,setSalvando]=useState(false);
 
   // Cotações em tempo real (atualiza a cada 60s)
   const tickersCarteira = carteira.map(a => a.ticker);
@@ -1418,9 +1388,9 @@ function TabCenarios({ dados }) {
 }
 
 // ─── Tab: Watchlist ───────────────────────────────────────────────────────────
-function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirConfirmacao }) {
+function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
   const [ticker,setTicker]=useState(""); const [alvo,setAlvo]=useState(""); const [nota,setNota]=useState("");
-  const [salvando,setSalvando]=useState(false);
+  const [,setSalvando]=useState(false);
 
   const add = async () => {
     const t = ticker.toUpperCase().trim();
@@ -1548,7 +1518,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId, pedirCon
                   <div style={{width:34,height:34,borderRadius:9,background:"rgba(123,97,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"var(--ui-accent)"}}>{w.ticker.slice(0,4)}</div>
                   <div><div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{w.nota}</div>}</div>
                 </div>
-                <button onClick={() => { setWatchlist(p=>p.filter(x=>x.ticker!==w.ticker)); setTimeout(onSave,200); }}
+                <button onClick={() => remover(w)}
                   style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -1636,7 +1606,7 @@ function TabIR({ dados }) {
 }
 
 // ─── Tab: Análise IA ──────────────────────────────────────────────────────────
-function TabAnalise({ dados, aporte, perfil, loading, fase }) {
+function TabAnalise({ dados, aporte, loading, fase }) {
   if (loading) return <LoadingCard fase={fase}/>;
   if (!dados?.analise) return (
     <div style={{textAlign:"center",padding:"48px 0",color:"var(--ui-text-disabled)",fontSize:13}}>
@@ -1941,7 +1911,7 @@ function VisualizacoesColapsavel({ dados }) {
 }
 
 // ─── Tab: Análise de Ticker Individual ────────────────────────────────────────
-function TabTicker({ userId, chamarIAComSearch }) {
+function TabTicker({ chamarIAComSearch }) {
   const [ticker, setTicker] = useState("");
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -1960,6 +1930,7 @@ function TabTicker({ userId, chamarIAComSearch }) {
     };
     window.addEventListener("inventia:analyze-ticker", handler);
     return () => window.removeEventListener("inventia:analyze-ticker", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const analisar = () => analisarTicker(ticker);
@@ -2653,7 +2624,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
 }
 
 // ─── Tab: Proventos ───────────────────────────────────────────────────────────
-function TabProventos({ userId, pedirConfirmacao }) {
+function TabProventos({ userId }) {
   const [proventos, setProventos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ticker, setTicker] = useState("");
@@ -2820,7 +2791,7 @@ function TabProventos({ userId, pedirConfirmacao }) {
           <Card>
             <STitle>TOP 5 PAGADORES</STitle>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {topTickers.map(([t,v],i) => {
+              {topTickers.map(([t,v]) => {
                 const pct = (v / totalGeral) * 100;
                 return (
                   <div key={t}>
@@ -3048,7 +3019,7 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
 }
 
 // ─── Tab: Renda Passiva ────────────────────────────────────────────────────────
-function TabRendaPassiva({ dados, carteira, cotacoesGlobais }) {
+function TabRendaPassiva({ dados }) {
   const patrimonioAtual = dados?.totalCarteira || 0;
   const dyCarteira = dados?.posicoes?.length
     ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*(p.peso/100), 0)
@@ -3071,7 +3042,6 @@ function TabRendaPassiva({ dados, carteira, cotacoesGlobais }) {
     const pv = Number(patrimonio) || 0;
     const pmt = Number(aporte) || 0;
     const dy = (Number(dyEsperado) || 8) / 100;
-    const taxa = (Number(taxaCrescimento) || 10) / 100;
     const n = Number(anos) || 20;
 
     const pontos = [];
@@ -3417,7 +3387,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
 // ─── Tab: Calendário de Proventos ─────────────────────────────────────────────
 function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentosCarteira, dados }) {
   const [proventosHist, setProventosHist] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [vista, setVista] = useState("calendario"); // "calendario" | "tabela"
 
   useEffect(() => {
@@ -3729,6 +3699,7 @@ function TabPatrimonio({ userId, dados }) {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [userId, periodo]);
 
   const salvarHoje = async () => {
@@ -3834,7 +3805,7 @@ function TabPatrimonio({ userId, dados }) {
 }
 
 // ─── Tab: Oportunidades (scan da B3 com IA) ───────────────────────────────────
-function TabOportunidades({ chamarIAComSearch, universoTickers = [] }) {
+function TabOportunidades({ chamarIAComSearch }) {
   const [filtros, setFiltros] = useState({
     tipo: "acoes_subprecificadas",
     perfil: "moderado",
@@ -4539,7 +4510,6 @@ Responda APENAS este JSON (sem markdown):
     }
   };
 
-  const TipoIcon = TIPOS[filtros.tipo].icon;
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -4814,6 +4784,7 @@ export default function App({ session, onLogout }) {
     buscarFundamentosCached(tickersCarteira)
       .then(setFundamentosCarteira)
       .catch(() => setFundamentosCarteira({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tickersCarteira.join(",")]);
 
   const pedirConfirmacao = (config) => setConfirmacao({...config, open:true});
@@ -5026,11 +4997,6 @@ export default function App({ session, onLogout }) {
 
     try {
       const temCarteira = carteira.length > 0;
-      const perfilDesc = {
-        conservador: "conservador — prioriza dividendos, baixo risco, setores defensivos (energia, bancos sólidos, FIIs de papel)",
-        moderado: "moderado — equilíbrio entre renda e crescimento",
-        arrojado: "arrojado — aceita volatilidade, foca em crescimento de capital"
-      }[perfil];
       const focoDesc = { acoes:"ações da B3", fiis:"fundos imobiliários (FIIs)", misto:"mix de ações e FIIs" }[foco];
 
       setFase("Calculando perfil de risco da carteira...");
@@ -5040,10 +5006,6 @@ export default function App({ session, onLogout }) {
       const riscoPre = posEstimadas.length > 0 ? analisarRisco(posEstimadas, normalizarSetor) : null;
 
       setFase("Gemini buscando cotações no Google Finance...");
-
-      const carteiraInfo = temCarteira
-        ? `\nCARTEIRA ATUAL DO INVESTIDOR:\n${carteira.map(a=>`- ${a.ticker}: ${a.qtd} cotas${a.pm?`, PM R$${a.pm}`:""}`).join("\n")}`
-        : "";
 
       // Tickers a serem analisados: universo do usuário (ou padrão)
       // Filtra por foco (FII só vê 11, ações só não-11, misto vê tudo)
@@ -5307,6 +5269,7 @@ Regras:
       setLoading(false);
       setFase("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carteira, watchlist, aporte, foco, perfil, cotacoesGlobais, universoTickers]);
 
   // Métricas para a barra superior

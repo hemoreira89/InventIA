@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Search, Briefcase, BarChart3, Brain, FileSearch, GitCompare,
+  Search, Briefcase, Brain, FileSearch, GitCompare,
   Lightbulb, History, Coins, Eye, Target, TrendingUp, Receipt,
-  Activity, ArrowRight, Command, Globe, Shield, Scale, Calendar
+  Activity, ArrowRight, Globe, Shield, Scale, Calendar
 } from "lucide-react";
 
 /**
@@ -88,6 +88,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
 
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, items, selectedIndex]);
 
   // Foca input quando abre
