@@ -53,6 +53,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
+import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -2116,6 +2117,9 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
         margemGraham: margemSeguranca(cotacao?.preco, justoGraham),
       } : null;
 
+      // Segurança dos dividendos (heurística transparente sobre os fundamentos)
+      const segurancaDividendos = avaliarSegurancaDividendos(fundamentos, dadosParaIA.tipo);
+
       // ── PASSO 4: monta resultado final unindo dados reais + tese da IA ──
       const resultadoFinal = {
         ticker: t,
@@ -2139,6 +2143,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
           canal52: cotacao?.canal52,
         },
         valuation,
+        segurancaDividendos,
         // Sparkline com últimos 30 dias
         historico: historico?.pontos || [],
         // Texto qualitativo da IA
@@ -2256,6 +2261,40 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
               </div>
             </Card>
           )}
+
+          {/* Segurança dos dividendos */}
+          {resultado.segurancaDividendos && (() => {
+            const sd = resultado.segurancaDividendos;
+            const cor = sd.nivel === "alta" ? "var(--ui-success)" : sd.nivel === "media" ? "var(--ui-warning)" : "var(--ui-danger)";
+            const rotulo = sd.nivel === "alta" ? "ALTA" : sd.nivel === "media" ? "MÉDIA" : "BAIXA";
+            const statusCor = s => s === "bom" ? "var(--ui-success)" : s === "neutro" ? "var(--ui-warning)" : "var(--ui-danger)";
+            const statusIcon = s => s === "bom" ? "●" : s === "neutro" ? "◐" : "○";
+            return (
+              <Card>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <STitle>SEGURANÇA DOS DIVIDENDOS</STitle>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,fontWeight:800,letterSpacing:0.5,color:cor,background:`color-mix(in srgb, ${cor} 14%, transparent)`,border:`1px solid color-mix(in srgb, ${cor} 35%, transparent)`,borderRadius:20,padding:"3px 10px"}}>{rotulo}</span>
+                    <span style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text-muted)"}}>{sd.score}/100</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {sd.fatores.map((f,idx) => (
+                    <div key={idx} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12}}>
+                      <span style={{color:statusCor(f.status),fontSize:13,lineHeight:1.3}}>{statusIcon(f.status)}</span>
+                      <div>
+                        <span style={{fontWeight:700,color:"var(--ui-text)"}}>{f.label}</span>
+                        <span style={{color:"var(--ui-text-muted)"}}> — {f.detalhe}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:10,lineHeight:1.5}}>
+                  Sinal heurístico e indicativo (não é recomendação), calculado a partir dos fundamentos disponíveis. Os fatores acima mostram o porquê.
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* Tese */}
           {resultado.tese && (
