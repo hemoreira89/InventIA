@@ -3749,20 +3749,31 @@ function TabPatrimonio({ userId, dados }) {
     } catch (e) { showToast("Erro: " + e.message, "error"); }
   };
 
-  const dadosGrafico = snapshots.map(s => ({
-    data: new Date(s.data).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
-    valor: Number(s.valor)
-  }));
-
   const primeiro = snapshots[0];
   const ultimo = snapshots[snapshots.length-1];
   const variacao = primeiro && ultimo ? ((ultimo.valor - primeiro.valor) / primeiro.valor) * 100 : 0;
   const ganho = primeiro && ultimo ? Number(ultimo.valor) - Number(primeiro.valor) : 0;
 
-  // Comparação com CDI/IBOV
+  // Comparação com benchmarks (CDI e IBOV) projetados a partir do 1º snapshot.
+  // Taxas de referência fixas (não o índice ao vivo) — ver nota no gráfico.
+  const base = primeiro ? Number(primeiro.valor) : 0;
+  const t0 = primeiro ? new Date(primeiro.data).getTime() : 0;
   const diasPeriodo = primeiro ? (new Date(ultimo.data) - new Date(primeiro.data)) / (1000*60*60*24) : 0;
   const fatorCDI = Math.pow(1 + CDI_ANO/100, diasPeriodo/365) - 1;
-  const cdiAcumulado = primeiro ? Number(primeiro.valor) * fatorCDI : 0;
+  const fatorIBOV = Math.pow(1 + IBOV_HIST/100, diasPeriodo/365) - 1;
+  const cdiAcumulado = base * fatorCDI;
+  const ibovAcumulado = base * fatorIBOV;
+
+  // Linhas do gráfico: patrimônio real + curvas de CDI e IBOV no mesmo ponto inicial
+  const dadosGrafico = snapshots.map(s => {
+    const dias = (new Date(s.data).getTime() - t0) / (1000*60*60*24);
+    return {
+      data: new Date(s.data).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
+      valor: Number(s.valor),
+      cdi: base ? Math.round(base * Math.pow(1 + CDI_ANO/100, dias/365)) : null,
+      ibov: base ? Math.round(base * Math.pow(1 + IBOV_HIST/100, dias/365)) : null,
+    };
+  });
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -3796,6 +3807,7 @@ function TabPatrimonio({ userId, dados }) {
           <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="var(--ui-warning)" mono/>
+          <Stat label="IBOV NO PERÍODO" value={fmtBRL(ibovAcumulado)} color="var(--ui-info)" mono/>
         </div>
       )}
 
@@ -3831,8 +3843,15 @@ function TabPatrimonio({ userId, dados }) {
               <YAxis tick={{fill:"var(--ui-text-faint)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>fmtK(v)}/>
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="var(--ui-accent)" strokeWidth={2} fill="url(#gradPatrimonio)"/>
+              <Line type="monotone" dataKey="cdi" name="CDI (ref.)" stroke="var(--ui-warning)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
+              <Line type="monotone" dataKey="ibov" name="IBOV (ref.)" stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
+              <Legend wrapperStyle={{fontSize:11}}/>
             </AreaChart>
           </ResponsiveContainer>
+          <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
+            Linhas CDI/IBOV são projeções a partir do 1º snapshot usando taxas de referência fixas
+            (CDI {fmt(CDI_ANO,2)}% a.a. · IBOV {fmt(IBOV_HIST,1)}% a.a. histórico) — não o índice ao vivo.
+          </div>
         </Card>
       )}
     </div>
