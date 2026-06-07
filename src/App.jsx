@@ -9,7 +9,7 @@ import {
   Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
   Sparkles, Save, Plus, X, Trash2, Calendar, AlertTriangle,
   CheckCircle2, AlertCircle, Activity, DollarSign, PieChart as PieIcon,
-  Search, ArrowUp, ArrowDown, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
+  ArrowUp, ArrowDown, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Download, ExternalLink, Clock, Lightbulb,
   FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
@@ -937,6 +937,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                     </div>
                   )}
                   <button onClick={() => removerAtivoCarteira(a)}
+                    title={`Remover ${a.ticker}`} aria-label={`Remover ${a.ticker}`}
                     style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
                 </div>
               </div>
@@ -1579,6 +1580,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
                   <div><div style={{fontWeight:700,color:"var(--ui-text)",fontSize:14}}>{w.ticker}</div>{w.nota&&<div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{w.nota}</div>}</div>
                 </div>
                 <button onClick={() => remover(w)}
+                  title={`Remover ${w.ticker} da watchlist`} aria-label={`Remover ${w.ticker} da watchlist`}
                   style={{background:"rgba(255,77,109,0.08)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:6,padding:"6px 8px",color:"var(--ui-danger)",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} strokeWidth={2}/></button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -5567,6 +5569,7 @@ Regras:
                   <button
                     onClick={()=>setDropdownAberto(isAberto?null:"portfolio")}
                     title="Trocar portfólio"
+                    aria-label="Trocar portfólio"
                     style={{
                       background:"var(--ui-bg-secondary)",
                       border:"1px solid var(--ui-border)",
@@ -5672,29 +5675,8 @@ Regras:
               <span style={{fontSize:11,color:"var(--ui-success)",fontWeight:600}}>{savedMsg}</span>
             )}
 
-            {/* Botão Ctrl+K */}
-            <button onClick={() => setPaletteOpen(true)} title="Busca rápida (Ctrl+K)" style={{
-              background:"var(--ui-bg-secondary)",
-              border:"1px solid var(--ui-border)",
-              borderRadius:6,
-              padding:"7px 10px",
-              color:"var(--ui-text-secondary)",
-              cursor:"pointer",
-              display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:600
-            }}>
-              <Search size={13}/>
-              <kbd style={{
-                background:"var(--ui-bg-secondary)",
-                border:"1px solid var(--ui-border)",
-                borderRadius:3,
-                padding:"1px 5px",fontSize:9,
-                color:"var(--ui-text-faint)",
-                fontFamily:"'JetBrains Mono',monospace"
-              }}>⌘K</kbd>
-            </button>
-
             {/* Botão de ajuda de atalhos */}
-            <button onClick={() => setShowShortcutsHelp(true)} title="Atalhos de teclado (?)" style={{
+            <button onClick={() => setShowShortcutsHelp(true)} title="Atalhos de teclado (?)" aria-label="Atalhos de teclado" style={{
               background:"var(--ui-bg-secondary)",
               border:"1px solid var(--ui-border)",
               borderRadius:6,
@@ -5710,6 +5692,7 @@ Regras:
             <button
               onClick={() => setShowTelegramModal(true)}
               title="Vincular Telegram"
+              aria-label="Vincular Telegram"
               style={{
                 background:"var(--ui-bg-secondary)",
                 border:"1px solid var(--ui-border)",
@@ -5738,7 +5721,7 @@ Regras:
               <User size={13} color="var(--ui-accent)"/>
               <span style={{fontSize:11,color:"var(--ui-text-secondary)",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
             </div>
-            <button onClick={onLogout} title="Sair" style={{
+            <button onClick={onLogout} title="Sair" aria-label="Sair da conta" style={{
               background:"var(--ui-bg-secondary)",
               border:"1px solid var(--ui-border)",
               borderRadius:6,

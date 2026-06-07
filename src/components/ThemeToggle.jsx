@@ -27,6 +27,7 @@ export function ThemeToggle({ theme, toggle }) {
     <button
       onClick={toggle}
       title={theme === "light" ? "Mudar para tema escuro" : "Mudar para tema claro"}
+      aria-label={theme === "light" ? "Mudar para tema escuro" : "Mudar para tema claro"}
       style={{
         background: "var(--ui-bg-secondary)",
         border: "1px solid var(--ui-border)",
