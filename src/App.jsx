@@ -1728,7 +1728,7 @@ function TabAnalise({ dados, aporte, loading, fase }) {
           display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
         }}><Sparkles size={16} color="var(--ui-accent)" strokeWidth={2.5}/></div>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.6}}>
-          Análise gerada pelo <b style={{color:"var(--ui-text)"}}>Gemini 2.5 Flash</b> com cotações em tempo real (<b>brapi</b>) e fundamentos oficiais B3/CVM (<b>bolsai</b>). Confirme na sua corretora antes de operar.
+          Análise gerada por <b style={{color:"var(--ui-text)"}}>IA (Google Gemini)</b> com cotações em tempo real (<b>brapi</b>) e fundamentos oficiais B3/CVM (<b>bolsai</b>). Confirme na sua corretora antes de operar.
         </div>
       </div>
 
@@ -5290,7 +5290,7 @@ Regras:
 - Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
 - SOMENTE JSON, sem markdown`;
 
-      setFase("Gemini 2.5 Pro analisando...");
+      setFase("IA analisando o mercado...");
       const analise = await chamarIAComSearch(prompt);
 
       // Busca cotação atual (brapi) E fundamentos reais (bolsai) em paralelo
@@ -6187,7 +6187,7 @@ Regras:
           marginTop:40,padding:"20px 0",borderTop:"1px solid var(--ui-border)",
           textAlign:"center",fontSize:11,color:"var(--ui-text-faint)"
         }}>
-          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Flash</span> · Dados <span style={{color:"var(--ui-success)",fontWeight:600}}>brapi</span> (B3) + <span style={{color:"var(--ui-success)",fontWeight:600}}>bolsai</span> (CVM) · 
+          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Google Gemini</span> · Dados <span style={{color:"var(--ui-success)",fontWeight:600}}>brapi</span> (B3) + <span style={{color:"var(--ui-success)",fontWeight:600}}>bolsai</span> (CVM) ·
           Confirme preços na sua corretora antes de operar
         </div>
       </div>

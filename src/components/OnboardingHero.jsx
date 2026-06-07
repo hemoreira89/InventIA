@@ -100,7 +100,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           maxWidth: 600
         }}>
           Recomendações personalizadas, análise fundamentalista e controle de carteira
-          alimentado por <b style={{color: "var(--ui-text)"}}>Gemini 2.5 Pro</b> + Google Search.
+          alimentado por <b style={{color: "var(--ui-text)"}}>IA (Google Gemini)</b>.
         </p>
 
         {/* CTAs em grid */}

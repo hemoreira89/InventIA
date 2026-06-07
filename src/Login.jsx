@@ -299,7 +299,7 @@ export default function Login({ onAuth }) {
           borderTop: "1px solid var(--ui-border-soft)",
           textAlign: "center", fontSize: 10, color: "var(--ui-text-disabled)"
         }}>
-          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Gemini 2.5 Pro</span> · Análise B3 com IA
+          Powered by <span style={{color:"var(--ui-accent)",fontWeight:700}}>Google Gemini</span> · Análise B3 com IA
         </div>
       </div>
     </div>
