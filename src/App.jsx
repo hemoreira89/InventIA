@@ -1343,13 +1343,16 @@ function TabMeta({ dados }) {
   const pv = dados?.totalCarteira || 0;
 
   const calcular = () => {
-    const M=Number(meta)||1e6; const pmt=Number(aporteMensal)||0; const taxa=Number(taxaAnual)||12;
-    let meses = 0;
-    while (meses < 1200) { meses++; if (juroCompostos(pv,pmt,taxa,meses) >= M) break; }
+    const M=Number.isFinite(Number(meta))&&Number(meta)>0?Number(meta):1e6;
+    const pmt=Number.isFinite(Number(aporteMensal))?Math.max(0,Number(aporteMensal)):0;
+    const taxa=Number.isFinite(Number(taxaAnual))?Number(taxaAnual):12;
+    let meses = 0, atingiu = false;
+    while (meses < 1200) { meses++; if (juroCompostos(pv,pmt,taxa,meses) >= M) { atingiu = true; break; } }
+    if (!atingiu) { setResultado({ inatingivel:true, meta:M }); return; }
     const anos = meses/12;
     const totalAportado = pv + pmt*meses;
     const projecao = gerarProjecao(pv, pmt, taxa, Math.ceil(anos)+2);
-    setResultado({ meses, anos, totalAportado, totalJuros:M-totalAportado, projecao, divMensal:M*(taxa/100/12), meta:M });
+    setResultado({ inatingivel:false, meses, anos, totalAportado, totalJuros:M-totalAportado, projecao, divMensal:M*(taxa/100/12), meta:M });
   };
 
   return (
@@ -1379,7 +1382,16 @@ function TabMeta({ dados }) {
         </button>
       </Card>
 
-      {resultado && <>
+      {resultado?.inatingivel && (
+        <Card style={{padding:"20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"var(--ui-warning)",marginBottom:6}}>Meta não atingível com esses parâmetros</div>
+          <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>
+            Com o aporte e a taxa informados, o patrimônio não alcança {fmtBRL(resultado.meta)} em até 100 anos.
+            Aumente o aporte mensal ou a taxa esperada (ou reduza a meta) e calcule de novo.
+          </div>
+        </Card>
+      )}
+      {resultado && !resultado.inatingivel && <>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Card style={{textAlign:"center",padding:"18px 10px"}}>
             <div style={{fontSize:32,fontWeight:900,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>{resultado.anos.toFixed(1)}</div>
@@ -2323,7 +2335,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
                   }}>{resultado.tese.tipo.toUpperCase()}</span>
                   {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
                 </div>
-                {resultado.tese.preco_alvo && (
+                {resultado.tese.preco_alvo && resultado.preco > 0 && (
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
                     <div style={{fontSize:18,fontWeight:800,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
@@ -3191,7 +3203,7 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
 function TabRendaPassiva({ dados }) {
   const patrimonioAtual = dados?.totalCarteira || 0;
   const dyCarteira = dados?.posicoes?.length
-    ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*(p.peso/100), 0)
+    ? dados.posicoes.reduce((s,p) => s + (p.dy||0)*((p.peso||0)/100), 0)
     : 0;
 
   const [patrimonio, setPatrimonio] = useState(() => patrimonioAtual > 0 ? String(Math.round(patrimonioAtual)) : "100000");
@@ -3208,15 +3220,17 @@ function TabRendaPassiva({ dados }) {
   }, [patrimonioAtual, dyCarteira]);
 
   const calcular = () => {
-    const pv = Number(patrimonio) || 0;
-    const pmt = Number(aporte) || 0;
-    const dy = (Number(dyEsperado) || 8) / 100;
-    const n = Number(anos) || 20;
+    const pv = Number.isFinite(Number(patrimonio)) ? Math.max(0, Number(patrimonio)) : 0;
+    const pmt = Number.isFinite(Number(aporte)) ? Math.max(0, Number(aporte)) : 0;
+    const dyNum = Number(dyEsperado);
+    const dy = (Number.isFinite(dyNum) ? dyNum : 8) / 100;
+    const taxaCresc = Number.isFinite(Number(taxaCrescimento)) ? Number(taxaCrescimento) : 10;
+    const n = Number.isFinite(Number(anos)) && Number(anos) > 0 ? Math.round(Number(anos)) : 20;
 
     const pontos = [];
     for (let a = 0; a <= n; a++) {
-      // Patrimônio acumula com taxa de crescimento real + aportes
-      const patrimonioAnual = juroCompostos(pv, pmt * 12, Number(taxaCrescimento), a * 12);
+      // Patrimônio acumula com taxa de crescimento real + aportes (pmt é MENSAL)
+      const patrimonioAnual = juroCompostos(pv, pmt, taxaCresc, a * 12);
       const rendaMensal = (patrimonioAnual * dy) / 12;
       pontos.push({
         ano: `${a}a`,
@@ -4757,16 +4771,16 @@ Responda APENAS este JSON (sem markdown):
           <select value={filtros.setor} onChange={e=>setFiltros({...filtros,setor:e.target.value})}
             style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",cursor:"pointer"}}>
             <option value="qualquer">Qualquer setor</option>
-            <option value="bancos">Bancos</option>
-            <option value="energia eletrica">Energia Elétrica</option>
-            <option value="saneamento">Saneamento</option>
-            <option value="petróleo e gás">Petróleo & Gás</option>
-            <option value="siderurgia">Siderurgia</option>
-            <option value="varejo">Varejo</option>
-            <option value="tecnologia">Tecnologia</option>
-            <option value="saúde">Saúde</option>
-            <option value="agro">Agronegócio</option>
-            <option value="imobiliário">Imobiliário (FIIs)</option>
+            <option value="Bancos">Bancos</option>
+            <option value="Energia Elétrica">Energia Elétrica</option>
+            <option value="Saneamento">Saneamento</option>
+            <option value="Petróleo & Gás">Petróleo & Gás</option>
+            <option value="Siderurgia">Siderurgia</option>
+            <option value="Varejo">Varejo</option>
+            <option value="Tecnologia">Tecnologia</option>
+            <option value="Saúde">Saúde</option>
+            <option value="Agronegócio">Agronegócio</option>
+            <option value="Imobiliário (FIIs)">Imobiliário (FIIs)</option>
           </select>
           <button onClick={buscar} disabled={loading} style={{
             background:loading?"var(--ui-bg-secondary)":"linear-gradient(135deg,#7b61ff,#5540dd)",border:"none",borderRadius:8,
