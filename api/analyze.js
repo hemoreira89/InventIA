@@ -53,7 +53,7 @@ async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
     if (geminiRes.status === 429 || geminiRes.status === 503) {
       const errBody = await geminiRes.json().catch(() => ({}));
       const detail = errBody?.error?.message || JSON.stringify(errBody).slice(0, 300);
-      return { ok: false, error: `${modelId} indisponível (${geminiRes.status})`, detail, retryable: true };
+      return { ok: false, error: `${modelId} indisponível (${geminiRes.status})`, detail, retryable: true, rateLimited: geminiRes.status === 429 };
     }
 
     if (!geminiRes.ok) {
@@ -161,6 +161,7 @@ export default async function handler(req, res) {
 
     let lastError = null;
     let lastDetail = null;
+    let rateLimited = false;
 
     for (const [modelId, comSearch] of tentativas) {
       const r = await chamarGemini(modelId, prompt, comSearch, apiKey, log);
@@ -175,6 +176,7 @@ export default async function handler(req, res) {
 
       lastError = r.error;
       lastDetail = r.detail;
+      if (r.rateLimited) rateLimited = true;
 
       // Erros não-retentáveis (auth, prompt malformado): para imediatamente
       if (!r.retryable) {
@@ -183,9 +185,15 @@ export default async function handler(req, res) {
       }
     }
 
-    log(`ALL_FAILED → último erro: ${lastError}`, { detail: lastDetail });
+    log(`ALL_FAILED → último erro: ${lastError}`, { detail: lastDetail, rateLimited });
+    // Mensagem model-agnóstica quando é limite de cota: evita citar "pro" só
+    // por ele ter sido a última tentativa, e orienta o tempo de espera.
+    const msg = rateLimited
+      ? "Limite de uso da IA atingido (cota do Gemini). Aguarde cerca de 1 minuto e tente novamente."
+      : `IA temporariamente indisponível. ${lastError}. Tente novamente em alguns segundos.`;
     return res.status(503).json({
-      error: `IA temporariamente indisponível. ${lastError}. Tente novamente em alguns segundos.`,
+      error: msg,
+      rateLimited,
       _debug: lastDetail
     });
 

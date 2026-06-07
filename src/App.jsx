@@ -93,7 +93,10 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
       }
       // Inclui detalhe técnico no console (mas não na UI) para diagnóstico
       if (err._debug) console.warn(`[IA] _debug:`, err._debug);
-      throw new Error(err.error || `Erro ${res.status} na API`);
+      const e = new Error(err.error || `Erro ${res.status} na API`);
+      // Limite de cota do Gemini: marca para retry automático com espera maior
+      if (err.rateLimited || res.status === 429) e.isRateLimit = true;
+      throw e;
     }
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -115,6 +118,17 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
           throw new Error("A análise está sobrecarregada no momento. Aguarde 30 segundos e tente novamente.");
         }
         throw e2;
+      }
+    }
+    // Retry automático em limite de cota (1 vez) — limites por minuto costumam
+    // liberar em segundos, então esperamos um pouco e tentamos de novo.
+    if (e.isRateLimit && autoRetry) {
+      console.log("Limite de cota - aguardando e tentando novamente...");
+      await sleep(15000);
+      try {
+        return await tentar();
+      } catch {
+        throw new Error("Limite de uso da IA atingido (cota do Gemini). Aguarde ~1 minuto e tente novamente.");
       }
     }
     if (e.isTimeout) {
