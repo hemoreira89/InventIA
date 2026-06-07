@@ -87,8 +87,8 @@ export default function Login({ onAuth }) {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
-          <img src="/icons/icon-192.png" alt="InvestIA" width={44} height={44}
-            style={{ width: 44, height: 44, borderRadius: 10, display: "block", objectFit: "contain" }}/>
+          <img src="/icons/icon-192.png" alt="InvestIA" width={56} height={56}
+            style={{ width: 56, height: 56, borderRadius: 13, display: "block", objectFit: "contain" }}/>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>
               InvestIA <span style={{ color: "var(--ui-accent)" }}>Pro</span>

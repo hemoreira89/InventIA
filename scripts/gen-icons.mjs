@@ -21,6 +21,7 @@ const transparente = { r: 0, g: 0, b: 0, alpha: 0 };
 
 for (const [nome, tam] of Object.entries(ALVOS)) {
   await sharp(SRC)
+    .trim({ threshold: 10 })                 // remove a margem transparente (centraliza)
     .resize(tam, tam, { fit: "contain", background: transparente })
     .png({ compressionLevel: 9 })
     .toFile(`${OUT}/${nome}`);
