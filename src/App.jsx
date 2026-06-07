@@ -29,7 +29,7 @@ import {
   fmt, fmtBRL, fmtK, sleep, extrairJSON,
   juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario,
-  dividendoMensal, magicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
+  dividendoMensal, magicNumber, progressoMagicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
   xirr, fluxosCarteira
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
@@ -53,6 +53,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
+import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -606,7 +607,7 @@ function LoadingCard({ fase }) {
 }
 
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
-function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId }) {
+function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId, fundamentosCarteira }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
   const [pm,setPm]=useState(""); const [data,setData]=useState("");
   const [pesoAlvo,setPesoAlvo]=useState({});
@@ -917,6 +918,10 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           const valorTotal = precoAtual ? precoAtual * a.qtd : null;
           const variacaoPctPM = a.pm && precoAtual ? (precoAtual - a.pm) / a.pm * 100 : null;
           const variacaoDia = cotacao?.variacaoPct;
+          // Magic Number (bola de neve): cotas p/ os dividendos comprarem 1 nova cota
+          const dyAtivo = pos?.dy ?? fundamentosCarteira?.[a.ticker]?.dy ?? cotacao?.dy ?? null;
+          const mn = magicNumber(precoAtual, dividendoMensal(precoAtual, dyAtivo));
+          const progMN = progressoMagicNumber(a.qtd, mn);
           return (
             <Card key={a.ticker}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -980,8 +985,24 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
                 </div>
               )}
 
+              {progMN && (
+                <div style={{marginTop:8}} title={`Magic Number: você precisa de ${mn} cotas para os dividendos comprarem 1 nova cota sozinhos`}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:10,marginBottom:3}}>
+                    <span style={{fontWeight:700,letterSpacing:0.5,color:progMN.atingido?"var(--ui-success)":"var(--ui-text-faint)"}}>
+                      MAGIC NUMBER{progMN.atingido?" ✓ ATINGIDO":""}
+                    </span>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text-muted)"}}>
+                      {a.qtd}/{mn} · {fmt(progMN.percentual,0)}%
+                    </span>
+                  </div>
+                  <div style={{height:5,background:"var(--ui-bg-secondary)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${progMN.percentual}%`,background:progMN.atingido?"var(--ui-success)":"var(--ui-accent)",borderRadius:3,transition:"width .3s"}}/>
+                  </div>
+                </div>
+              )}
+
               {pos && (
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
                   {pos.dy>0 && <span style={{fontSize:10,background:"rgba(255,214,10,0.07)",color:"var(--ui-warning)",borderRadius:10,padding:"2px 7px"}}>DY {fmt(pos.dy)}%</span>}
                   {pos.pl && <span style={{fontSize:10,background:"rgba(123,97,255,0.07)",color:"var(--ui-accent)",borderRadius:10,padding:"2px 7px"}}>P/L {fmt(pos.pl)}</span>}
                   {pos.setor && <span style={{fontSize:10,background:"rgba(255,255,255,0.03)",color:"var(--ui-text-muted)",borderRadius:10,padding:"2px 7px"}}>{pos.setor}</span>}
@@ -2096,6 +2117,9 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
         margemGraham: margemSeguranca(cotacao?.preco, justoGraham),
       } : null;
 
+      // Segurança dos dividendos (heurística transparente sobre os fundamentos)
+      const segurancaDividendos = avaliarSegurancaDividendos(fundamentos, dadosParaIA.tipo);
+
       // ── PASSO 4: monta resultado final unindo dados reais + tese da IA ──
       const resultadoFinal = {
         ticker: t,
@@ -2119,6 +2143,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
           canal52: cotacao?.canal52,
         },
         valuation,
+        segurancaDividendos,
         // Sparkline com últimos 30 dias
         historico: historico?.pontos || [],
         // Texto qualitativo da IA
@@ -2236,6 +2261,40 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
               </div>
             </Card>
           )}
+
+          {/* Segurança dos dividendos */}
+          {resultado.segurancaDividendos && (() => {
+            const sd = resultado.segurancaDividendos;
+            const cor = sd.nivel === "alta" ? "var(--ui-success)" : sd.nivel === "media" ? "var(--ui-warning)" : "var(--ui-danger)";
+            const rotulo = sd.nivel === "alta" ? "ALTA" : sd.nivel === "media" ? "MÉDIA" : "BAIXA";
+            const statusCor = s => s === "bom" ? "var(--ui-success)" : s === "neutro" ? "var(--ui-warning)" : "var(--ui-danger)";
+            const statusIcon = s => s === "bom" ? "●" : s === "neutro" ? "◐" : "○";
+            return (
+              <Card>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <STitle>SEGURANÇA DOS DIVIDENDOS</STitle>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,fontWeight:800,letterSpacing:0.5,color:cor,background:`color-mix(in srgb, ${cor} 14%, transparent)`,border:`1px solid color-mix(in srgb, ${cor} 35%, transparent)`,borderRadius:20,padding:"3px 10px"}}>{rotulo}</span>
+                    <span style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text-muted)"}}>{sd.score}/100</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {sd.fatores.map((f,idx) => (
+                    <div key={idx} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12}}>
+                      <span style={{color:statusCor(f.status),fontSize:13,lineHeight:1.3}}>{statusIcon(f.status)}</span>
+                      <div>
+                        <span style={{fontWeight:700,color:"var(--ui-text)"}}>{f.label}</span>
+                        <span style={{color:"var(--ui-text-muted)"}}> — {f.detalhe}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:10,lineHeight:1.5}}>
+                  Sinal heurístico e indicativo (não é recomendação), calculado a partir dos fundamentos disponíveis. Os fatores acima mostram o porquê.
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* Tese */}
           {resultado.tese && (
@@ -5979,7 +6038,7 @@ Regras:
         )}
 
         <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
-          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao}/>}
+          {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao} fundamentosCarteira={fundamentosCarteira}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
