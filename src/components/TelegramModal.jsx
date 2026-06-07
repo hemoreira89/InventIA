@@ -25,25 +25,28 @@ export default function TelegramModal({ open, onClose, userId }) {
   async function gerarCodigo() {
     setStatus("generating");
     try {
-      // Gera código localmente — sem serverless function
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      let code = "INV-";
-      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      // Chama o backend, que valida o JWT e gera o código com service_role.
+      // Inserir o código direto do frontend é inseguro: a tabela precisaria de
+      // política RLS permissiva, e qualquer usuário poderia criar um código
+      // com user_id de outra pessoa e sequestrar o vínculo Telegram dela.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada");
 
-      // Remove códigos anteriores não-utilizados do usuário
-      await supabase.from("telegram_link_codes").delete().eq("user_id", userId).eq("used", false);
-
-      // Insere novo código (RLS garante que só o próprio usuário pode inserir)
-      const { error } = await supabase.from("telegram_link_codes").insert({
-        code,
-        user_id: userId,
-        expires_at: expiresAt
+      const res = await fetch("/api/telegram-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        }
       });
-      if (error) throw error;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const { code, botUrl, expiresAt } = await res.json();
 
       setCode(code);
-      setBotUrl("https://t.me/InvestIA_AppBot");
+      setBotUrl(botUrl);
       setExpiresAt(new Date(expiresAt));
       setStatus("code");
     } catch (err) {

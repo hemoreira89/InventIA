@@ -2,6 +2,7 @@
 // O bot do Telegram detecta esse padrão e vincula o chat_id ao perfil.
 
 import { createClient } from "@supabase/supabase-js";
+import { randomInt } from "node:crypto";
 
 export const config = { maxDuration: 10 };
 
@@ -10,18 +11,8 @@ const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O e 1/I (evita confus
 
 function gerarCodigo() {
   let code = "INV-";
-  for (let i = 0; i < 6; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
+  for (let i = 0; i < 6; i++) code += CHARS[randomInt(0, CHARS.length)];
   return code;
-}
-
-// Decodifica o payload do JWT sem validar assinatura (confiável em contexto server+service_role)
-function jwtUserId(token) {
-  try {
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString("utf-8"));
-    return payload?.sub || null;
-  } catch {
-    return null;
-  }
 }
 
 export default async function handler(req, res) {
@@ -37,17 +28,16 @@ export default async function handler(req, res) {
   const token = req.headers.authorization?.slice(7);
   if (!token) return res.status(401).json({ error: "Token de autenticação obrigatório" });
 
-  // Extrai user_id do JWT e confirma via admin API (service_role)
-  const userId = jwtUserId(token);
-  if (!userId) return res.status(401).json({ error: "Token malformado" });
-
   const supabase = createClient(SUPABASE_URL, supaKey, { auth: { persistSession: false } });
 
-  const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(userId);
-  if (authError || !user) return res.status(401).json({ error: "Usuário não encontrado" });
+  // Valida o JWT contra o Supabase (verifica assinatura e expiração).
+  // NÃO substituir por decode manual + admin.getUserById — isso ignora a assinatura
+  // e permite forjar tokens com qualquer `sub` para mintar códigos de vínculo de outros usuários.
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return res.status(401).json({ error: "Token inválido" });
 
   try {
-    // Remove códigos não-utilizados anteriores do mesmo usuário
+    // Remove códigos não-utilizados anteriores do mesmo usuário (service_role bypassa RLS)
     await supabase
       .from("telegram_link_codes")
       .delete()

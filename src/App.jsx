@@ -4740,6 +4740,35 @@ Responda APENAS este JSON (sem markdown):
   );
 }
 
+// ─── Constantes de navegação (módulo-nível — não recriar a cada render) ──────
+const TABS = [
+  {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
+  {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"var(--ui-success)",grupo:"portfolio"},
+  {k:"risco",icon:Shield,label:"Risco",cor:"var(--ui-success)",grupo:"portfolio"},
+  {k:"rebalanceamento",icon:Scale,label:"Rebalancear",cor:"var(--ui-success)",grupo:"portfolio"},
+  {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
+  {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
+  {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
+  {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"var(--ui-accent)",grupo:"analysis"},
+  {k:"historico",icon:History,label:"Histórico",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"proventos",icon:Coins,label:"Proventos",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"calendario",icon:Calendar,label:"Calendário",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"watchlist",icon:Eye,label:"Watchlist",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
+  {k:"meta",icon:Target,label:"1º Milhão",cor:"var(--ui-info)",grupo:"planning"},
+  {k:"renda",icon:Coins,label:"Renda Passiva",cor:"var(--ui-info)",grupo:"planning"},
+  {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
+];
+const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
+const GRUPOS_NAV = [
+  { k:"solo",      tabs:["carteira"] },
+  { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",     tabs:["analise","ticker","comparador","oportunidades","risco"] },
+  { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",       tabs:["rebalanceamento","meta","renda","cenarios","ir"] },
+  { k:"registros", label:"Registros", cor:"var(--ui-warning)",    tabs:["patrimonio","historico","proventos","calendario"] },
+  { k:"listas",    label:"Listas",    cor:"var(--ui-text-muted)", tabs:["watchlist","universo"] },
+];
+
 // ─── App Principal ────────────────────────────────────────────────────────────
 export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("carteira");
@@ -5280,35 +5309,6 @@ Regras:
     }
   }, [carteira, watchlist, aporte, foco, perfil, cotacoesGlobais, universoTickers]);
 
-  const TABS = [
-    {k:"carteira",icon:Briefcase,label:"Carteira",cor:"var(--ui-success)",grupo:"portfolio"},
-    {k:"patrimonio",icon:Activity,label:"Patrimônio",cor:"var(--ui-success)",grupo:"portfolio"},
-    {k:"risco",icon:Shield,label:"Risco",cor:"var(--ui-success)",grupo:"portfolio"},
-    {k:"rebalanceamento",icon:Scale,label:"Rebalancear",cor:"var(--ui-success)",grupo:"portfolio"},
-    {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
-    {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
-    {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
-    {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"var(--ui-accent)",grupo:"analysis"},
-    {k:"historico",icon:History,label:"Histórico",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"proventos",icon:Coins,label:"Proventos",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"calendario",icon:Calendar,label:"Calendário",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"watchlist",icon:Eye,label:"Watchlist",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"universo",icon:Globe,label:"Universo",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"ir",icon:Receipt,label:"IR",cor:"var(--ui-warning)",grupo:"control"},
-    {k:"meta",icon:Target,label:"1º Milhão",cor:"var(--ui-info)",grupo:"planning"},
-    {k:"renda",icon:Coins,label:"Renda Passiva",cor:"var(--ui-info)",grupo:"planning"},
-    {k:"cenarios",icon:TrendingUp,label:"Cenários",cor:"var(--ui-info)",grupo:"planning"},
-  ];
-
-  const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
-  const GRUPOS_NAV = [
-    { k:"solo",      tabs:["carteira"] },
-    { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",  tabs:["analise","ticker","comparador","oportunidades","risco"] },
-    { k:"planejar",  label:"Planejar",  cor:"var(--ui-info)",    tabs:["rebalanceamento","meta","renda","cenarios","ir"] },
-    { k:"registros", label:"Registros", cor:"var(--ui-warning)", tabs:["patrimonio","historico","proventos","calendario"] },
-    { k:"listas",    label:"Listas",    cor:"var(--ui-text-muted)", tabs:["watchlist","universo"] },
-  ];
-
   // Métricas para a barra superior
   // Usa dados da análise IA se disponível (mais completo, com peso ponderado).
   // Se não, calcula em tempo real direto da carteira + cotações ao vivo (brapi).
@@ -5356,14 +5356,14 @@ Regras:
     return () => clearInterval(interval);
   }, []);
   const horaAtual = agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-  const statusMercado = (() => {
-    const dia = agora.getDay(); // 0=dom, 6=sáb
+  const statusMercado = useMemo(() => {
+    const dia = agora.getDay();
     const min = agora.getHours()*60 + agora.getMinutes();
     if (dia === 0 || dia === 6) return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
-    if (min >= 600 && min < 1020) return { label:"MERCADO ABERTO", cor:"var(--ui-success)", aberto:true }; // 10:00-17:00
-    if (min >= 1050 && min < 1080) return { label:"AFTER-MARKET", cor:"var(--ui-warning)", aberto:true }; // 17:30-18:00
+    if (min >= 600 && min < 1020) return { label:"MERCADO ABERTO", cor:"var(--ui-success)", aberto:true }; // 10:00–17:00
+    if (min >= 1050 && min < 1080) return { label:"AFTER-MARKET", cor:"var(--ui-warning)", aberto:true }; // 17:30–18:00
     return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
-  })();
+  }, [agora]);
 
   return (
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
