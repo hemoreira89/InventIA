@@ -29,7 +29,8 @@ import {
   fmt, fmtBRL, fmtK, sleep, extrairJSON,
   juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario,
-  dividendoMensal, magicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca
+  dividendoMensal, magicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
+  xirr, fluxosCarteira
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
 import CommandPalette from "./components/CommandPalette";
@@ -615,6 +616,15 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   const tickersCarteira = carteira.map(a => a.ticker);
   const { cotacoes, atualizadoEm } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
 
+  // Rentabilidade real (XIRR) — retorno anualizado ponderado pelo timing dos aportes
+  const valorAtualCarteira = carteira.reduce((s, a) => {
+    const preco = cotacoes[a.ticker]?.preco ?? a.pm ?? 0;
+    return s + (Number(a.qtd) || 0) * preco;
+  }, 0);
+  const fluxosXirr = fluxosCarteira(historico, valorAtualCarteira);
+  const totalAportado = fluxosXirr.reduce((s, f) => s + (f.amount < 0 ? -f.amount : 0), 0);
+  const rentabilidadeReal = xirr(fluxosXirr); // decimal a.a. ou null
+
   // Histórico de 1 mês para sparklines (atualiza ao mudar carteira, cache 1h)
   const [historicos, setHistoricos] = useState({});
   useEffect(() => {
@@ -860,6 +870,20 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
       {carteira.length > 0 ? <>
+        {rentabilidadeReal != null && (
+          <Card>
+            <STitle>RENTABILIDADE REAL (XIRR)</STitle>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,150px),1fr))",gap:10}}>
+              <Stat label="RETORNO (a.a.)" value={(rentabilidadeReal>=0?"+":"")+fmt(rentabilidadeReal*100,1)+"%"} color={rentabilidadeReal>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+              <Stat label="VALOR ATUAL" value={fmtBRL(valorAtualCarteira)} mono/>
+              <Stat label="TOTAL APORTADO" value={fmtBRL(totalAportado)} color="var(--ui-text-muted)" mono/>
+              <Stat label="GANHO" value={(valorAtualCarteira-totalAportado>=0?"+":"")+fmtBRL(valorAtualCarteira-totalAportado)} color={valorAtualCarteira-totalAportado>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
+            </div>
+            <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
+              Retorno anualizado ponderado pelo tempo de cada aporte (XIRR), calculado a partir do histórico de compras e do valor de mercado atual. Quanto mais compras registradas com data, mais preciso.
+            </div>
+          </Card>
+        )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
             <STitle>ATIVOS ({carteira.length})</STitle>
