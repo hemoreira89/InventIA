@@ -4,7 +4,8 @@ import {
   CheckSquare, Star, AlertCircle, Sparkles,
   // Ícones de setor (mapeados em CATEGORIAS pra unificar com o resto do app)
   Landmark, Zap, Fuel, Droplet, ShoppingCart, Stethoscope,
-  Factory, Cpu, Package, Building2, FileText, Home
+  Factory, Cpu, Package, Building2, FileText, Home,
+  Wheat, Trees, Truck, Phone, Layers
 } from "lucide-react";
 import { CATEGORIAS, getDefaultUniverso, getAllTickers } from "../lib/catalogoB3";
 import { carregarUniverso, salvarUniverso } from "../supabase";
@@ -14,7 +15,8 @@ import { showToast } from "../App";
 // Mapa de string → componente Lucide (catalogoB3.js só tem strings, serializável)
 const ICON_MAP = {
   Landmark, Zap, Fuel, Droplet, ShoppingCart, Stethoscope,
-  Factory, Cpu, Package, Building2, FileText, Home
+  Factory, Cpu, Package, Building2, FileText, Home,
+  Wheat, Trees, Truck, Phone, Layers
 };
 
 /**
