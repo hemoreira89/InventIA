@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint src api scripts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
@@ -17,22 +18,27 @@
     "seed": "node scripts/seed-test-user.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^2.12.7",
-    "lucide-react": "^0.460.0",
-    "@supabase/supabase-js": "^2.45.4"
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.4",
-    "@vitest/ui": "^2.1.4",
-    "@vitest/coverage-v8": "^2.1.4",
-    "@testing-library/react": "^16.0.1",
+    "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.48.2",
     "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
+    "@vitejs/plugin-react": "^4.3.1",
+    "@vitest/coverage-v8": "^2.1.4",
+    "@vitest/ui": "^2.1.4",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "jsdom": "^25.0.1",
-    "@playwright/test": "^1.48.2"
+    "vite": "^5.4.8",
+    "vitest": "^2.1.4"
   }
 }

@@ -10,6 +10,24 @@ on:
     - cron: '0 12 * * *'
 
 jobs:
+  lint:
+    name: Lint (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar ESLint
+        run: npm run lint
+
   unit-tests:
     name: Testes Unitários
     runs-on: ubuntu-latest
