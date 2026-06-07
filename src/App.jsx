@@ -30,7 +30,7 @@ import {
   juroCompostos, gerarProjecao,
   projetarCalendario, resumoCalendario,
   dividendoMensal, magicNumber, progressoMagicNumber, precoTetoBazin, precoJustoGraham, margemSeguranca,
-  xirr, fluxosCarteira
+  xirr, fluxosCarteira, tickerValido
 } from "./lib/calc";
 import EmptyState from "./components/EmptyState";
 import CommandPalette from "./components/CommandPalette";
@@ -636,6 +636,9 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
     const preco = cotacoes[a.ticker]?.preco ?? a.pm ?? 0;
     return s + (Number(a.qtd) || 0) * preco;
   }, 0);
+  // XIRR só é confiável com cotação ao vivo de TODOS os ativos — senão usa PM como
+  // "preço atual" (fallback acima) e distorce o retorno.
+  const cotacoesCompletas = carteira.length > 0 && carteira.every(a => cotacoes[a.ticker]?.preco != null);
   const fluxosXirr = fluxosCarteira(historico, valorAtualCarteira);
   const totalAportado = fluxosXirr.reduce((s, f) => s + (f.amount < 0 ? -f.amount : 0), 0);
   const rentabilidadeReal = xirr(fluxosXirr); // decimal a.a. ou null
@@ -885,7 +888,12 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
       {carteira.length > 0 ? <>
-        {rentabilidadeReal != null && (
+        {rentabilidadeReal != null && !cotacoesCompletas && (
+          <Card>
+            <div style={{fontSize:11,color:"var(--ui-text-muted)"}}>Rentabilidade real (XIRR) aguardando cotações ao vivo de todos os ativos para não distorcer o cálculo.</div>
+          </Card>
+        )}
+        {rentabilidadeReal != null && cotacoesCompletas && (
           <Card>
             <STitle>RENTABILIDADE REAL (XIRR)</STitle>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,150px),1fr))",gap:10}}>
@@ -1502,7 +1510,9 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
 
   const add = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !alvo || !userId) return;
+    if (!userId) return;
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(alvo) > 0)) { showToast("Informe um preço-alvo maior que zero", "error"); return; }
     setSalvando(true);
     try {
       const novoItem = await salvarWatchlist(userId, {
@@ -1556,7 +1566,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
         await promessaDelete;
         const novo = await salvarWatchlist(userId, {
           ticker: itemBackup.ticker,
-          alvo: itemBackup.alvo,
+          preco_alvo: itemBackup.alvo,
           nota: itemBackup.nota,
           precoIA: itemBackup.precoIA
         });
@@ -2614,16 +2624,18 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
                           <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{a.setor}</div>
                         </td>
                         <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)",fontWeight:600}}>{fmtBRL(a.preco)}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:600}}>{a.dy?fmt(a.dy,2)+"%":"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pl?fmt(a.pl,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pvp?fmt(a.pvp,2):"–"}</td>
-                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:600}}>{a.roe?fmt(a.roe,1)+"%":"–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-warning)",fontWeight:600}}>{a.dy != null ? fmt(a.dy,2)+"%" : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pl != null ? fmt(a.pl,2) : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)"}}>{a.pvp != null ? fmt(a.pvp,2) : "–"}</td>
+                        <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-success)",fontWeight:600}}>{a.roe != null ? fmt(a.roe,1)+"%" : "–"}</td>
                         <td style={{textAlign:"right",padding:"12px 8px"}}>
+                          {a.score == null ? <span style={{color:"var(--ui-text-faint)"}}>–</span> : (
                           <span style={{
                             padding:"4px 10px",borderRadius:6,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
                             background:a.score>=70?"rgba(0,229,160,0.12)":a.score>=50?"rgba(255,214,10,0.12)":"rgba(255,77,109,0.12)",
                             color:a.score>=70?"var(--ui-success)":a.score>=50?"var(--ui-warning)":"var(--ui-danger)"
                           }}>{a.score}</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2750,7 +2762,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                     <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Clock size={11}/>{data.toLocaleDateString("pt-BR")} {data.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
                     {a.perfil && <span>· {a.perfil}</span>}
                     {a.foco && <span>· {a.foco}</span>}
-                    {a.resultado?.recomendacoes?.length && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
+                    {a.resultado?.recomendacoes?.length > 0 && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
                   </div>
                 </div>
               </div>
@@ -2825,7 +2837,9 @@ function TabProventos({ userId }) {
 
   const adicionar = async () => {
     const t = ticker.toUpperCase().trim();
-    if (!t || !valor || !data) return;
+    if (!data) { showToast("Informe a data do provento", "error"); return; }
+    if (!tickerValido(t)) { showToast("Ticker inválido (ex.: PETR4, MXRF11)", "error"); return; }
+    if (!(Number(valor) > 0)) { showToast("Informe um valor maior que zero", "error"); return; }
     setSalvando(true);
     try {
       const novo = await registrarProvento(userId, {
@@ -2883,12 +2897,14 @@ function TabProventos({ userId }) {
   };
 
   // Estatísticas
-  const totalAno = proventos.filter(p => new Date(p.data_pagamento).getFullYear() === new Date().getFullYear()).reduce((s,p) => s + Number(p.valor), 0);
-  const totalMes = proventos.filter(p => {
+  // Bonificação é paga em ações/cotas (não em R$), então não entra nos somatórios de renda.
+  const proventosEmDinheiro = proventos.filter(p => p.tipo !== "bonificacao");
+  const totalAno = proventosEmDinheiro.filter(p => new Date(p.data_pagamento).getFullYear() === new Date().getFullYear()).reduce((s,p) => s + Number(p.valor), 0);
+  const totalMes = proventosEmDinheiro.filter(p => {
     const d = new Date(p.data_pagamento);
     return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
   }).reduce((s,p) => s + Number(p.valor), 0);
-  const totalGeral = proventos.reduce((s,p) => s + Number(p.valor), 0);
+  const totalGeral = proventosEmDinheiro.reduce((s,p) => s + Number(p.valor), 0);
 
   // Gráfico mensal últimos 12 meses
   const meses = [];
@@ -2973,7 +2989,7 @@ function TabProventos({ userId }) {
             <STitle>TOP 5 PAGADORES</STitle>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {topTickers.map(([t,v]) => {
-                const pct = (v / totalGeral) * 100;
+                const pct = totalGeral > 0 ? (v / totalGeral) * 100 : 0;
                 return (
                   <div key={t}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
@@ -3410,7 +3426,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
   }
 
   const totalAtual = posicoes.reduce((s,p) => s + (p.valor||0), 0);
-  const aporteNum = Number(aporte) || 0;
+  const aporteNum = Math.max(0, Number(aporte) || 0);
   const totalComAporte = totalAtual + aporteNum;
 
   // Monta dados comparando peso atual vs peso alvo
@@ -3420,7 +3436,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
     const pesoAlvo = a.peso_alvo || 0;
     const valorAtual = pos ? (pos.valor || 0) : 0;
     const valorAlvo = pesoAlvo > 0 ? (totalComAporte * pesoAlvo / 100) : null;
-    const diferenca = valorAlvo != null ? (valorAlvo - valorAtual - (pesoAlvo/100)*aporteNum) : null;
+    const diferenca = valorAlvo != null ? (valorAlvo - valorAtual) : null;
     const delta = pesoAlvo > 0 ? (pesoAtual - pesoAlvo) : null;
 
     return {
@@ -3455,6 +3471,7 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
             <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>Simular aporte:</div>
             <input
               type="number"
+              min="0"
               placeholder="R$ 0"
               value={aporte}
               onChange={e=>setAporte(e.target.value)}
@@ -3526,22 +3543,24 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
                     </td>
                     {aporteNum > 0 && (
                       <td style={{padding:"10px 8px",textAlign:"right"}}>
-                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (
+                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (() => {
+                          const d = r.valorAlvo - r.valorAtual;
+                          const limiar = Math.max(50, r.valorAlvo * 0.02);
+                          const acao = d > limiar ? "Comprar" : d < -limiar ? "Reduzir" : "Manter";
+                          const cor = acao === "Comprar" ? "var(--ui-success)" : acao === "Reduzir" ? "var(--ui-warning)" : "var(--ui-text-muted)";
+                          return (
                           <div>
-                            <span style={{
-                              fontWeight:700,fontSize:12,
-                              color: r.valorAlvo > r.valorAtual ? "var(--ui-success)" : "var(--ui-danger)"
-                            }}>
-                              {r.valorAlvo > r.valorAtual ? "Comprar " : "Manter "}
-                              {r.valorAlvo > r.valorAtual ? fmtBRL(r.valorAlvo - r.valorAtual) : ""}
+                            <span style={{fontWeight:700,fontSize:12,color:cor}}>
+                              {acao}{acao !== "Manter" ? " " + fmtBRL(Math.abs(d)) : ""}
                             </span>
-                            {r.preco && r.valorAlvo > r.valorAtual && (
+                            {r.preco && acao !== "Manter" && (
                               <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>
-                                ≈ {Math.ceil((r.valorAlvo - r.valorAtual)/r.preco)} cotas
+                                ≈ {Math.ceil(Math.abs(d)/r.preco)} cotas
                               </div>
                             )}
                           </div>
-                        ) : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
+                          );
+                        })() : <span style={{color:"var(--ui-text-disabled)"}}>–</span>}
                       </td>
                     )}
                   </tr>
@@ -3907,7 +3926,7 @@ function TabPatrimonio({ userId, dados }) {
 
   const primeiro = snapshots[0];
   const ultimo = snapshots[snapshots.length-1];
-  const variacao = primeiro && ultimo ? ((ultimo.valor - primeiro.valor) / primeiro.valor) * 100 : 0;
+  const variacao = primeiro && ultimo && Number(primeiro.valor) > 0 ? ((Number(ultimo.valor) - Number(primeiro.valor)) / Number(primeiro.valor)) * 100 : 0;
   const ganho = primeiro && ultimo ? Number(ultimo.valor) - Number(primeiro.valor) : 0;
 
   // Comparação com benchmarks. CDI = taxa de referência fixa; IBOV = índice real

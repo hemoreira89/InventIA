@@ -45,11 +45,14 @@ export default function TabUniverso({ userId }) {
           setSelecionados(new Set(doCatalogo));
           setCustomizados(customs);
         } else {
+          // Primeira visita: usa o padrão e marca como não-salvo para o usuário confirmar
           setSelecionados(new Set(getDefaultUniverso()));
+          setDirty(true);
         }
       } catch (e) {
         console.error(e);
         setSelecionados(new Set(getDefaultUniverso()));
+        setDirty(true);
       } finally {
         setLoading(false);
       }

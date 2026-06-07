@@ -35,16 +35,20 @@ export default function TickerAutocomplete({
   const inputRef = externalRef || internalRef;
   const containerRef = useRef(null);
 
+  const [cacheReady, setCacheReady] = useState(!!catalogoCache);
+
   // Carrega catálogo na montagem (uma vez por sessão)
   useEffect(() => {
-    if (!catalogoCache) {
-      buscarCatalogo()
-        .then(data => { catalogoCache = data || []; })
-        .catch(() => { catalogoCache = []; });
-    }
+    if (catalogoCache) { setCacheReady(true); return; }
+    let alive = true;
+    buscarCatalogo()
+      .then(data => { catalogoCache = data || []; if (alive) setCacheReady(true); })
+      // Não cacheia array vazio em erro: permite retry na próxima montagem
+      .catch(() => { if (alive) setCacheReady(true); });
+    return () => { alive = false; };
   }, []);
 
-  // Filtra catálogo conforme digitação
+  // Filtra catálogo conforme digitação (re-roda quando o cache termina de carregar)
   useEffect(() => {
     const q = normalizarBusca(value);
     if (!q || q.length < 1 || !catalogoCache) {
@@ -72,7 +76,7 @@ export default function TickerAutocomplete({
     setSugestoes(matches);
     setAberto(matches.length > 0);
     setSelecionado(-1);
-  }, [value, maxSugestoes]);
+  }, [value, maxSugestoes, cacheReady]);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
