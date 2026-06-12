@@ -9,12 +9,16 @@ test.describe('Tela de Login', () => {
     await expect(page.getByRole('button', { name: /Entrar/i })).toBeVisible();
   });
 
-  test('cadastros estão fechados (uso pessoal)', async ({ page }) => {
+  test('cadastros abertos com teste grátis de 7 dias', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
-    await expect(page.getByText(/Cadastros fechados no momento/i)).toBeVisible();
-    // Não deve existir o atalho de criar conta
-    await expect(page.getByRole('button', { name: /Criar agora/i })).toHaveCount(0);
+    // Atalho para criar conta com trial
+    const btnTrial = page.getByRole('button', { name: /Teste grátis por 7 dias/i });
+    await expect(btnTrial).toBeVisible();
+    // Abre o modo signup com a oferta do trial
+    await btnTrial.click();
+    await expect(page.getByRole('heading', { name: 'Criar conta' })).toBeVisible();
+    await expect(page.getByText(/Teste grátis por 7 dias — sem cartão de crédito/i)).toBeVisible();
   });
 
   test('valida campos obrigatórios', async ({ page }) => {

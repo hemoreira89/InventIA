@@ -3,9 +3,10 @@ import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { signIn, signUp } from "./supabase";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 
-// Cadastros fechados: ferramenta de uso pessoal por enquanto.
-// Para reabrir no futuro, troque para true (e reative o signup no painel do Supabase).
-const SIGNUP_ENABLED = false;
+// Cadastros abertos: todo novo usuário ganha 7 dias de teste grátis
+// (trial criado automaticamente por trigger no Supabase — ver sql/migrations/
+// 2026-06-12_planos_trial.sql). Para fechar de novo, troque para false.
+const SIGNUP_ENABLED = true;
 
 export default function Login({ onAuth }) {
   const themeApi = useTheme();
@@ -150,7 +151,7 @@ export default function Login({ onAuth }) {
               <p style={{ fontSize: 13, color: "var(--ui-text-muted)" }}>
                 {modo === "login"
                   ? "Acesse sua carteira e análises"
-                  : "Comece a usar o InvestIA agora"}
+                  : "Teste grátis por 7 dias — sem cartão de crédito"}
               </p>
             </div>
 
@@ -277,7 +278,7 @@ export default function Login({ onAuth }) {
                       background: "none", border: "none",
                       color: "var(--ui-accent)", fontWeight: 700, cursor: "pointer", fontSize: 12
                     }}>
-                    Criar agora
+                    Teste grátis por 7 dias
                   </button>
                 </>
               ) : (
