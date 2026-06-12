@@ -5921,23 +5921,28 @@ Regras:
               <MessageCircle size={15} fill="#229ED9" strokeWidth={0}/>
             </button>
 
-            {/* Trial: dias restantes + atalho para assinar */}
-            {planoStatus?.trial && (
-              <button onClick={() => setShowPlanos(true)} title="Ver planos e assinar"
-                aria-label="Ver planos e assinar" style={{
-                background:"rgba(123,97,255,0.1)",
-                border:"1px solid rgba(123,97,255,0.35)",
-                borderRadius:99,
-                padding:"6px 12px",
-                color:"var(--ui-accent)",
-                cursor:"pointer",
-                display:"flex",alignItems:"center",gap:6,
-                fontSize:11,fontWeight:800,letterSpacing:0.3,whiteSpace:"nowrap"
-              }}>
-                <Crown size={12}/>
-                Teste grátis · {planoStatus.diasRestantes}d
-              </button>
-            )}
+            {/* Trial: dias restantes + atalho para assinar (urgência nos 2 últimos dias) */}
+            {planoStatus?.trial && (() => {
+              const urgente = planoStatus.diasRestantes <= 2;
+              return (
+                <button onClick={() => setShowPlanos(true)} title="Ver planos e assinar"
+                  aria-label="Ver planos e assinar" style={{
+                  background: urgente ? "rgba(255,179,71,0.12)" : "rgba(123,97,255,0.1)",
+                  border: urgente ? "1px solid rgba(255,179,71,0.45)" : "1px solid rgba(123,97,255,0.35)",
+                  borderRadius:99,
+                  padding:"6px 12px",
+                  color: urgente ? "var(--ui-warning)" : "var(--ui-accent)",
+                  cursor:"pointer",
+                  display:"flex",alignItems:"center",gap:6,
+                  fontSize:11,fontWeight:800,letterSpacing:0.3,whiteSpace:"nowrap"
+                }}>
+                  <Crown size={12}/>
+                  {urgente
+                    ? `Assine — ${planoStatus.diasRestantes === 0 ? "último dia" : `só ${planoStatus.diasRestantes}d de teste`}`
+                    : `Teste grátis · ${planoStatus.diasRestantes}d`}
+                </button>
+              );
+            })()}
 
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>

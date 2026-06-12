@@ -8,9 +8,9 @@ import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 // 2026-06-12_planos_trial.sql). Para fechar de novo, troque para false.
 const SIGNUP_ENABLED = true;
 
-export default function Login({ onAuth }) {
+export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
   const themeApi = useTheme();
-  const [modo, setModo] = useState("login"); // login | signup
+  const [modo, setModo] = useState(SIGNUP_ENABLED ? modoInicial : "login"); // login | signup
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,6 +94,17 @@ export default function Login({ onAuth }) {
         borderRadius: 16,
         padding: 32
       }}>
+        {/* Voltar para a página inicial */}
+        {onVoltar && (
+          <button type="button" onClick={onVoltar} style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "var(--ui-text-faint)", fontSize: 12, fontWeight: 600,
+            display: "flex", alignItems: "center", gap: 4, marginBottom: 16, padding: 0
+          }}>
+            ← Voltar
+          </button>
+        )}
+
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
           <img src="/icons/icon-192.png" alt="InvestIA" width={56} height={56}

@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import Login from './Login.jsx'
+import Landing from './Landing.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { supabase, getSession, signOut } from './supabase.js'
 
 function Root() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Visitante deslogado: null = landing de vendas; "login"/"signup" = formulário
+  const [authView, setAuthView] = useState(null);
 
   useEffect(() => {
     getSession().then(s => {
@@ -52,7 +55,17 @@ function Root() {
   }
 
   if (!session) {
-    return <Login onAuth={setSession}/>;
+    if (!authView) {
+      return <Landing
+        onEntrar={() => setAuthView("login")}
+        onComecar={() => setAuthView("signup")}
+      />;
+    }
+    return <Login
+      onAuth={setSession}
+      modoInicial={authView}
+      onVoltar={() => setAuthView(null)}
+    />;
   }
 
   return <App session={session} onLogout={async () => { await signOut(); setSession(null); }}/>;

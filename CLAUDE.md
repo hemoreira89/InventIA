@@ -203,6 +203,13 @@ VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
   ```
 - **Estender trial:** `update public.profiles set trial_fim = now() + interval '7 days' where email = '...';`
 - Usuários pré-existentes (dono + e2e) têm `plano='vitalicio'` (nunca expira).
+- **`vitalicio` é interno** — uso exclusivo do dono e do usuário de testes E2E. Nunca deve aparecer como opção de compra na Paywall/Landing (o catálogo de venda é só `PLANOS` em `src/lib/plano.js`: mensal e anual).
+- **Landing page** (`src/Landing.jsx`): página de vendas para visitante deslogado (hero, features, planos, FAQ). "Entrar"/"Teste grátis" levam ao `Login.jsx` (`modoInicial` login/signup).
+
+### ⚠️ Pendências manuais (painel do Supabase — só o dono consegue)
+
+1. **Reabrir signups:** Authentication → Sign In/Up → habilitar "Allow new users to sign up" (foi desligado quando o app era de uso pessoal). Sem isso, ninguém consegue criar conta mesmo com o formulário aberto.
+2. **Ativar Leaked Password Protection:** Authentication → Policies (recomendação do security advisor).
 
 ---
 
