@@ -2,12 +2,11 @@
 //  - Bloqueio (trial/assinatura expirada): ocupa a tela toda, sem fechar — só
 //    assinar ou sair da conta.
 //  - Upgrade (onClose presente): mesmo conteúdo como overlay, com botão fechar.
-// O checkout abre o link configurado em VITE_CHECKOUT_URL_* (Stripe/MP/etc.);
-// sem link, cai no contato por email com o pedido pré-preenchido.
+// O "Assinar" usa iniciarCheckout (Mercado Pago via backend; fallback p/ email).
 
 import { useEffect } from "react";
 import { Check, Crown, LogOut, X, Sparkles, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
-import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS } from "../lib/plano";
+import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS, iniciarCheckout } from "../lib/plano";
 import { track } from "../lib/track";
 
 function fmtPreco(v) {
@@ -16,15 +15,7 @@ function fmtPreco(v) {
 
 function abrirCheckout(plano, email) {
   track("plan_clicked", { plano: plano.id });
-  if (plano.checkoutUrl) {
-    window.open(plano.checkoutUrl, "_blank", "noopener");
-    return;
-  }
-  const assunto = encodeURIComponent(`Assinatura InvestIA Pro — plano ${plano.nome}`);
-  const corpo = encodeURIComponent(
-    `Olá! Quero assinar o plano ${plano.nome} (${fmtPreco(plano.preco)}${plano.periodo}) do InvestIA Pro.\n\nMinha conta: ${email || "(informe o email da sua conta)"}`
-  );
-  window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
+  iniciarCheckout(plano, email);
 }
 
 export default function Paywall({ email, status, onLogout, onClose }) {

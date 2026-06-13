@@ -111,3 +111,40 @@ export async function carregarPerfilPlano(userId) {
     return null;
   }
 }
+
+/**
+ * Inicia o checkout de um plano. Ordem de tentativa:
+ *   1. Link estático configurado (VITE_CHECKOUT_URL_*), se houver.
+ *   2. Mercado Pago (Checkout Pro) via /api/mp-criar-pagamento — auto-ativa o
+ *      plano por webhook após o pagamento.
+ *   3. Fallback: contato por email (enquanto pagamento não está configurado).
+ */
+export async function iniciarCheckout(plano, email) {
+  if (plano.checkoutUrl) {
+    window.open(plano.checkoutUrl, "_blank", "noopener");
+    return;
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const r = await fetch("/api/mp-criar-pagamento", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ plano: plano.id }),
+    });
+    if (r.ok) {
+      const { init_point } = await r.json();
+      if (init_point) { window.location.href = init_point; return; }
+    }
+  } catch (e) {
+    console.warn("[plano] checkout MP indisponível, usando fallback:", e?.message);
+  }
+  // Fallback: email com o pedido pré-preenchido.
+  const assunto = encodeURIComponent(`Assinatura InvestIA Pro — plano ${plano.nome}`);
+  const corpo = encodeURIComponent(
+    `Olá! Quero assinar o plano ${plano.nome} do InvestIA Pro.\n\nMinha conta: ${email || "(informe o email da sua conta)"}`
+  );
+  window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
+}

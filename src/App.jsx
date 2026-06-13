@@ -5296,6 +5296,26 @@ export default function App({ session, onLogout }) {
     window.addEventListener("plano-bloqueado", onBloqueio);
     return () => window.removeEventListener("plano-bloqueado", onBloqueio);
   }, [userId]);
+  // Retorno do checkout do Mercado Pago (?pagamento=ok|falha|pendente).
+  useEffect(() => {
+    const pg = new URLSearchParams(window.location.search).get("pagamento");
+    if (!pg) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    if (pg === "ok") {
+      showToast("Pagamento recebido! Ativando seu plano…", "success");
+      setShowPlanos(false);
+      // O webhook ativa o plano de forma assíncrona — recarrega o perfil algumas vezes.
+      let n = 0;
+      const iv = setInterval(() => {
+        if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
+        if (++n >= 5) clearInterval(iv);
+      }, 3000);
+    } else if (pg === "falha") {
+      showToast("Pagamento não concluído. Você pode tentar de novo.", "error");
+    } else if (pg === "pendente") {
+      showToast("Pagamento pendente de confirmação.", "success");
+    }
+  }, [userId]);
   const planoStatus = useMemo(
     () => (perfilPlano === undefined ? null : statusPlano(perfilPlano)),
     [perfilPlano]
