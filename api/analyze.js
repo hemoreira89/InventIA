@@ -20,6 +20,52 @@ export const config = {
 
 const TIMEOUT_MS = 30000; // 30s - sem Google Search, Gemini responde em 5-15s normalmente
 
+// ─── Gate de plano/trial ──────────────────────────────────────────────────────
+// Antes de gastar Gemini, checa o plano do usuário lendo profiles via PostgREST
+// com o PRÓPRIO token do usuário (RLS garante que só lê a própria linha).
+// Fail-open de propósito: sem token, perfil ausente ou erro de infra deixam
+// passar — o bloqueio duro é na UI; aqui é só a trava de custo para contas
+// sabidamente expiradas.
+const SUPABASE_URL = process.env.SUPABASE_URL
+  || process.env.VITE_SUPABASE_URL
+  || 'https://bjghaqtyijvlnwlesrst.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
+  || process.env.VITE_SUPABASE_ANON_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE';
+
+async function verificarPlano(req, log) {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token) return { ok: true, motivo: 'sem-token' };
+
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=plano,trial_fim,plano_expira_em`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) return { ok: true, motivo: `rest-${r.status}` };
+
+    const perfil = (await r.json())?.[0];
+    if (!perfil) return { ok: true, motivo: 'sem-perfil' };
+
+    if (perfil.plano === 'vitalicio') return { ok: true, motivo: 'vitalicio' };
+    if (perfil.plano === 'mensal' || perfil.plano === 'anual') {
+      if (!perfil.plano_expira_em || new Date(perfil.plano_expira_em) > new Date()) {
+        return { ok: true, motivo: perfil.plano };
+      }
+      return { ok: false, motivo: 'assinatura-expirada' };
+    }
+    // trial
+    if (perfil.trial_fim && new Date(perfil.trial_fim) <= new Date()) {
+      return { ok: false, motivo: 'trial-expirado' };
+    }
+    return { ok: true, motivo: 'trial' };
+  } catch (e) {
+    log?.(`PLANO check falhou (fail-open): ${e.message}`);
+    return { ok: true, motivo: `erro:${e.message}` };
+  }
+}
+
 async function chamarGemini(modelId, prompt, useSearch, apiKey, log) {
   const tStart = Date.now();
   log(`>>> Tentando ${modelId} (search=${useSearch})`);
@@ -134,11 +180,22 @@ export default async function handler(req, res) {
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const plano = await verificarPlano(req, log);
+    log(`PLANO ${plano.ok ? 'OK' : 'BLOQUEADO'} (${plano.motivo})`);
+    if (!plano.ok) {
+      return res.status(402).json({
+        error: plano.motivo === 'trial-expirado'
+          ? 'Seu teste grátis de 7 dias terminou. Assine um plano para continuar usando a análise com IA.'
+          : 'Sua assinatura expirou. Renove o plano para continuar usando a análise com IA.',
+        planoBloqueado: true
+      });
+    }
+
     const { prompt, useSearch = true, model = 'flash' } = req.body || {};
 
     log('REQUEST recebido', {

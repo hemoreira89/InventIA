@@ -16,13 +16,15 @@ test.describe('Fluxo principal autenticado', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
 
+    // A raiz é a landing de vendas — o login fica atrás do botão "Entrar"
+    await page.getByRole('button', { name: /^Entrar$/i }).click();
     await page.getByPlaceholder('seu@email.com').fill(TEST_EMAIL);
     await page.getByPlaceholder('••••••••').fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /^Entrar$/i }).click();
 
     await page.waitForTimeout(2000);
 
-    // Cadastros estão fechados: a conta de teste precisa existir (via seed.yml).
+    // A conta de teste precisa existir (via seed.yml) com plano vitalício.
     // Aguarda app carregar — botão de logout só existe após login
     await expect(page.locator('button[title="Sair"]')).toBeVisible({ timeout: 15000 });
   });

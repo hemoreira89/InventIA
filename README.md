@@ -385,6 +385,7 @@ Pressione `g` seguido da tecla:
 - [x] Snapshots automáticos de patrimônio
 - [x] Universo customizável de tickers
 - [x] Análise IA, individual, comparador, oportunidades
+- [x] Monetização — planos Mensal/Anual com teste grátis de 7 dias (paywall + gate de plano no /api/analyze)
 
 ### 🚧 Backlog
 - [x] **Múltiplas carteiras** — separar "Aposentadoria", "Trade", "Cripto" ✅

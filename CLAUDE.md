@@ -102,15 +102,15 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 
 | Tabela | Descrição |
 |--------|-----------|
-| `profiles` | Perfil do usuário (criado via trigger na auth) |
+| `profiles` | Perfil do usuário (criado via trigger na auth) — `plano` ('trial'\|'mensal'\|'anual'\|'vitalicio'), `trial_fim` (signup + 7 dias), `plano_expira_em`. Somente leitura para o cliente (mudança de plano = SQL/service role) |
 | `carteiras` | Portfólios (1+ por usuário; `nome`, `user_id`) |
 | `ativos` | Ativos da carteira (`ticker`, `qtd`, `pm`, `peso_alvo`, `carteira_id`) |
 | `compras` | Histórico imutável de compras |
 | `watchlist` | Tickers com preço-alvo e nota |
 | `proventos` | Dividendos recebidos |
-| `analises_salvas` | Snapshots das análises IA |
+| `analises` | Snapshots das análises IA |
 | `patrimonio_snapshots` | Evolução do patrimônio (gráfico) |
-| `universos_usuario` | Universo customizável de tickers para a IA |
+| `universo_usuario` | Universo customizável de tickers para a IA |
 | `screening_catalogo` | ~1430 tickers B3 (atualizado diariamente) |
 | `screening_fundamentos` | Fundamentos cacheados semanalmente (bolsai) |
 
@@ -177,9 +177,39 @@ CRON_SECRET=...
 # Supabase (embutidas no frontend — anon key pública)
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
+
+# Monetização (opcionais — sem elas o botão "Assinar" cai no contato por email)
+VITE_CHECKOUT_URL_MENSAL=...   # link de pagamento (Stripe/Mercado Pago/Kiwify)
+VITE_CHECKOUT_URL_ANUAL=...
+VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
 ```
 
 > A anon key é pública (protegida por RLS). A chave do Gemini fica apenas no servidor (Vercel).
+
+---
+
+## Monetização (planos + trial de 7 dias)
+
+- **Signup** → trigger `on_auth_user_created` cria linha em `profiles` com `plano='trial'` e `trial_fim = now() + 7 dias` (ver `sql/migrations/2026-06-12_planos_trial.sql`).
+- **Frontend** (`src/lib/plano.js` + `src/components/Paywall.jsx`): pill "Teste grátis · Xd" no header durante o trial; quando expira, o app bloqueia com a tela de planos (Mensal R$ 24,90 / Anual R$ 199).
+- **Backend** (`api/analyze.js`): valida o JWT do usuário contra `profiles` antes de gastar Gemini (HTTP 402 se expirado; fail-open em erro de infra para nunca derrubar usuário pagante por bug).
+- **Ativar plano pago** (manual, até existir webhook de pagamento):
+  ```sql
+  update public.profiles
+     set plano = 'mensal',                            -- ou 'anual'
+         plano_expira_em = now() + interval '1 month', -- ou '1 year'
+         updated_at = now()
+   where email = 'cliente@email.com';
+  ```
+- **Estender trial:** `update public.profiles set trial_fim = now() + interval '7 days' where email = '...';`
+- Usuários pré-existentes (dono + e2e) têm `plano='vitalicio'` (nunca expira).
+- **`vitalicio` é interno** — uso exclusivo do dono e do usuário de testes E2E. Nunca deve aparecer como opção de compra na Paywall/Landing (o catálogo de venda é só `PLANOS` em `src/lib/plano.js`: mensal e anual).
+- **Landing page** (`src/Landing.jsx`): página de vendas para visitante deslogado (hero, features, planos, FAQ). "Entrar"/"Teste grátis" levam ao `Login.jsx` (`modoInicial` login/signup).
+
+### ⚠️ Pendências manuais (painel do Supabase — só o dono consegue)
+
+1. **Reabrir signups:** Authentication → Sign In/Up → habilitar "Allow new users to sign up" (foi desligado quando o app era de uso pessoal). Sem isso, ninguém consegue criar conta mesmo com o formulário aberto.
+2. **Ativar Leaked Password Protection:** Authentication → Policies (recomendação do security advisor).
 
 ---
 

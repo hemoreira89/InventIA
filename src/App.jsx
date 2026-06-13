@@ -46,7 +46,9 @@ import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import TickerAutocomplete from "./components/TickerAutocomplete";
 import TelegramModal from "./components/TelegramModal";
-import { carregarUniverso } from "./supabase";
+import { carregarUniverso, supabase } from "./supabase";
+import Paywall from "./components/Paywall";
+import { carregarPerfilPlano, statusPlano } from "./lib/plano";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
@@ -72,9 +74,15 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
   const tentar = async () => {
     const tStart = Date.now();
     console.log(`[IA] POST /api/analyze (prompt ${prompt?.length || 0} chars)`);
+    // Token do usuário: o backend valida o plano/trial antes de gastar Gemini
+    let authHeader = {};
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) authHeader = { Authorization: `Bearer ${session.access_token}` };
+    } catch { /* sem sessão: backend decide */ }
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeader },
       // useSearch=false: NÃO usa Google Search grounding.
       // Antes a IA fazia web_search pra buscar cotações/fundamentos, mas:
       //  - Levava 30-50s (estourava timeout do Vercel Hobby)
@@ -5202,6 +5210,19 @@ export default function App({ session, onLogout }) {
   const userId = session?.user?.id;
   const userEmail = session?.user?.email;
 
+  // Plano / trial (monetização): undefined = ainda carregando (não mostra nada);
+  // null = sem perfil (fail-open, statusPlano trata como trial cheio).
+  const [perfilPlano, setPerfilPlano] = useState(undefined);
+  const [showPlanos, setShowPlanos] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    carregarPerfilPlano(userId).then(setPerfilPlano);
+  }, [userId]);
+  const planoStatus = useMemo(
+    () => (perfilPlano === undefined ? null : statusPlano(perfilPlano)),
+    [perfilPlano]
+  );
+
   // Carregar dados do Supabase
   useEffect(() => {
     if (!userId) return;
@@ -5648,6 +5669,17 @@ Regras:
     return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
   }, [agora]);
 
+  // Trial/assinatura expirada: bloqueia o app com a tela de planos.
+  // (Depois de TODOS os hooks — early return não pode mudar a ordem deles.)
+  if (planoStatus?.expirado) {
+    return (
+      <PrivacyContext.Provider value={privacy}>
+        <style>{THEME_CSS}</style>
+        <Paywall email={userEmail} status={planoStatus} onLogout={onLogout}/>
+      </PrivacyContext.Provider>
+    );
+  }
+
   return (
    <PrivacyContext.Provider value={privacy}>
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
@@ -5888,6 +5920,29 @@ Regras:
             >
               <MessageCircle size={15} fill="#229ED9" strokeWidth={0}/>
             </button>
+
+            {/* Trial: dias restantes + atalho para assinar (urgência nos 2 últimos dias) */}
+            {planoStatus?.trial && (() => {
+              const urgente = planoStatus.diasRestantes <= 2;
+              return (
+                <button onClick={() => setShowPlanos(true)} title="Ver planos e assinar"
+                  aria-label="Ver planos e assinar" style={{
+                  background: urgente ? "rgba(255,179,71,0.12)" : "rgba(123,97,255,0.1)",
+                  border: urgente ? "1px solid rgba(255,179,71,0.45)" : "1px solid rgba(123,97,255,0.35)",
+                  borderRadius:99,
+                  padding:"6px 12px",
+                  color: urgente ? "var(--ui-warning)" : "var(--ui-accent)",
+                  cursor:"pointer",
+                  display:"flex",alignItems:"center",gap:6,
+                  fontSize:11,fontWeight:800,letterSpacing:0.3,whiteSpace:"nowrap"
+                }}>
+                  <Crown size={12}/>
+                  {urgente
+                    ? `Assine — ${planoStatus.diasRestantes === 0 ? "último dia" : `só ${planoStatus.diasRestantes}d de teste`}`
+                    : `Teste grátis · ${planoStatus.diasRestantes}d`}
+                </button>
+              );
+            })()}
 
             {/* Modo Privacidade */}
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
@@ -6198,6 +6253,16 @@ Regras:
           onClose={() => setShowTelegramModal(false)}
           userId={userId}
         />
+
+        {/* Tela de planos (aberta pelo pill do trial no header) */}
+        {showPlanos && (
+          <Paywall
+            email={userEmail}
+            status={planoStatus}
+            onLogout={onLogout}
+            onClose={() => setShowPlanos(false)}
+          />
+        )}
 
         {/* Command Palette (Ctrl+K) */}
         <CommandPalette
