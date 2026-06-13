@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 import {
   Brain, TrendingUp, Shield, Scale, Coins, Receipt, Sparkles,
-  ArrowRight, ArrowUp, ArrowDown, Check, Crown, ChevronDown, Zap
+  ArrowRight, ArrowUp, ArrowDown, Check, Crown, ChevronDown, Zap,
+  CreditCard, RefreshCw, Lock
 } from "lucide-react";
 import { PLANOS, TRIAL_DIAS, CONTATO_EMAIL } from "./lib/plano";
 
@@ -282,6 +283,14 @@ export default function Landing({ onEntrar, onComecar }) {
             </div>
           ))}
         </div>
+
+        {/* Faixa de confiança — reforço de baixo risco na decisão */}
+        <div className="lp-trust">
+          <span><CreditCard size={14}/> Sem cartão no teste</span>
+          <span><RefreshCw size={14}/> Cancele quando quiser</span>
+          <span><Shield size={14}/> Dados isolados por RLS</span>
+          <span><Lock size={14}/> Conexão criptografada</span>
+        </div>
       </section>
 
       {/* FAQ */}
@@ -457,6 +466,10 @@ const LANDING_CSS = `
   background:linear-gradient(135deg,#7b61ff,#5540dd);color:#fff;border-radius:99px;
   font-size:10px;font-weight:800;letter-spacing:1px;padding:5px 14px;display:flex;align-items:center;gap:5px;
 }
+
+.lp-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 28px;margin-top:34px;font-size:12.5px;color:#8b8ba3}
+.lp-trust span{display:inline-flex;align-items:center;gap:7px}
+.lp-trust svg{color:#00e5a0}
 
 .lp-faq{background:#0b0b1a;border:1px solid #1f1f36;border-radius:12px;padding:18px 20px;transition:border-color .2s ease}
 .lp-faq:hover{border-color:rgba(123,97,255,0.4)}

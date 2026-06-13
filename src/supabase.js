@@ -41,6 +41,14 @@ export async function signOut() {
   if (error) throw error;
 }
 
+// Envia email de redefinição de senha. O link volta para a app (origin),
+// onde o Supabase abre a sessão de recuperação para o usuário trocar a senha.
+export async function resetPassword(email) {
+  const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
 // ─── Carteira / Ativos ────────────────────────────────────────────────────────
 
 export async function carregarCarteiraPrincipal(userId) {

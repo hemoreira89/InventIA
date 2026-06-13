@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { fmt, fmtBRL, fmtK } from '../../src/lib/calc';
 
 describe('fmt - formatação numérica', () => {
-  it('formata número com 2 casas decimais por padrão', () => {
-    expect(fmt(10.567)).toBe('10.57');
-    expect(fmt(0)).toBe('0.00');
+  it('formata número com 2 casas decimais por padrão (pt-BR)', () => {
+    expect(fmt(10.567)).toBe('10,57');
+    expect(fmt(0)).toBe('0,00');
   });
 
   it('respeita número de casas decimais', () => {
     expect(fmt(10.567, 0)).toBe('11');
-    expect(fmt(10.567, 4)).toBe('10.5670');
+    expect(fmt(10.567, 4)).toBe('10,5670');
   });
 
   it('retorna "–" para null/undefined/NaN', () => {
@@ -19,7 +19,7 @@ describe('fmt - formatação numérica', () => {
   });
 
   it('aceita strings numéricas', () => {
-    expect(fmt('10.5')).toBe('10.50');
+    expect(fmt('10.5')).toBe('10,50');
   });
 });
 

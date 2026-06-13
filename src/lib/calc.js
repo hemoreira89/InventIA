@@ -16,7 +16,9 @@ export const PALETTE = [
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export function fmt(n, d = 2) {
-  return n != null && !isNaN(n) ? Number(n).toFixed(d) : "–";
+  return n != null && !isNaN(n)
+    ? Number(n).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d })
+    : "–";
 }
 
 export function fmtBRL(n) {

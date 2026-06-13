@@ -5,7 +5,7 @@
 // O checkout abre o link configurado em VITE_CHECKOUT_URL_* (Stripe/MP/etc.);
 // sem link, cai no contato por email com o pedido pré-preenchido.
 
-import { Check, Crown, LogOut, X, Sparkles, Clock } from "lucide-react";
+import { Check, Crown, LogOut, X, Sparkles, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
 import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS } from "../lib/plano";
 
 function fmtPreco(v) {
@@ -132,8 +132,21 @@ export default function Paywall({ email, status, onLogout, onClose }) {
               }}>
                 Assinar {p.nome}
               </button>
+              <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: "var(--ui-text-faint)" }}>
+                Cancele quando quiser · sem fidelidade
+              </div>
             </div>
           ))}
+        </div>
+
+        {/* Selos de confiança */}
+        <div style={{
+          display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px 22px",
+          marginBottom: 28, fontSize: 12, color: "var(--ui-text-muted)"
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Lock size={13} color="var(--ui-success)"/> Pagamento seguro</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><RefreshCw size={13} color="var(--ui-success)"/> Cancele quando quiser</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ShieldCheck size={13} color="var(--ui-success)"/> Seus dados protegidos (LGPD)</span>
         </div>
 
         {/* Benefícios */}

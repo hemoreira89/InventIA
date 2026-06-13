@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
-import { signIn, signUp } from "./supabase";
+import { signIn, signUp, resetPassword } from "./supabase";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 
 // Cadastros abertos: todo novo usuário ganha 7 dias de teste grátis
@@ -16,9 +16,28 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [sucessoSignup, setSucessoSignup] = useState(false);
+  const [info, setInfo] = useState("");
+
+  const esqueciSenha = async () => {
+    if (!email) {
+      setErro("Digite seu email acima para receber o link de redefinição.");
+      return;
+    }
+    setErro(""); setInfo(""); setLoading(true);
+    try {
+      await resetPassword(email);
+      setInfo("Se houver uma conta com esse email, enviamos um link para redefinir a senha.");
+    } catch (_) {
+      // Não revela se o email existe (evita enumeração de contas).
+      setInfo("Se houver uma conta com esse email, enviamos um link para redefinir a senha.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e?.preventDefault();
+    setInfo("");
     if (modo === "signup" && !SIGNUP_ENABLED) {
       setErro("Cadastros estão fechados no momento.");
       return;
@@ -229,6 +248,21 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
                   Mínimo 6 caracteres
                 </div>
               )}
+              {modo === "login" && (
+                <div style={{ textAlign: "right", marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={esqueciSenha}
+                    disabled={loading}
+                    style={{
+                      background: "none", border: "none", padding: 0,
+                      color: "var(--ui-text-faint)", fontSize: 12,
+                      cursor: loading ? "not-allowed" : "pointer", textDecoration: "underline"
+                    }}>
+                    Esqueci minha senha
+                  </button>
+                </div>
+              )}
             </div>
 
             {erro && (
@@ -246,6 +280,20 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
               }}>
                 <AlertCircle size={14} strokeWidth={2.2}/>
                 {erro}
+              </div>
+            )}
+
+            {info && (
+              <div style={{
+                background: "rgba(64,221,160,0.07)",
+                border: "1px solid rgba(64,221,160,0.28)",
+                borderRadius: 8,
+                padding: "10px 14px",
+                color: "var(--ui-success)",
+                fontSize: 12,
+                marginBottom: 14
+              }}>
+                {info}
               </div>
             )}
 
@@ -284,7 +332,7 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
                 <>Não tem conta?{" "}
                   <button
                     type="button"
-                    onClick={() => { setModo("signup"); setErro(""); }}
+                    onClick={() => { setModo("signup"); setErro(""); setInfo(""); }}
                     style={{
                       background: "none", border: "none",
                       color: "var(--ui-accent)", fontWeight: 700, cursor: "pointer", fontSize: 12
@@ -296,7 +344,7 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
                 <>Já tem conta?{" "}
                   <button
                     type="button"
-                    onClick={() => { setModo("login"); setErro(""); }}
+                    onClick={() => { setModo("login"); setErro(""); setInfo(""); }}
                     style={{
                       background: "none", border: "none",
                       color: "var(--ui-accent)", fontWeight: 700, cursor: "pointer", fontSize: 12

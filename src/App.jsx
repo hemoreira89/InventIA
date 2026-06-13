@@ -640,22 +640,6 @@ const TTip = ({active,payload,label}) => {
 };
 
 // ─── Spinner de loading ───────────────────────────────────────────────────────
-function LoadingCard({ fase }) {
-  return (
-    <Card style={{textAlign:"center",padding:"40px 20px"}}>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
-        <div style={{position:"relative",width:56,height:56}}>
-          <div className="spin" style={{width:56,height:56,borderRadius:"50%",
-            border:"3px solid var(--ui-bg-tertiary)",borderTopColor:"var(--ui-accent)",position:"absolute"}}/>
-          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}><Sparkles size={18} color="var(--ui-accent)" strokeWidth={2.5}/></div>
-        </div>
-        <div style={{fontSize:13,color:"var(--ui-text-muted)"}}>{fase}</div>
-        <div style={{fontSize:11,color:"var(--ui-text-disabled)"}}>IA analisando o mercado...</div>
-      </div>
-    </Card>
-  );
-}
-
 // ─── Tab: Carteira ────────────────────────────────────────────────────────────
 function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, onSave, userId, carteiraId, fundamentosCarteira }) {
   const [ticker,setTicker]=useState(""); const [qtd,setQtd]=useState("");
@@ -872,8 +856,8 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   };
 
   return (
-    <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:16,alignItems:"start"}}>
-      <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
+    <div className="carteira-grid" style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:16,alignItems:"start"}}>
+      <div className="carteira-aside" style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
       <Card>
         <STitle>REGISTRAR COMPRA</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1809,8 +1793,34 @@ function TabIR({ dados }) {
 }
 
 // ─── Tab: Análise IA ──────────────────────────────────────────────────────────
+// Etapas visuais da análise da carteira (a operação mais longa do app).
+const STEPS_ANALISE = [
+  { label: "Calculando perfil de risco da carteira" },
+  { label: "Buscando cotações e fundamentos reais (B3/CVM)" },
+  { label: "IA montando a tese da sua carteira" },
+  { label: "Consolidando posições e recomendações" },
+];
+// Mapeia a string de `fase` (definida ao longo de `analisar`) para o índice da etapa.
+function stepDaFase(fase) {
+  const f = (fase || "").toLowerCase();
+  if (f.includes("conclu")) return STEPS_ANALISE.length;        // tudo pronto
+  if (f.includes("posi")) return 3;
+  if (f.includes("analisando") || f.includes("tese") || f.includes("gerando") || f.includes("mercado")) return 2;
+  if (f.includes("cota") || f.includes("fundamento") || f.includes("finance")) return 1;
+  return 0; // perfil de risco / default
+}
+
 function TabAnalise({ dados, aporte, loading, fase }) {
-  if (loading) return <LoadingCard fase={fase}/>;
+  if (loading) {
+    const cur = stepDaFase(fase);
+    // Injeta o texto ao vivo da fase como detalhe da etapa ativa.
+    const steps = STEPS_ANALISE.map((s, i) => (i === cur && fase ? { ...s, detail: fase } : s));
+    return (
+      <div style={{padding:"32px 0"}}>
+        <LoadingSteps steps={steps} currentStep={cur} accent="var(--ui-accent)"/>
+      </div>
+    );
+  }
   if (!dados?.analise) return (
     <div style={{textAlign:"center",padding:"48px 0",color:"var(--ui-text-disabled)",fontSize:13}}>
       Configure o aporte e clique em <b style={{color:"var(--ui-accent)"}}>Analisar</b>
@@ -5018,6 +5028,14 @@ Responda APENAS este JSON (sem markdown):
             </>
           )}
 
+          {resultado.oportunidades && resultado.oportunidades.length === 0 && (
+            <Card style={{textAlign:"center",padding:"32px 20px",border:"1px dashed var(--ui-border)"}}>
+              <Sparkles size={30} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 12px"}}/>
+              <div style={{color:"var(--ui-text-muted)",fontSize:14,fontWeight:600,marginBottom:6}}>Nenhuma oportunidade passou nos critérios desta busca</div>
+              <div style={{color:"var(--ui-text-faint)",fontSize:12.5,lineHeight:1.6,maxWidth:420,margin:"0 auto"}}>Tente afrouxar os filtros (DY, P/L, setor) ou ampliar o universo de busca e rode novamente.</div>
+            </Card>
+          )}
+
           {resultado.aviso && <div style={{background:"rgba(255,214,10,0.08)",border:"1px solid rgba(255,214,10,0.3)",borderRadius:10,padding:"12px 14px",fontSize:11,color:"var(--ui-text-secondary)",display:"flex",gap:8,alignItems:"flex-start"}}><AlertTriangle size={14} strokeWidth={2.2} style={{flexShrink:0,marginTop:1,color:"var(--ui-warning)"}}/>{resultado.aviso}</div>}
         </>
       )}
@@ -5555,7 +5573,9 @@ Regras:
 
       const totalCarteira = posicoes.reduce((s,p) => s + p.valorAtual, 0);
       const posicoesComPeso = posicoes.map(p => ({
-        ...p, peso: totalCarteira > 0 ? (p.valorAtual/totalCarteira)*100 : 0
+        // `valor` é alias de `valorAtual` p/ manter a mesma forma de
+        // estimarPosicoesParaRisco (consumido pelo TabRebalanceamento).
+        ...p, valor: p.valorAtual, peso: totalCarteira > 0 ? (p.valorAtual/totalCarteira)*100 : 0
       }));
 
       // Atualizar watchlist com cotações reais via brapi (não precisa de IA)
@@ -5605,7 +5625,8 @@ Regras:
     } catch(e) {
       console.error("Erro análise:", e);
       setErro(`Erro: ${e.message || "Tente novamente."}`);
-      setTab("carteira");
+      // Mantém na aba "analise" (onde o banner de erro é renderizado) em vez de
+      // voltar pra "carteira" e engolir o erro silenciosamente.
     } finally {
       setLoading(false);
       setFase("");
@@ -5749,6 +5770,11 @@ Regras:
         /* No light mode, recharts adapta */
         [data-theme="light"] .recharts-cartesian-axis-tick-value { fill: var(--ui-text-faint) !important; }
         [data-theme="light"] .recharts-cartesian-grid line { stroke: var(--ui-border) !important; }
+        /* Aba Carteira: sidebar 360px + conteúdo no desktop; empilha no mobile. */
+        @media (max-width: 760px) {
+          .carteira-grid { grid-template-columns: 1fr !important; }
+          .carteira-aside { position: static !important; top: auto !important; }
+        }
       `}</style>
 
       {/* TOP BAR - Estilo TradingView */}
@@ -6186,7 +6212,7 @@ Regras:
         </div>
         )}
 
-        {erro && tab === "analise" && (
+        {erro && (tab === "analise" || tab === "carteira") && (
           <div style={{
             background:"rgba(255,77,109,0.06)",border:"1px solid rgba(255,77,109,0.19)",borderRadius:8,
             padding:"10px 14px",color:"var(--ui-danger)",fontSize:12,marginBottom:16,
