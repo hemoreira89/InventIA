@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/gen-seo.mjs",
     "preview": "vite preview",
     "lint": "eslint src api scripts",
     "test": "vitest run",
