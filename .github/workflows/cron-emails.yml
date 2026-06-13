@@ -1,0 +1,32 @@
+name: Ciclo de email de trial
+
+# 1x/dia, 13h UTC = 10h Brasil (bom horário de abertura de email).
+# Dormente até as envs de SMTP estarem configuradas no Vercel — o endpoint
+# simplesmente responde { skipped } enquanto não houver SMTP.
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: cron-emails
+  cancel-in-progress: true
+
+jobs:
+  emails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Disparar ciclo de email
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" --max-time 90 -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://invent-ia.vercel.app/api/cron-emails")
+          body=$(echo "$response" | head -n -1)
+          status=$(echo "$response" | tail -n 1)
+          echo "Status HTTP: $status"
+          echo "Resposta: $body"
+          if [ "$status" != "200" ]; then
+            echo "::error::cron-emails falhou (status $status)"
+            exit 1
+          fi

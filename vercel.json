@@ -24,6 +24,9 @@
     },
     "api/cron-alertas.js": {
       "maxDuration": 60
+    },
+    "api/cron-emails.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
