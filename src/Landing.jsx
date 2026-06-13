@@ -11,6 +11,7 @@ import {
   CreditCard, RefreshCw, Lock, Activity
 } from "lucide-react";
 import { PLANOS, TRIAL_DIAS, CONTATO_EMAIL } from "./lib/plano";
+import { BRAND } from "./lib/brand";
 
 // Dados ilustrativos do ticker tape (estáticos de propósito — é vitrine, não cotação)
 const TAPE = [
@@ -67,7 +68,7 @@ function DashboardMock() {
         <span className="lp-dot" style={{background:"#ff5f57"}}/>
         <span className="lp-dot" style={{background:"#febc2e"}}/>
         <span className="lp-dot" style={{background:"#28c840"}}/>
-        <span style={{marginLeft:10,fontSize:10,color:"#5b5b76",fontFamily:"'JetBrains Mono',monospace"}}>invent-ia.vercel.app</span>
+        <span style={{marginLeft:10,fontSize:10,color:"#5b5b76",fontFamily:"'JetBrains Mono',monospace"}}>{BRAND.domain}</span>
       </div>
 
       {/* Métricas */}
@@ -137,7 +138,7 @@ function DashboardMock() {
 export default function Landing({ onEntrar, onComecar }) {
   const [faqAberta, setFaqAberta] = useState(-1);
   useEffect(() => {
-    document.title = "InvestIA Pro — sua carteira da B3 analisada por IA";
+    document.title = `${BRAND.full} — ${BRAND.tagline}`;
   }, []);
 
   const irParaPlanos = () => document.getElementById("lp-planos")?.scrollIntoView({ behavior: "smooth" });
@@ -152,7 +153,7 @@ export default function Landing({ onEntrar, onComecar }) {
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/icons/icon-192.png" alt="" width={34} height={34} style={{borderRadius:8}}/>
             <span style={{fontWeight:800,fontSize:15,letterSpacing:-0.3}}>
-              InvestIA <span style={{color:"#7b61ff"}}>Pro</span>
+              {BRAND.name} <span style={{color:"#7b61ff"}}>{BRAND.suffix}</span>
             </span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -356,16 +357,16 @@ export default function Landing({ onEntrar, onComecar }) {
       <footer className="lp-footer">
         <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",marginBottom:12}}>
           <img src="/icons/icon-192.png" alt="" width={22} height={22} style={{borderRadius:5}}/>
-          <span style={{fontWeight:800,fontSize:13}}>InvestIA <span style={{color:"#7b61ff"}}>Pro</span></span>
+          <span style={{fontWeight:800,fontSize:13}}>{BRAND.name} <span style={{color:"#7b61ff"}}>{BRAND.suffix}</span></span>
         </div>
         <div style={{fontSize:11,color:"#5b5b76",maxWidth:640,margin:"0 auto",lineHeight:1.8}}>
-          O InvestIA Pro é uma ferramenta educacional de organização e análise de carteira.
+          O {BRAND.full} é uma ferramenta educacional de organização e análise de carteira.
           As análises geradas por IA não constituem recomendação de investimento, oferta ou
           solicitação de compra de ativos. Rentabilidade passada não garante resultados futuros.
           Dúvidas: <a href={`mailto:${CONTATO_EMAIL}`} style={{color:"#7b61ff"}}>{CONTATO_EMAIL}</a>
         </div>
         <div style={{fontSize:10,color:"#3a3a52",marginTop:14}}>
-          © {new Date().getFullYear()} InvestIA Pro · Feito no Brasil para a B3
+          © {new Date().getFullYear()} {BRAND.full} · Feito no Brasil para a B3
         </div>
       </footer>
 

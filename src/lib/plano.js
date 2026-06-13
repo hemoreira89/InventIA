@@ -7,6 +7,7 @@
 // pagamento no futuro. 'vitalicio' nunca expira.
 
 import { supabase } from "../supabase";
+import { BRAND } from "./brand";
 
 export const TRIAL_DIAS = 7;
 
@@ -142,9 +143,9 @@ export async function iniciarCheckout(plano, email) {
     console.warn("[plano] checkout MP indisponível, usando fallback:", e?.message);
   }
   // Fallback: email com o pedido pré-preenchido.
-  const assunto = encodeURIComponent(`Assinatura InvestIA Pro — plano ${plano.nome}`);
+  const assunto = encodeURIComponent(`Assinatura ${BRAND.full} — plano ${plano.nome}`);
   const corpo = encodeURIComponent(
-    `Olá! Quero assinar o plano ${plano.nome} do InvestIA Pro.\n\nMinha conta: ${email || "(informe o email da sua conta)"}`
+    `Olá! Quero assinar o plano ${plano.nome} do ${BRAND.full}.\n\nMinha conta: ${email || "(informe o email da sua conta)"}`
   );
   window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
 }

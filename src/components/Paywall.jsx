@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { Check, Crown, LogOut, X, Sparkles, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
 import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS, iniciarCheckout } from "../lib/plano";
 import { track } from "../lib/track";
+import { BRAND } from "../lib/brand";
 
 function fmtPreco(v) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,7 +26,7 @@ export default function Paywall({ email, status, onLogout, onClose }) {
   }, [bloqueio]);
   const titulo = bloqueio
     ? (status?.trial ? "Seu teste grátis terminou" : "Sua assinatura expirou")
-    : "Assine o InvestIA Pro";
+    : `Assine o ${BRAND.full}`;
   const subtitulo = bloqueio
     ? "Continue acompanhando sua carteira com IA escolhendo um plano abaixo. Seus dados estão salvos e voltam exatamente como você deixou."
     : `Você está no período de teste${status?.diasRestantes != null ? ` — ${status.diasRestantes} dia${status.diasRestantes === 1 ? "" : "s"} restante${status.diasRestantes === 1 ? "" : "s"}` : ""}. Assine para não perder o acesso.`;
@@ -43,10 +44,10 @@ export default function Paywall({ email, status, onLogout, onClose }) {
         {/* Topo: logo + sair/fechar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 36 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/icons/icon-192.png" alt="InvestIA" width={44} height={44}
+            <img src="/icons/icon-192.png" alt={BRAND.name} width={44} height={44}
               style={{ width: 44, height: 44, borderRadius: 10, objectFit: "contain" }}/>
             <div style={{ fontSize: 16, fontWeight: 800 }}>
-              InvestIA <span style={{ color: "var(--ui-accent)" }}>Pro</span>
+              {BRAND.name} <span style={{ color: "var(--ui-accent)" }}>{BRAND.suffix}</span>
             </div>
           </div>
           {onClose ? (

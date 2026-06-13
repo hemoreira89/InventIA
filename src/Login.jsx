@@ -3,6 +3,7 @@ import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { signIn, signUp, resetPassword } from "./supabase";
 import { track } from "./lib/track";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
+import { BRAND } from "./lib/brand";
 
 // Cadastros abertos: todo novo usuário ganha 7 dias de teste grátis
 // (trial criado automaticamente por trigger no Supabase — ver sql/migrations/
@@ -130,11 +131,11 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
 
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
-          <img src="/icons/icon-192.png" alt="InvestIA" width={56} height={56}
+          <img src="/icons/icon-192.png" alt={BRAND.name} width={56} height={56}
             style={{ width: 56, height: 56, borderRadius: 13, display: "block", objectFit: "contain" }}/>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>
-              InvestIA <span style={{ color: "var(--ui-accent)" }}>Pro</span>
+              {BRAND.name} <span style={{ color: "var(--ui-accent)" }}>{BRAND.suffix}</span>
             </div>
             <div style={{ fontSize: 10, color: "var(--ui-text-faint)", fontWeight: 600, letterSpacing: 1.5 }}>
               B3 · BRASIL

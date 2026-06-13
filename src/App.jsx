@@ -51,6 +51,7 @@ import { carregarUniverso, supabase } from "./supabase";
 import Paywall from "./components/Paywall";
 import { carregarPerfilPlano, statusPlano } from "./lib/plano";
 import { track } from "./lib/track";
+import { BRAND } from "./lib/brand";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
@@ -5873,11 +5874,11 @@ Regras:
         }}>
           {/* Brand + Seletor de Portfólio */}
           <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <img src="/icons/icon-192.png" alt="InvestIA" width={44} height={44}
+            <img src="/icons/icon-192.png" alt={BRAND.name} width={44} height={44}
               style={{width:44,height:44,borderRadius:10,display:"block",objectFit:"contain"}}/>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
-                InvestIA <span style={{color:"var(--ui-accent)"}}>Pro</span>
+                {BRAND.name} <span style={{color:"var(--ui-accent)"}}>{BRAND.suffix}</span>
               </div>
               <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>
