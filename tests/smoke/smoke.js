@@ -43,7 +43,7 @@ async function fetchTimeout(url, options = {}, timeoutMs = 10000) {
 }
 
 async function main() {
-  console.log(`\n${COR_AMARELO}━━━ InvestIA Smoke Tests ━━━${RESET}`);
+  console.log(`\n${COR_AMARELO}━━━ Invetoria Smoke Tests ━━━${RESET}`);
   console.log(`Site: ${SITE_URL}\n`);
 
   // 1. Site principal carrega
@@ -51,7 +51,7 @@ async function main() {
     const res = await fetchTimeout(SITE_URL);
     if (!res.ok) throw new Error(`Status ${res.status}`);
     const html = await res.text();
-    if (!html.includes('InvestIA') && !html.includes('inventia')) {
+    if (!html.includes('Invetoria') && !html.includes('InvestIA') && !html.includes('inventia')) {
       throw new Error('HTML não contém referência ao app');
     }
   });

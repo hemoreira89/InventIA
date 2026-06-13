@@ -135,7 +135,7 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
             style={{ width: 56, height: 56, borderRadius: 13, display: "block", objectFit: "contain" }}/>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>
-              {BRAND.name} <span style={{ color: "var(--ui-accent)" }}>{BRAND.suffix}</span>
+              {BRAND.base}<span style={{ color: "var(--ui-accent)" }}>{BRAND.accent}</span>
             </div>
             <div style={{ fontSize: 10, color: "var(--ui-text-faint)", fontWeight: 600, letterSpacing: 1.5 }}>
               B3 · BRASIL

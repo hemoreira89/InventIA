@@ -63,10 +63,10 @@ function botao(texto) {
 function wrap(corpo) {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#06060f;padding:32px 0">
   <div style="max-width:520px;margin:0 auto;background:#0b0b1a;border:1px solid #1f1f36;border-radius:16px;padding:32px 28px;color:#e8e8f2">
-    <div style="font-size:18px;font-weight:800;margin-bottom:20px">InvestIA <span style="color:#7b61ff">Pro</span></div>
+    <div style="font-size:18px;font-weight:800;margin-bottom:20px">Invet<span style="color:#7b61ff">oria</span></div>
     ${corpo}
     <div style="margin-top:28px;padding-top:18px;border-top:1px solid #1f1f36;font-size:11px;color:#5b5b76;line-height:1.7">
-      Conteúdo educacional — não é recomendação de investimento. Você recebe este email porque criou uma conta no InvestIA Pro.
+      Conteúdo educacional — não é recomendação de investimento. Você recebe este email porque criou uma conta no Invetoria.
       Não quer mais receber? Basta responder este email.
     </div>
   </div>
@@ -74,20 +74,20 @@ function wrap(corpo) {
 }
 const TEMPLATES = {
   boas_vindas: () => ({
-    subject: "Bem-vindo ao InvestIA Pro — seu teste de 7 dias começou",
+    subject: "Bem-vindo ao Invetoria — seu teste de 7 dias começou",
     html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste grátis está rodando. Em 1 minuto você já vê sua carteira da B3 analisada por IA: tese, risco e o que fazer no próximo aporte.</p>
       <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Comece adicionando seus ativos (ou rode com uma carteira de exemplo) e peça a primeira análise.</p>
       <p style="margin:24px 0">${botao("Fazer minha primeira análise")}</p>`),
   }),
   valor: () => ({
     subject: "Já viu o raio-X de risco da sua carteira?",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Além da análise com IA, o InvestIA mostra a concentração por ativo e setor, um score de risco e o plano de rebalanceamento com simulação de aporte.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Além da análise com IA, o Invetoria mostra a concentração por ativo e setor, um score de risco e o plano de rebalanceamento com simulação de aporte.</p>
       <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Aproveite enquanto o teste está completo:</p>
       <p style="margin:24px 0">${botao("Ver meu painel de risco")}</p>`),
   }),
   urgencia: () => ({
     subject: "Faltam 2 dias do seu teste grátis",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste do InvestIA Pro termina em <b style="color:#e8e8f2">2 dias</b>. Depois disso, o acesso à análise com IA pausa — mas seus dados continuam salvos.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste do Invetoria termina em <b style="color:#e8e8f2">2 dias</b>. Depois disso, o acesso à análise com IA pausa — mas seus dados continuam salvos.</p>
       <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Assine e continue sem interrupção: <b style="color:#e8e8f2">R$ 24,90/mês</b> ou <b style="color:#00e5a0">R$ 199/ano</b> (2 meses grátis). Cancele quando quiser.</p>
       <p style="margin:24px 0">${botao("Assinar e manter o acesso")}</p>`),
   }),

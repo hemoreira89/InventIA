@@ -12,8 +12,8 @@ const APP_URL = "https://invent-ia.vercel.app";
 
 // Preço/título definidos no SERVIDOR (nunca confiar no valor do cliente).
 const PLANOS = {
-  mensal: { titulo: "InvestIA Pro — Plano Mensal", preco: 24.9 },
-  anual:  { titulo: "InvestIA Pro — Plano Anual",  preco: 199 },
+  mensal: { titulo: "Invetoria — Plano Mensal", preco: 24.9 },
+  anual:  { titulo: "Invetoria — Plano Anual",  preco: 199 },
 };
 
 export default async function handler(req, res) {
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       },
       auto_return: "approved",
       notification_url: `${APP_URL}/api/mp-webhook`,
-      statement_descriptor: "INVESTIA PRO",
+      statement_descriptor: "INVETORIA",
     };
     const r = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",

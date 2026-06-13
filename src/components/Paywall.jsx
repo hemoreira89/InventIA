@@ -47,7 +47,7 @@ export default function Paywall({ email, status, onLogout, onClose }) {
             <img src="/icons/icon-192.png" alt={BRAND.name} width={44} height={44}
               style={{ width: 44, height: 44, borderRadius: 10, objectFit: "contain" }}/>
             <div style={{ fontSize: 16, fontWeight: 800 }}>
-              {BRAND.name} <span style={{ color: "var(--ui-accent)" }}>{BRAND.suffix}</span>
+              {BRAND.base}<span style={{ color: "var(--ui-accent)" }}>{BRAND.accent}</span>
             </div>
           </div>
           {onClose ? (

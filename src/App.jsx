@@ -5878,7 +5878,7 @@ Regras:
               style={{width:44,height:44,borderRadius:10,display:"block",objectFit:"contain"}}/>
             <div>
               <div style={{fontSize:14,fontWeight:800,letterSpacing:-0.3,color:"var(--ui-text)"}}>
-                {BRAND.name} <span style={{color:"var(--ui-accent)"}}>{BRAND.suffix}</span>
+                {BRAND.base}<span style={{color:"var(--ui-accent)"}}>{BRAND.accent}</span>
               </div>
               <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:600,letterSpacing:1.5}}>B3 · BRASIL</div>
             </div>

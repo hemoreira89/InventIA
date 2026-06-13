@@ -101,6 +101,6 @@ import { test, expect } from '@playwright/test';
 
 test('descrição do teste', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('InvestIA')).toBeVisible();
+  await expect(page.getByText('Invetoria')).toBeVisible();
 });
 ```

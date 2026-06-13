@@ -153,7 +153,7 @@ export default function Landing({ onEntrar, onComecar }) {
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/icons/icon-192.png" alt="" width={34} height={34} style={{borderRadius:8}}/>
             <span style={{fontWeight:800,fontSize:15,letterSpacing:-0.3}}>
-              {BRAND.name} <span style={{color:"#7b61ff"}}>{BRAND.suffix}</span>
+              {BRAND.base}<span style={{color:"#7b61ff"}}>{BRAND.accent}</span>
             </span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -357,7 +357,7 @@ export default function Landing({ onEntrar, onComecar }) {
       <footer className="lp-footer">
         <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",marginBottom:12}}>
           <img src="/icons/icon-192.png" alt="" width={22} height={22} style={{borderRadius:5}}/>
-          <span style={{fontWeight:800,fontSize:13}}>{BRAND.name} <span style={{color:"#7b61ff"}}>{BRAND.suffix}</span></span>
+          <span style={{fontWeight:800,fontSize:13}}>{BRAND.base}<span style={{color:"#7b61ff"}}>{BRAND.accent}</span></span>
         </div>
         <div style={{fontSize:11,color:"#5b5b76",maxWidth:640,margin:"0 auto",lineHeight:1.8}}>
           O {BRAND.full} é uma ferramenta educacional de organização e análise de carteira.
