@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { signIn, signUp, resetPassword } from "./supabase";
+import { track } from "./lib/track";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 
 // Cadastros abertos: todo novo usuário ganha 7 dias de teste grátis
@@ -52,12 +53,15 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
     }
     setErro("");
     setLoading(true);
+    track(modo === "signup" ? "signup_started" : "login_started");
     try {
       if (modo === "login") {
         const data = await signIn(email, senha);
+        track("login_success");
         onAuth(data.session);
       } else {
         const data = await signUp(email, senha);
+        track("signup_success");
         if (data.session) {
           onAuth(data.session);
         } else {

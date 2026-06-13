@@ -5,14 +5,17 @@
 // O checkout abre o link configurado em VITE_CHECKOUT_URL_* (Stripe/MP/etc.);
 // sem link, cai no contato por email com o pedido pré-preenchido.
 
+import { useEffect } from "react";
 import { Check, Crown, LogOut, X, Sparkles, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
 import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS } from "../lib/plano";
+import { track } from "../lib/track";
 
 function fmtPreco(v) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function abrirCheckout(plano, email) {
+  track("plan_clicked", { plano: plano.id });
   if (plano.checkoutUrl) {
     window.open(plano.checkoutUrl, "_blank", "noopener");
     return;
@@ -26,6 +29,9 @@ function abrirCheckout(plano, email) {
 
 export default function Paywall({ email, status, onLogout, onClose }) {
   const bloqueio = !onClose;
+  useEffect(() => {
+    track("paywall_view", { motivo: bloqueio ? "bloqueio" : "overlay" });
+  }, [bloqueio]);
   const titulo = bloqueio
     ? (status?.trial ? "Seu teste grátis terminou" : "Sua assinatura expirou")
     : "Assine o InvestIA Pro";

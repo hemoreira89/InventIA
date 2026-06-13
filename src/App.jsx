@@ -50,6 +50,7 @@ import TelegramModal from "./components/TelegramModal";
 import { carregarUniverso, supabase } from "./supabase";
 import Paywall from "./components/Paywall";
 import { carregarPerfilPlano, statusPlano } from "./lib/plano";
+import { track } from "./lib/track";
 import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
@@ -5411,6 +5412,7 @@ export default function App({ session, onLogout }) {
   const analisar = useCallback(async () => {
     const v = aporteNum();
     if (v < 50) { setErro("Informe o valor do aporte (mínimo R$ 50)."); return; }
+    track("analyze_clicked", { tipo: carteira.length ? "carteira" : "mercado" });
     setErro(null); setLoading(true); setDados(null); setTab("analise");
 
     try {

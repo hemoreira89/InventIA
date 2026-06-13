@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import {
   Brain, TrendingUp, Shield, Scale, Coins, Receipt, Sparkles,
   ArrowRight, ArrowUp, ArrowDown, Check, Crown, ChevronDown, Zap,
-  CreditCard, RefreshCw, Lock
+  CreditCard, RefreshCw, Lock, Activity
 } from "lucide-react";
 import { PLANOS, TRIAL_DIAS, CONTATO_EMAIL } from "./lib/plano";
 
@@ -37,6 +37,9 @@ const PASSOS = [
 
 const FAQ = [
   { q: "Preciso de cartão de crédito para testar?", a: `Não. O teste de ${TRIAL_DIAS} dias é completo e não pede cartão. Se não assinar, sua conta apenas pausa — seus dados ficam salvos.` },
+  { q: "Preciso saber investir ou analisar ações?", a: "Não. A IA faz o trabalho pesado e explica tudo em português simples — tese, riscos e o que fazer. Você decide; a ferramenta organiza e mostra o caminho." },
+  { q: "É só um ChatGPT genérico?", a: "Não. Cruzamos os seus ativos reais com cotações ao vivo da B3 (brapi) e fundamentos oficiais (CVM/bolsai). A IA monta a tese sobre números reais da sua carteira, não sobre achismo." },
+  { q: "Minha carteira é pequena. Vale a pena?", a: "Sim — é justamente no começo que organizar aporte, risco e rebalanceamento mais muda o resultado lá na frente. A ferramenta cresce junto com você." },
   { q: "Meus dados ficam seguros?", a: "Sim. Cada usuário só acessa os próprios dados (isolamento por RLS no banco), a conexão é criptografada e não pedimos senha de corretora — você informa apenas os ativos e quantidades." },
   { q: "A IA dá recomendação de compra?", a: "A IA monta análises e cenários educacionais a partir dos seus dados e de fundamentos públicos. Não é recomendação de investimento — a decisão final é sempre sua." },
   { q: "Funciona com FIIs e BDRs?", a: "Sim. O catálogo cobre 1.400+ tickers da B3: ações, FIIs, BDRs, ETFs e units, com fundamentos atualizados semanalmente." },
@@ -248,6 +251,29 @@ export default function Landing({ onEntrar, onComecar }) {
         </div>
       </section>
 
+      {/* POR QUE CONFIAR */}
+      <section className="lp-section" style={{paddingTop:0}}>
+        <div className="lp-kicker">POR QUE CONFIAR</div>
+        <h2 className="lp-h2">Não é achismo de IA.<br/>É a sua carteira sobre dados reais.</h2>
+        <div className="lp-feat-grid">
+          <div className="lp-feat">
+            <div className="lp-feat-icon"><Activity size={18} strokeWidth={2}/></div>
+            <div style={{fontWeight:800,fontSize:15,marginBottom:8,color:"#e8e8f2"}}>Dados oficiais, ao vivo</div>
+            <div style={{fontSize:13,lineHeight:1.7,color:"#8b8ba3"}}>Cotações da B3 em tempo real e fundamentos da CVM. A IA decide sobre números reais da sua carteira — não sobre texto solto da internet.</div>
+          </div>
+          <div className="lp-feat">
+            <div className="lp-feat-icon"><Scale size={18} strokeWidth={2}/></div>
+            <div style={{fontWeight:800,fontSize:15,marginBottom:8,color:"#e8e8f2"}}>Critérios transparentes</div>
+            <div style={{fontSize:13,lineHeight:1.7,color:"#8b8ba3"}}>Você vê os critérios usados — DY, P/L, concentração por ativo e setor, HHI de risco. Nada de caixa-preta.</div>
+          </div>
+          <div className="lp-feat">
+            <div className="lp-feat-icon"><Shield size={18} strokeWidth={2}/></div>
+            <div style={{fontWeight:800,fontSize:15,marginBottom:8,color:"#e8e8f2"}}>Educacional e seu</div>
+            <div style={{fontSize:13,lineHeight:1.7,color:"#8b8ba3"}}>Tudo é sinal e cenário para você decidir melhor — nunca ordem de compra. A decisão final é sempre sua.</div>
+          </div>
+        </div>
+      </section>
+
       {/* PRICING */}
       <section className="lp-section" id="lp-planos">
         <div className="lp-kicker">PLANOS</div>
@@ -342,6 +368,15 @@ export default function Landing({ onEntrar, onComecar }) {
           © {new Date().getFullYear()} InvestIA Pro · Feito no Brasil para a B3
         </div>
       </footer>
+
+      {/* CTA fixo (apenas mobile) — ação de conversão sempre alcançável */}
+      <div className="lp-sticky">
+        <div>
+          <div style={{fontWeight:800,fontSize:13,color:"#e8e8f2"}}>{TRIAL_DIAS} dias grátis</div>
+          <div style={{fontSize:11,color:"#8b8ba3"}}>sem cartão · cancele quando quiser</div>
+        </div>
+        <CTAButton onClick={onComecar}>Começar</CTAButton>
+      </div>
     </div>
   );
 }
@@ -477,4 +512,17 @@ const LANDING_CSS = `
 .lp-final{position:relative;z-index:1;text-align:center;padding:clamp(56px,10vh,110px) 24px;
   background:radial-gradient(ellipse 60% 80% at 50% 100%,rgba(123,97,255,0.13),transparent)}
 .lp-footer{border-top:1px solid #16162a;text-align:center;padding:36px 24px 28px;position:relative;z-index:1}
+
+/* CTA fixo no mobile */
+.lp-sticky{display:none}
+@media(max-width:880px){
+  .lp-sticky{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    position:fixed;left:0;right:0;bottom:0;z-index:60;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(8,8,20,0.95);backdrop-filter:blur(12px);border-top:1px solid #1f1f36;
+  }
+  .lp-sticky .lp-cta{padding:12px 20px;font-size:14px;white-space:nowrap}
+  .lp-footer{margin-bottom:76px}
+}
 `;

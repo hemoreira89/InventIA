@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
+import { Analytics } from '@vercel/analytics/react'
 import App from './App.jsx'
 import Login from './Login.jsx'
 import Landing from './Landing.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { supabase, getSession, signOut } from './supabase.js'
+import { track } from './lib/track.js'
 
 function Root() {
   const [session, setSession] = useState(null);
@@ -57,8 +59,8 @@ function Root() {
   if (!session) {
     if (!authView) {
       return <Landing
-        onEntrar={() => setAuthView("login")}
-        onComecar={() => setAuthView("signup")}
+        onEntrar={() => { track("landing_cta", { local: "entrar" }); setAuthView("login"); }}
+        onComecar={() => { track("landing_cta", { local: "comecar" }); setAuthView("signup"); }}
       />;
     }
     return <Login
@@ -75,6 +77,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <Root/>
+      <Analytics/>
     </ErrorBoundary>
   </React.StrictMode>
 )
