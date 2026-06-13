@@ -37,6 +37,7 @@ import CommandPalette from "./components/CommandPalette";
 import Sparkline from "./components/Sparkline";
 import LoadingSteps from "./components/LoadingSteps";
 import OnboardingHero from "./components/OnboardingHero";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 
 // Contexto do modo privacidade: o <Stat/> (usado em quase todas as abas) mascara
@@ -98,6 +99,14 @@ async function chamarIAComSearch(prompt, autoRetry = true) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       console.warn(`[IA] erro do backend:`, err);
+      if (res.status === 402) {
+        // Plano/trial expirou DURANTE a sessão: avisa o App pra abrir o paywall
+        // (em vez de mostrar um erro genérico de IA).
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("plano-bloqueado"));
+        const e = new Error(err.error || "Seu acesso expirou. Assine para continuar usando a análise com IA.");
+        e.planoBloqueado = true;
+        throw e;
+      }
       if (res.status === 504 || res.status === 502) {
         const e = new Error("TIMEOUT");
         e.isTimeout = true;
@@ -421,6 +430,50 @@ function ConfirmModal({ open, titulo, mensagem, onConfirm, onCancel, perigoso = 
             background:perigoso?"var(--ui-danger)":"var(--ui-accent)",border:"none",borderRadius:8,
             padding:"10px 18px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:"pointer"
           }}>{perigoso?"Remover":"Confirmar"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal de Texto (substitui window.prompt) ─────────────────────────────────
+function PromptModal({ open, titulo, label, valorInicial = "", placeholder, confirmar = "Criar", onConfirm, onCancel }) {
+  const [valor, setValor] = useState(valorInicial);
+  useEffect(() => { if (open) setValor(valorInicial); }, [open, valorInicial]);
+  if (!open) return null;
+  const submit = () => { const v = valor.trim(); if (v) onConfirm(v); };
+  return (
+    <div onClick={onCancel} style={{
+      position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",
+      zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center",padding:20
+    }}>
+      <div onClick={e=>e.stopPropagation()} className="anim" style={{
+        background:"var(--ui-bg-card)",border:"1px solid var(--ui-border)",borderRadius:12,
+        padding:24,maxWidth:420,width:"100%"
+      }}>
+        <h3 style={{fontSize:16,fontWeight:700,color:"var(--ui-text)",margin:"0 0 6px"}}>{titulo}</h3>
+        {label && <div style={{fontSize:12.5,color:"var(--ui-text-muted)",marginBottom:14}}>{label}</div>}
+        <input
+          autoFocus
+          value={valor}
+          onChange={e=>setValor(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter") submit(); if(e.key==="Escape") onCancel(); }}
+          placeholder={placeholder}
+          style={{
+            width:"100%",background:"var(--ui-bg)",border:"1px solid var(--ui-border)",borderRadius:8,
+            padding:"11px 13px",fontSize:14,color:"var(--ui-text)",marginBottom:20
+          }}
+        />
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onCancel} style={{
+            background:"var(--ui-bg-secondary)",border:"1px solid var(--ui-border)",borderRadius:8,
+            padding:"10px 18px",color:"var(--ui-text-secondary)",fontWeight:600,fontSize:13,cursor:"pointer"
+          }}>Cancelar</button>
+          <button onClick={submit} disabled={!valor.trim()} style={{
+            background: valor.trim() ? "var(--ui-accent)" : "var(--ui-bg-secondary)",border:"none",borderRadius:8,
+            padding:"10px 18px",color: valor.trim() ? "#ffffff" : "var(--ui-text-disabled)",
+            fontWeight:700,fontSize:13,cursor: valor.trim() ? "pointer" : "not-allowed"
+          }}>{confirmar}</button>
         </div>
       </div>
     </div>
@@ -5136,6 +5189,7 @@ export default function App({ session, onLogout }) {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [dropdownAberto, setDropdownAberto] = useState(null);
+  const [novoPortfolioOpen, setNovoPortfolioOpen] = useState(false);
   useEffect(() => {
     let lastKey = null;
     let lastKeyTime = 0;
@@ -5162,12 +5216,7 @@ export default function App({ session, onLogout }) {
       // Resto dos atalhos não funcionam quando em inputs
       if (isInput) return;
 
-      // ? → mostra ajuda de atalhos
-      if (e.key === "?" && !e.shiftKey) {
-        e.preventDefault();
-        setShowShortcutsHelp(prev => !prev);
-        return;
-      }
+      // ? (ou Shift+/) → mostra ajuda de atalhos
       if (e.key === "?" || (e.shiftKey && e.key === "/")) {
         e.preventDefault();
         setShowShortcutsHelp(prev => !prev);
@@ -5235,6 +5284,16 @@ export default function App({ session, onLogout }) {
   useEffect(() => {
     if (!userId) return;
     carregarPerfilPlano(userId).then(setPerfilPlano);
+  }, [userId]);
+  // Se a IA retornar 402 no meio da sessão (trial/assinatura expirou agora),
+  // abre o paywall e recarrega o perfil (que vai bloquear o app no próximo render).
+  useEffect(() => {
+    const onBloqueio = () => {
+      setShowPlanos(true);
+      if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
+    };
+    window.addEventListener("plano-bloqueado", onBloqueio);
+    return () => window.removeEventListener("plano-bloqueado", onBloqueio);
   }, [userId]);
   const planoStatus = useMemo(
     () => (perfilPlano === undefined ? null : statusPlano(perfilPlano)),
@@ -5860,8 +5919,7 @@ Regras:
                       <button
                         onClick={()=>{
                           setDropdownAberto(null);
-                          const nome = window.prompt("Nome do novo portfólio:", `Portfólio ${carteiras.length + 1}`);
-                          if (nome?.trim()) novaCarteira(nome.trim());
+                          setNovoPortfolioOpen(true);
                         }}
                         style={{
                           display:"flex",alignItems:"center",gap:10,
@@ -6243,6 +6301,9 @@ Regras:
         )}
 
         <div key={tab} className="anim" style={{animation:"slideIn .25s cubic-bezier(0.4, 0, 0.2, 1) both"}}>
+         {/* Boundary por aba: um crash numa aba não derruba o app inteiro
+             (a key={tab} no pai remonta e reseta ao trocar de aba). */}
+         <ErrorBoundary compact>
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao} fundamentosCarteira={fundamentosCarteira}/>}
           {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
@@ -6258,6 +6319,7 @@ Regras:
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="universo" && <TabUniverso userId={userId}/>}
           {tab==="ir" && <TabIR dados={dados}/>}
+         </ErrorBoundary>
         </div>
 
         {/* Toast notifications */}
@@ -6271,6 +6333,18 @@ Regras:
           perigoso={confirmacao.perigoso}
           onConfirm={() => { confirmacao.onConfirm?.(); setConfirmacao({open:false}); }}
           onCancel={() => setConfirmacao({open:false})}
+        />
+
+        {/* Novo portfólio (substitui window.prompt) */}
+        <PromptModal
+          open={novoPortfolioOpen}
+          titulo="Novo portfólio"
+          label="Como você quer chamar este portfólio?"
+          valorInicial={`Portfólio ${carteiras.length + 1}`}
+          placeholder="Ex.: Dividendos, Longo prazo, FIIs"
+          confirmar="Criar"
+          onConfirm={(nome) => { setNovoPortfolioOpen(false); novaCarteira(nome); }}
+          onCancel={() => setNovoPortfolioOpen(false)}
         />
 
         {/* Modal Telegram */}
@@ -6294,6 +6368,7 @@ Regras:
         <CommandPalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
+          onPlanos={() => setShowPlanos(true)}
           onNavigate={(target) => setTab(target)}
           onAnalyzeTicker={(t) => {
             setTab("ticker");

@@ -28,6 +28,32 @@ export default class ErrorBoundary extends Component {
   render() {
     if (!this.state.erro) return this.props.children;
 
+    // Modo compacto (por aba): fallback inline, preserva header/nav do app.
+    if (this.props.compact) {
+      return (
+        <div style={{
+          background: "var(--ui-bg-card)", border: "1px solid var(--ui-border)",
+          borderRadius: 14, padding: "32px 24px", textAlign: "center", margin: "8px 0",
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ui-text)", marginBottom: 6 }}>
+            Esta tela teve um problema
+          </div>
+          <div style={{ fontSize: 13, color: "var(--ui-text-muted)", lineHeight: 1.6, maxWidth: 380, margin: "0 auto 18px" }}>
+            Seus dados estão salvos. Tente de novo ou abra outra aba pelo menu.
+          </div>
+          <button
+            onClick={this.handleReset}
+            style={{
+              background: "var(--ui-accent, #7b61ff)", color: "#fff", border: "none", borderRadius: 9,
+              padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: "pointer",
+            }}>
+            Tentar de novo
+          </button>
+        </div>
+      );
+    }
+
     // Lê o tema direto do localStorage — o app pode não ter montado o provider.
     let isLight = true;
     try {

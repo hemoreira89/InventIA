@@ -187,16 +187,17 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
 
             {/* Email */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{
+              <label htmlFor="login-email" style={{
                 display: "block", fontSize: 11, color: "var(--ui-text-faint)",
                 fontWeight: 700, letterSpacing: 1, marginBottom: 6
               }}>EMAIL</label>
               <div style={{ position: "relative" }}>
-                <Mail size={16} style={{
+                <Mail aria-hidden="true" size={16} style={{
                   position: "absolute", left: 14, top: "50%",
                   transform: "translateY(-50%)", color: "var(--ui-text-faint)"
                 }}/>
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -217,16 +218,17 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
 
             {/* Senha */}
             <div style={{ marginBottom: 18 }}>
-              <label style={{
+              <label htmlFor="login-senha" style={{
                 display: "block", fontSize: 11, color: "var(--ui-text-faint)",
                 fontWeight: 700, letterSpacing: 1, marginBottom: 6
               }}>SENHA</label>
               <div style={{ position: "relative" }}>
-                <Lock size={16} style={{
+                <Lock aria-hidden="true" size={16} style={{
                   position: "absolute", left: 14, top: "50%",
                   transform: "translateY(-50%)", color: "var(--ui-text-faint)"
                 }}/>
                 <input
+                  id="login-senha"
                   type="password"
                   value={senha}
                   onChange={e => setSenha(e.target.value)}

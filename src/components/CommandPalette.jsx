@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, Briefcase, Brain, FileSearch, GitCompare,
   Lightbulb, History, Coins, Eye, Target, Receipt,
-  Activity, ArrowRight, Globe, Shield, Scale, Calendar
+  Activity, ArrowRight, Globe, Shield, Scale, Calendar, Crown
 } from "lucide-react";
 
 /**
  * CommandPalette - Estilo Linear/Notion/Vercel
  * Atalho global: Ctrl+K / Cmd+K
  */
-export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTicker }) {
+export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTicker, onPlanos }) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
@@ -31,6 +31,7 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
     { id: "tab-universo", group: "Navegação", icon: Globe, label: "Ir para Universo", action: "navigate", target: "universo" },
     { id: "tab-planejamento", group: "Navegação", icon: Target, label: "Ir para Planejamento", action: "navigate", target: "planejamento" },
     { id: "tab-ir", group: "Navegação", icon: Receipt, label: "Ir para Calculadora IR", action: "navigate", target: "ir" },
+    { id: "planos", group: "Conta", icon: Crown, label: "Ver planos / Assinar", action: "planos" },
   ], []);
 
   // Detecta se é um ticker (4 letras + dígitos)
@@ -106,6 +107,8 @@ export default function CommandPalette({ open, onClose, onNavigate, onAnalyzeTic
       onNavigate(item.target);
     } else if (item.action === "analyze") {
       onAnalyzeTicker(item.ticker);
+    } else if (item.action === "planos") {
+      onPlanos?.();
     }
     onClose();
   };
