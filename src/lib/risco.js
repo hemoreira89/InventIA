@@ -234,6 +234,62 @@ export function gerarAlertasRisco(pos, normalizarSetor) {
 }
 
 /**
+ * Gera um diagnóstico textual FACTUAL e NEUTRO da carteira, de forma
+ * determinística — usando exatamente as mesmas métricas exibidas no painel de
+ * risco (evita divergência com um texto escrito por IA). Sem linguagem
+ * prescritiva (nada de comprar/vender/alocar): apenas descreve os dados.
+ *
+ * @param {Object} risco - retorno de analisarRisco()
+ * @param {Array<{ticker, peso, tipo}>} posicoes
+ * @returns {string}
+ */
+export function gerarDiagnosticoCarteira(risco, posicoes) {
+  if (!risco || !posicoes || posicoes.length === 0) return "";
+  const c = risco.concentracao;
+  const s = risco.setorial;
+  const pct = n => `${(Math.round((n || 0) * 10) / 10).toString().replace(".", ",")}%`;
+  const ordenados = [...posicoes].sort((a, b) => (b.peso || 0) - (a.peso || 0));
+  const frases = [];
+
+  // 1. Diversificação por ativo
+  const nivel = classificarHHI(c.hhi).nivel.toLowerCase();
+  frases.push(
+    `A carteira reúne ${c.qtdAtivos} ${c.qtdAtivos === 1 ? "ativo" : "ativos"} com índice HHI de ${c.hhi} (perfil ${nivel} por ativo)` +
+    (c.maiorPosicao ? `, sendo ${c.maiorPosicao.ticker} a maior posição individual (${pct(c.maiorPosicao.peso)})` : "") + "."
+  );
+
+  // 2. Concentração no topo
+  const top3 = ordenados.slice(0, 3).map(p => p.ticker);
+  if (top3.length >= 3) {
+    frases.push(
+      `As três maiores posições (${top3.join(", ")}) somam ${pct(c.top3Pct)} do total` +
+      (c.acima10Pct.length > 0
+        ? `, e ${c.acima10Pct.length} ${c.acima10Pct.length === 1 ? "posição supera" : "posições superam"} 10% individualmente`
+        : "") + "."
+    );
+  }
+
+  // 3. Diversificação setorial
+  if (s && s.qtdSetores) {
+    const topSet = (s.distribuicao || []).slice(0, 3).map(d => `${d.setor} (${pct(d.peso)})`).join(", ");
+    frases.push(
+      `A distribuição setorial abrange ${s.qtdSetores} ${s.qtdSetores === 1 ? "setor" : "setores"} (HHI setorial ${s.hhi})` +
+      (topSet ? `, com destaque para ${topSet}` : "") + "."
+    );
+  }
+
+  // 4. Composição por classe
+  const pctFII = Math.round(posicoes.filter(p => p.tipo === "FII").reduce((a, p) => a + (p.peso || 0), 0));
+  const pctAcao = Math.round(posicoes.filter(p => p.tipo !== "FII").reduce((a, p) => a + (p.peso || 0), 0));
+  frases.push(`Por classe de ativo, a composição é de ${pctAcao}% em ações e ${pctFII}% em fundos imobiliários.`);
+
+  // 5. Leitura de saúde (factual, neutra)
+  frases.push(`O score de saúde consolidado é ${risco.score}/100.`);
+
+  return frases.join(" ");
+}
+
+/**
  * Faz análise de risco completa - função-fachada.
  * @param {Array} pos
  * @param {Function} normalizarSetor - opcional

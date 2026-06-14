@@ -60,7 +60,7 @@ import { buscarFundamentosCached, buscarMediasSetor } from "./lib/fundamentosCac
 import { buscarHistorico, buscarHistoricos } from "./lib/historico";
 import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
-import { analisarRisco, classificarHHI } from "./lib/risco";
+import { analisarRisco, classificarHHI, gerarDiagnosticoCarteira } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
 import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, suprimirMetricasNaoAplicaveis, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
@@ -2181,10 +2181,13 @@ function TabAnalise({ dados, loading, fase }) {
         </Card>
       )}
 
-      {/* Diagnóstico */}
+      {/* Diagnóstico — para carteira é determinístico (bate com o painel de
+          risco); sem carteira usa o contexto de mercado escrito pela IA. */}
       <Card>
         <STitle>{temCarteira?"DIAGNÓSTICO DA CARTEIRA":"CONTEXTO DO MERCADO"}</STitle>
-        <p style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.75}}>{a.diagnostico}</p>
+        <p style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.75}}>
+          {temCarteira ? gerarDiagnosticoCarteira(risco, pos) : a.diagnostico}
+        </p>
       </Card>
 
       {/* Alertas em grid */}

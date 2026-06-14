@@ -6,8 +6,40 @@ import {
   calcularConcentracaoSetorial,
   calcularScoreSaude,
   gerarAlertasRisco,
-  analisarRisco
+  analisarRisco,
+  gerarDiagnosticoCarteira
 } from "../../src/lib/risco";
+
+describe("gerarDiagnosticoCarteira", () => {
+  const posicoes = [
+    { ticker: "PETR4", peso: 15.1, tipo: "Ação", setor: "Petróleo" },
+    { ticker: "ITUB4", peso: 14.9, tipo: "Ação", setor: "Bancos" },
+    { ticker: "HGLG11", peso: 14, tipo: "FII", setor: "Fundos Imobiliários" },
+    { ticker: "VALE3", peso: 12, tipo: "Ação", setor: "Mineração" },
+    { ticker: "MXRF11", peso: 8, tipo: "FII", setor: "Fundos Imobiliários" },
+  ];
+
+  it("gera texto determinístico consistente com as métricas", () => {
+    const risco = analisarRisco(posicoes);
+    const texto = gerarDiagnosticoCarteira(risco, posicoes);
+    expect(texto).toContain(`HHI de ${risco.concentracao.hhi}`);
+    expect(texto).toContain("PETR4"); // maior posição
+    expect(texto).toContain(`${risco.score}/100`);
+    // composição: 3 ações (15.1+14.9+12=42) e 2 FIIs (14+8=22) → arredonda
+    expect(texto).toMatch(/\d+% em ações e \d+% em fundos imobiliários/);
+  });
+
+  it("usa as três maiores posições na ordem de peso", () => {
+    const risco = analisarRisco(posicoes);
+    const texto = gerarDiagnosticoCarteira(risco, posicoes);
+    expect(texto).toContain("As três maiores posições (PETR4, ITUB4, HGLG11)");
+  });
+
+  it("retorna vazio sem carteira", () => {
+    expect(gerarDiagnosticoCarteira(null, [])).toBe("");
+    expect(gerarDiagnosticoCarteira(analisarRisco(posicoes), [])).toBe("");
+  });
+});
 
 describe("calcularHHI", () => {
   it("retorna 0 para lista vazia", () => {
