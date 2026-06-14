@@ -3759,13 +3759,34 @@ function TabRendaPassiva({ dados }) {
 }
 
 // ─── Tab: Rebalanceamento ─────────────────────────────────────────────────────
-function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
+function TabRebalanceamento({ carteira, setCarteira, dados, cotacoesGlobais, userId, carteiraId }) {
   const posicoes = useMemo(() => {
     if (dados?.posicoes?.length) return dados.posicoes;
     return estimarPosicoesParaRisco(carteira, cotacoesGlobais, getSetorPorTicker);
   }, [carteira, cotacoesGlobais, dados]);
 
   const [aporte, setAporte] = useState("");
+  const [aplicando, setAplicando] = useState(false);
+
+  // Atalho: define peso-alvo igualitário (1/N) como ponto de partida neutro.
+  // Não é recomendação — é uma referência matemática que o usuário pode ajustar.
+  const aplicarPesoIgual = async () => {
+    const n = carteira.length;
+    if (!n || !userId || !carteiraId) return;
+    const pesoIgual = Math.round((100 / n) * 100) / 100;
+    setAplicando(true);
+    try {
+      await Promise.all(carteira.map(a =>
+        salvarAtivo(userId, carteiraId, { ticker: a.ticker, qtd: a.qtd, pm: a.pm ?? null, peso_alvo: pesoIgual })
+      ));
+      setCarteira(prev => prev.map(a => ({ ...a, peso_alvo: pesoIgual })));
+      showToast(`Peso-alvo igualitário aplicado (${fmt(pesoIgual, 1)}% por ativo)`, "success");
+    } catch (e) {
+      showToast("Erro ao definir peso-alvo: " + e.message, "error");
+    } finally {
+      setAplicando(false);
+    }
+  };
 
   if (!carteira.length) {
     return (
@@ -3839,9 +3860,16 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
         )}
 
         {semAlvo > 0 && (
-          <div style={{marginBottom:12,padding:"8px 12px",background:"rgba(123,97,255,0.06)",border:"1px solid rgba(123,97,255,0.18)",borderRadius:8,fontSize:12,color:"var(--ui-text-muted)",display:"flex",alignItems:"center",gap:8}}>
-            <AlertCircle size={13} color="var(--ui-accent)"/>
-            {semAlvo} ativo{semAlvo>1?"s":""} sem peso-alvo definido. Edite na aba Carteira para incluir no rebalanceamento.
+          <div style={{marginBottom:12,padding:"10px 12px",background:"rgba(123,97,255,0.06)",border:"1px solid rgba(123,97,255,0.18)",borderRadius:8,fontSize:12,color:"var(--ui-text-muted)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:8}}>
+              <AlertCircle size={13} color="var(--ui-accent)"/>
+              {semAlvo} ativo{semAlvo>1?"s":""} sem peso-alvo definido. Defina suas metas na aba Carteira — ou comece por um ponto de partida igualitário.
+            </span>
+            <button onClick={aplicarPesoIgual} disabled={aplicando}
+              title={`Define ${fmt(100/carteira.length,1)}% por ativo (1 ÷ ${carteira.length}) como ponto de partida neutro. Você pode ajustar depois.`}
+              style={{background:"rgba(123,97,255,0.12)",border:"1px solid rgba(123,97,255,0.35)",borderRadius:7,padding:"6px 12px",color:"var(--ui-accent)",fontSize:12,fontWeight:700,cursor:aplicando?"default":"pointer",whiteSpace:"nowrap",opacity:aplicando?0.6:1}}>
+              {aplicando ? "Aplicando..." : `Usar peso igualitário (${fmt(100/carteira.length,1)}%)`}
+            </button>
           </div>
         )}
 
@@ -6630,7 +6658,7 @@ Regras:
           {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch} universoTickers={universoTickers}/>}
           {tab==="patrimonio" && <TabPatrimonio userId={userId} dados={dados}/>}
           {tab==="risco" && <TabRisco carteira={carteira} cotacoesGlobais={cotacoesGlobais} dados={dados}/>}
-          {tab==="rebalanceamento" && <TabRebalanceamento carteira={carteira} dados={dados} cotacoesGlobais={cotacoesGlobais}/>}
+          {tab==="rebalanceamento" && <TabRebalanceamento carteira={carteira} setCarteira={setCarteira} dados={dados} cotacoesGlobais={cotacoesGlobais} userId={userId} carteiraId={carteiraId}/>}
           {tab==="historico" && <TabHistorico userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="proventos" && <TabProventos userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="calendario" && <TabCalendarioProventos userId={userId} carteira={carteira} cotacoesGlobais={cotacoesGlobais} fundamentosCarteira={fundamentosCarteira} dados={dados}/>}
