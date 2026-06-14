@@ -86,7 +86,7 @@ li{margin:6px 0}
   <div class="sub">${esc(t.nome)}</div>
   <div class="chips"><span class="chip">${esc(tipoLabel)}</span><span class="chip">${esc(t.setor)}</span><span class="chip">B3</span></div>
 
-  <p>${esc(t.ticker)} (${esc(t.nome)}) é um ativo da B3 no segmento de <b>${esc(t.setor)}</b>${t.setorDesc ? ` — ${esc(t.setorDesc)}` : ""}. No Cauril você acompanha ${esc(t.ticker)} dentro da <b>sua</b> carteira: cotação ao vivo, dividendos, indicadores fundamentalistas e uma tese de investimento gerada por IA, no contexto dos seus aportes e do seu perfil.</p>
+  <p>${esc(t.ticker)} (${esc(t.nome)}) é um ativo da B3 no segmento de <b>${esc(t.setor)}</b>${t.setorDesc ? ` — ${esc(t.setorDesc)}` : ""}. No Cauril você acompanha ${esc(t.ticker)} dentro da <b>sua</b> carteira: cotação ao vivo, dividendos, indicadores fundamentalistas e uma análise educacional gerada por IA, no contexto dos seus aportes e do seu perfil.</p>
 
   <h2>O que o Cauril mostra sobre ${esc(t.ticker)}</h2>
   <ul>

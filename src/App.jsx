@@ -3257,7 +3257,7 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
           label="Nº ATIVOS"
           valor={concentracao.qtdAtivos}
           cor={concentracao.qtdAtivos >= 8 ? "success" : concentracao.qtdAtivos >= 5 ? "warning" : "danger"}
-          detalhe="recomendado: 8+"
+          detalhe="ideal: 8+"
           tooltip="Quantidade de ativos distintos na carteira."
         />
         {concentracao.maiorPosicao && (
@@ -3353,7 +3353,7 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
                 <div style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:800,fontSize:15,color:"var(--ui-warning)"}}>{p.ticker}</div>
                 <div style={{fontSize:13,color:"var(--ui-text-muted)",fontWeight:600}}>{fmt(p.peso,1)}% da carteira</div>
                 <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>
-                  {p.peso > 25 ? "⚠ Risco elevado" : "Atenção recomendada"}
+                  {p.peso > 25 ? "⚠ Risco elevado" : "Requer atenção"}
                 </div>
               </div>
             ))}

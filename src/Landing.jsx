@@ -176,7 +176,7 @@ export default function Landing({ onEntrar, onComecar }) {
               em 60 segundos.
             </h1>
             <p className="lp-sub anim-d2">
-              Tese de investimento, risco, rebalanceamento e projeção de renda
+              Análise educacional, risco, rebalanceamento e projeção de renda
               passiva — tudo calculado sobre <b>seus ativos reais</b>, com
               cotações ao vivo e fundamentos atualizados.
             </p>

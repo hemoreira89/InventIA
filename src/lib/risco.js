@@ -44,7 +44,7 @@ export function classificarHHI(hhi) {
   return {
     nivel: "Muito concentrado",
     cor: "danger",
-    descricao: "Risco elevado, recomenda-se diversificação urgente"
+    descricao: "Risco elevado, convém diversificar com urgência"
   };
 }
 
@@ -176,7 +176,7 @@ export function gerarAlertasRisco(pos, normalizarSetor) {
   if (conc.maiorPosicao && conc.maiorPosicao.peso > 25) {
     alertas.push({
       tipo: "danger",
-      mensagem: `${conc.maiorPosicao.ticker} representa ${conc.maiorPosicao.peso}% da carteira (recomendado: até 15%)`
+      mensagem: `${conc.maiorPosicao.ticker} representa ${conc.maiorPosicao.peso}% da carteira (ideal: até 15%)`
     });
   } else if (conc.maiorPosicao && conc.maiorPosicao.peso > 15) {
     alertas.push({
@@ -218,7 +218,7 @@ export function gerarAlertasRisco(pos, normalizarSetor) {
   if (pos.length < 5) {
     alertas.push({
       tipo: "warning",
-      mensagem: `Apenas ${pos.length} ${pos.length === 1 ? "ativo" : "ativos"} (recomendado: 8 ou mais)`
+      mensagem: `Apenas ${pos.length} ${pos.length === 1 ? "ativo" : "ativos"} (ideal: 8 ou mais)`
     });
   }
 
