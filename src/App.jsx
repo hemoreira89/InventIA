@@ -1093,6 +1093,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
       <div className="carteira-aside" style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
       <Card>
         <STitle>REGISTRAR COMPRA</STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:10}}>Registre suas compras e acompanhe as posições com preço médio, cotações ao vivo e rentabilidade real (XIRR).</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
             <TickerAutocomplete
@@ -1622,6 +1623,7 @@ function TabMeta({ dados }) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card accent style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12} strokeWidth={2.5}/>PRIMEIRO MILHÃO</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:12}}>Simule em quanto tempo você alcança R$ 1 milhão com seus aportes e juros compostos.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Meta patrimonial (R$)</div>
@@ -1706,6 +1708,7 @@ function TabCenarios({ dados }) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-info)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BarChart3 size={12} strokeWidth={2.5}/>SIMULADOR DE CENÁRIOS</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:12}}>Compare cenários de rentabilidade (pessimista, base e otimista) e veja o patrimônio projetado no tempo.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div>
             <div style={{fontSize:11,color:"var(--ui-text-faint)",marginBottom:5}}>Aporte mensal (R$)</div>
@@ -1850,6 +1853,7 @@ function TabWatchlist({ watchlist, setWatchlist, dados, onSave, userId }) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-accent)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Eye size={12} strokeWidth={2.5}/>WATCHLIST</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:12}}>Acompanhe ativos de interesse com preço-alvo e veja a distância até o preço atual.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div style={{gridColumn:"1/-1"}}>
             <TickerAutocomplete
@@ -1944,6 +1948,7 @@ function TabIR({ dados }) {
     <div style={{display:"grid",gridTemplateColumns:"minmax(min(100%,420px),1fr) 2fr",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-warning)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Receipt size={12} strokeWidth={2.5}/>CALCULADORA DE IR</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:10}}>Calcule o imposto de renda sobre suas vendas de ações e FIIs no mês.</div>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.7,marginBottom:12}}>
           <b style={{color:"var(--ui-warning)"}}>Ações:</b> isenção até R$ 20.000 vendidos/mês; acima, 15% sobre o lucro.<br/>
           <b style={{color:"var(--ui-info)"}}>FIIs:</b> 20% sobre o ganho, sem isenção.
@@ -2579,6 +2584,7 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSearch size={12} strokeWidth={2.5}/>ANÁLISE INDIVIDUAL DE TICKER</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:10}}>Estude um ativo da B3 em profundidade: cotação, fundamentos, valuation e pontos de atenção — sem recomendação.</div>
         <div style={{display:"flex",gap:10}}>
           <div style={{flex:1}}>
             <TickerAutocomplete
@@ -3116,6 +3122,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><History size={12} strokeWidth={2.5}/>HISTÓRICO DE ANÁLISES ({analises.length})</span></STitle>
+      <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:4}}>Suas análises de IA salvas — reabra para rever o diagnóstico e as ideias de cada data.</div>
 
       {analises.map(a => {
         const isOpen = expandido === a.id;
@@ -3310,6 +3317,7 @@ function TabProventos({ userId }) {
       <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:120}}>
         <Card>
           <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>REGISTRAR PROVENTO</span></STitle>
+          <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:10}}>Registre dividendos e JCP recebidos e acompanhe sua renda passiva real ao longo do tempo.</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <input type="text" placeholder="Ticker (ex: TAEE11)" value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}/>
             <select value={tipo} onChange={e=>setTipo(e.target.value)} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--ui-text)"}}>
@@ -3446,6 +3454,10 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div>
+        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Shield size={12} strokeWidth={2.5}/>ANÁLISE DE RISCO</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5}}>Risco quantitativo da carteira: concentração por ativo e setor, HHI e score de saúde — sem depender de IA.</div>
+      </div>
       {/* Score de saúde */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12}}>
         <Card accent style={{textAlign:"center",padding:"20px 16px"}}>
@@ -3643,6 +3655,7 @@ function TabRendaPassiva({ dados }) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16,alignItems:"start"}}>
       <Card style={{position:"sticky",top:120}}>
         <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Coins size={12} strokeWidth={2.5}/>PROJEÇÃO DE RENDA PASSIVA</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5,marginBottom:12}}>Projete sua renda futura com dividendos a partir do patrimônio, aportes, DY e horizonte.</div>
 
         <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
           <div>
@@ -4072,6 +4085,10 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div>
+        <STitle color="var(--ui-success)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Calendar size={12} strokeWidth={2.5}/>CALENDÁRIO DE PROVENTOS</span></STitle>
+        <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5}}>Projeção mês a mês dos seus proventos futuros, com base no DY de cada ativo e na sazonalidade da B3.</div>
+      </div>
 
       {/* Header com resumo anual */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
