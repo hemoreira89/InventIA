@@ -146,7 +146,7 @@ export default async function handler(req, res) {
     for (const [etapa, criar] of Object.entries(TEMPLATES)) {
       try {
         const { subject, html } = criar();
-        await transporter.sendMail({ from, to: req.query.preview, subject: `[${etapa}] ${subject}`, html });
+        await transporter.sendMail({ from, to: req.query.preview, subject: `[${etapa}] ${subject}`, html, headers: { "List-Unsubscribe": "<mailto:contato@cauril.com.br?subject=Descadastrar>" } });
         n++;
       } catch (e) { console.error(`[EMAILS] preview ${etapa}:`, e.message); }
     }
@@ -189,7 +189,7 @@ export default async function handler(req, res) {
   for (const p of pendentes) {
     try {
       const { subject, html } = TEMPLATES[p.etapa]();
-      await transporter.sendMail({ from, to: p.email, subject, html });
+      await transporter.sendMail({ from, to: p.email, subject, html, headers: { "List-Unsubscribe": "<mailto:contato@cauril.com.br?subject=Descadastrar>" } });
       registros.push({ user_id: p.user_id, etapa: p.etapa });
       enviados++;
     } catch (e) {
