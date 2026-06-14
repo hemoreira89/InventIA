@@ -4,7 +4,10 @@
 // (financeiro, combustíveis, siderurgia, alimentos/agro, papel&celulose,
 //  telecom, logística, FoF imobiliário).
 //
-// `popular: true` = pré-selecionado no padrão (botão "Restaurar padrão").
+// `popular: true` = ativo de maior liquidez/capitalização do setor (blue chip).
+// Usado apenas como conjunto-padrão operacional para a IA quando o usuário ainda
+// não definiu o próprio universo. NÃO é recomendação de compra — é um filtro de
+// liquidez objetivo, e o usuário pode editar livremente.
 
 export const CATEGORIAS = [
   // ─── AÇÕES ─────────────────────────────────────────────────────────────────
@@ -269,7 +272,9 @@ export const CATEGORIAS = [
   },
 ];
 
-// Tickers marcados como populares vão estar pré-selecionados na primeira visita
+// Conjunto-padrão operacional: ativos de maior liquidez/capitalização (blue chips).
+// Critério objetivo — não é curadoria de recomendação. Serve só como ponto de
+// partida quando o usuário ainda não escolheu o próprio universo.
 export function getDefaultUniverso() {
   return CATEGORIAS.flatMap(cat =>
     cat.ativos.filter(a => a.popular).map(a => a.ticker)
@@ -279,6 +284,29 @@ export function getDefaultUniverso() {
 // Lista todos os tickers do catálogo
 export function getAllTickers() {
   return CATEGORIAS.flatMap(cat => cat.ativos.map(a => a.ticker));
+}
+
+// Retorna todos os tickers das categorias (setores) escolhidas pelo usuário.
+// Base do onboarding por preferência: o usuário escolhe os SETORES e nós incluímos
+// o setor inteiro — sem sub-selecionar papéis específicos (evita curadoria nossa).
+export function getTickersPorCategorias(ids) {
+  const set = new Set(ids);
+  return CATEGORIAS
+    .filter(cat => set.has(cat.id))
+    .flatMap(cat => cat.ativos.map(a => a.ticker));
+}
+
+// Resumo das categorias para telas de seleção (sem expor a lista completa de ativos).
+export function getCategoriasResumo() {
+  return CATEGORIAS.map(cat => ({
+    id: cat.id,
+    nome: cat.nome,
+    icone: cat.icone,
+    cor: cat.cor,
+    tipo: cat.tipo,
+    descricao: cat.descricao,
+    qtd: cat.ativos.length,
+  }));
 }
 
 // Busca um ativo pelo ticker (retorna info da categoria também)

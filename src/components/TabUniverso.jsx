@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Globe, Check, X, Plus, RotateCcw, Save, Search,
-  CheckSquare, Star, AlertCircle, Sparkles,
+  CheckSquare, Info, AlertCircle, Sparkles, SlidersHorizontal,
   // Ícones de setor (mapeados em CATEGORIAS pra unificar com o resto do app)
   Landmark, Zap, Fuel, Droplet, ShoppingCart, Stethoscope,
   Factory, Cpu, Package, Building2, FileText, Home,
@@ -11,6 +11,7 @@ import { CATEGORIAS, getDefaultUniverso, getAllTickers } from "../lib/catalogoB3
 import { carregarUniverso, salvarUniverso } from "../supabase";
 import { tickerValido } from "../lib/calc";
 import { showToast } from "../App";
+import UniversoOnboarding from "./UniversoOnboarding";
 
 // Mapa de string → componente Lucide (catalogoB3.js só tem strings, serializável)
 const ICON_MAP = {
@@ -32,6 +33,7 @@ export default function TabUniverso({ userId }) {
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [dirty, setDirty] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -45,9 +47,11 @@ export default function TabUniverso({ userId }) {
           setSelecionados(new Set(doCatalogo));
           setCustomizados(customs);
         } else {
-          // Primeira visita: usa o padrão e marca como não-salvo para o usuário confirmar
+          // Primeira visita: pergunta o perfil por setor (a escolha é do usuário).
+          // Pré-carrega o conjunto-padrão para o caso de o usuário fechar/pular.
           setSelecionados(new Set(getDefaultUniverso()));
           setDirty(true);
+          setShowOnboarding(true);
         }
       } catch (e) {
         console.error(e);
@@ -58,6 +62,21 @@ export default function TabUniverso({ userId }) {
       }
     })();
   }, [userId]);
+
+  // Onboarding: usuário escolheu os setores → universo = ativos desses setores
+  const aplicarSetores = (tickers) => {
+    const catalogoTickers = new Set(getAllTickers());
+    setSelecionados(new Set(tickers.filter(t => catalogoTickers.has(t))));
+    setCustomizados([]);
+    setDirty(true);
+    setShowOnboarding(false);
+    showToast(`Universo montado com ${tickers.length} ativos dos setores escolhidos`, "success");
+  };
+
+  const pularOnboarding = () => {
+    setShowOnboarding(false);
+    showToast("Usando o conjunto padrão — edite à vontade quando quiser", "info");
+  };
 
   const toggle = (ticker) => {
     setSelecionados(prev => {
@@ -200,7 +219,7 @@ export default function TabUniverso({ userId }) {
               Universo de Investimento
             </div>
             <div style={{fontSize: 12, color: "var(--ui-text-muted)"}}>
-              Defina quais ativos a IA vai considerar nas análises e insights
+              Você define quais ativos a IA considera — é um filtro de estudo, não uma recomendação de compra
             </div>
           </div>
         </div>
@@ -275,6 +294,9 @@ export default function TabUniverso({ userId }) {
           ))}
         </div>
 
+        <button onClick={() => setShowOnboarding(true)} style={{...btnSec, color: "var(--ui-accent)"}}>
+          <SlidersHorizontal size={13}/> Escolher por setor
+        </button>
         <button onClick={() => selecionarTipo("acao")} style={btnSec}>
           <CheckSquare size={13}/> Todas ações
         </button>
@@ -460,7 +482,6 @@ export default function TabUniverso({ userId }) {
                           fontFamily: "'JetBrains Mono', monospace",
                           letterSpacing: 0.5
                         }}>{ativo.ticker}</span>
-                        {ativo.popular && <Star size={10} fill="var(--ui-warning)" color="var(--ui-warning)"/>}
                       </div>
                       <span style={{fontSize: 11, color: "var(--ui-text-faint)"}}>{ativo.nome}</span>
                     </label>
@@ -479,12 +500,21 @@ export default function TabUniverso({ userId }) {
         display: "flex", alignItems: "center", gap: 10,
         fontSize: 12, color: "var(--ui-text-muted)"
       }}>
-        <Star size={14} fill="var(--ui-warning)" color="var(--ui-warning)"/>
+        <Info size={14} color="var(--ui-info)"/>
         <span>
-          Estrelas amarelas indicam ativos populares (pré-selecionados no padrão).
-          Quanto mais focado seu universo, mais relevantes serão as análises da IA.
+          Este é o conjunto de ativos que a IA considera nas suas análises — escolhido por você,
+          não uma recomendação. Quanto mais focado o universo, mais relevantes os estudos. Use
+          <b style={{color: "var(--ui-text-secondary)"}}> "Escolher por setor"</b> para refazer a seleção a qualquer momento.
         </span>
       </div>
+
+      {showOnboarding && (
+        <UniversoOnboarding
+          onConfirm={aplicarSetores}
+          onSkip={pularOnboarding}
+          onClose={pularOnboarding}
+        />
+      )}
     </div>
   );
 }
