@@ -99,7 +99,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
           marginBottom: 28,
           maxWidth: 600
         }}>
-          Recomendações personalizadas, análise fundamentalista e controle de carteira
+          Análises personalizadas, estudo fundamentalista e controle de carteira
           alimentado por <b style={{color: "var(--ui-text)"}}>IA (Google Gemini)</b>.
         </p>
 

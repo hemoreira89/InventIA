@@ -22,7 +22,7 @@ const TAPE = [
 ];
 
 const FEATURES = [
-  { icon: Brain, titulo: "Análise com IA de verdade", texto: "O Gemini analisa sua carteira inteira — tese, riscos e sugestões de alocação para o seu perfil — em menos de um minuto." },
+  { icon: Brain, titulo: "Análise com IA de verdade", texto: "O Gemini analisa sua carteira inteira — fundamentos, riscos e cenários de alocação para estudar — em menos de um minuto." },
   { icon: TrendingUp, titulo: "Cotações ao vivo", texto: "Preços da B3 atualizados a cada 60 segundos, com variação do dia em cada posição da carteira." },
   { icon: Shield, titulo: "Raio-X de risco", texto: "Concentração por ativo e setor, índice HHI e um score de saúde da carteira que aponta exatamente onde você está exposto." },
   { icon: Scale, titulo: "Rebalanceamento guiado", texto: "Compare a carteira atual com a ideal e receba o plano de compras para voltar ao alvo — incluindo simulação de aporte." },

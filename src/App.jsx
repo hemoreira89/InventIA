@@ -1853,7 +1853,7 @@ const STEPS_ANALISE = [
   { label: "Calculando perfil de risco da carteira" },
   { label: "Buscando cotações e fundamentos reais (B3/CVM)" },
   { label: "IA montando a tese da sua carteira" },
-  { label: "Consolidando posições e recomendações" },
+  { label: "Consolidando posições e análises" },
 ];
 // Mapeia a string de `fase` (definida ao longo de `analisar`) para o índice da etapa.
 function stepDaFase(fase) {
@@ -2041,9 +2041,12 @@ function TabAnalise({ dados, aporte, loading, fase }) {
       ))}
       </div>}
 
-      {/* Recomendações */}
+      {/* Ideias para estudar */}
       {a.recomendacoes?.length > 0 && <>
-        <STitle>RECOMENDAÇÕES PARA {fmtBRL(aporte)}</STitle>
+        <STitle>IDEIAS PARA ESTUDAR ({fmtBRL(aporte)})</STitle>
+        <div style={{fontSize:11,color:"var(--ui-text-muted)",marginBottom:4,lineHeight:1.5,background:"var(--ui-bg-input)",borderRadius:8,padding:"10px 12px"}}>
+          Ativos que atendem aos critérios objetivos selecionados, para você ESTUDAR. Os percentuais e cotas abaixo são uma simulação/calculadora de como o valor caberia — não é recomendação de investimento nem indicação de alocação. As decisões são suas.
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,380px),1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => {
           // Usa avaliação pré-calculada (enriquecimento) ou calcula se for análise antiga
@@ -2070,10 +2073,11 @@ function TabAnalise({ dados, aporte, loading, fase }) {
                     <span style={{fontWeight:800,fontSize:15,color:"var(--ui-text)"}}>{r.ticker}</span>
                     {r.nova && <span style={{fontSize:9,background:"rgba(0,229,160,0.09)",color:"var(--ui-success)",border:"1px solid rgba(0,229,160,0.2)",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}}>NOVO</span>}
                   </div>
-                  <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{r.acao} · {r.setor}</div>
+                  <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{r.tipo || "Ativo"} · {r.setor}</div>
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
+                <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:0.5}}>SIMULAÇÃO</div>
                 <div style={{fontWeight:700,fontSize:16,color:"var(--ui-accent)"}}>{r.alocacao}%</div>
                 <div style={{fontSize:12,color:"var(--ui-text-faint)"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
               </div>
@@ -2104,9 +2108,9 @@ function TabAnalise({ dados, aporte, loading, fase }) {
         </div>
       </>}
 
-      {/* Vender */}
+      {/* Pontos de atenção da carteira */}
       {a.vender?.length > 0 && <>
-        <STitle color="var(--ui-danger)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertCircle size={12} strokeWidth={2.5}/>CONSIDERE REVISAR / VENDER</span></STitle>
+        <STitle color="var(--ui-danger)"><span style={{display:"inline-flex",alignItems:"center",gap:6}}><AlertCircle size={12} strokeWidth={2.5}/>PONTOS DE ATENÇÃO PARA REVISAR</span></STitle>
         {a.vender.map((v,i) => (
           <Card key={i} style={{borderColor:"rgba(255,77,109,0.12)"}}>
             <div style={{fontWeight:700,fontSize:14,color:"var(--ui-danger)",marginBottom:4}}>{v.ticker}</div>
@@ -2232,7 +2236,7 @@ function TabTicker({ chamarIAComSearch }) {
       // Passa os dados reais como contexto para a IA gerar análise embasada
       setStep(2);
       setStep(3);
-      setFase("Gemini gerando tese de investimento...");
+      setFase("Gemini gerando análise educacional...");
 
       const dadosParaIA = {
         ticker: t,
@@ -2259,30 +2263,29 @@ function TabTicker({ chamarIAComSearch }) {
         }),
       };
 
-      const promptIA = `Você é analista financeiro brasileiro. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
+      const promptIA = `Você é um assistente de análise EDUCACIONAL para investidores da B3. Você NÃO faz recomendação de compra ou venda nem indica preço-alvo. Você organiza dados, explica fundamentos e aponta prós, contras e pontos de atenção — a decisão é sempre do usuário. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
 
 DADOS REAIS DE ${t} (já consultei B3/CVM, NÃO precisa buscar de novo):
 ${JSON.stringify(dadosParaIA, null, 2)}
 
-Sua tarefa: gerar a TESE DE INVESTIMENTO baseada nesses números.
+Sua tarefa: gerar uma ANÁLISE EDUCACIONAL baseada nesses números, para o usuário ESTUDAR e decidir por conta própria.
 
 Responda APENAS este JSON (sem markdown, sem inventar números além dos fornecidos):
 {
   "fundamentos": "Análise dos fundamentos em 2-3 parágrafos: contexto da empresa, vantagens competitivas, riscos do setor. SEM repetir os números — eles já estão visíveis na UI",
   "tese": {
-    "tipo": "comprar|aguardar|evitar",
     "score": 80,
-    "argumentos_positivos": ["ponto 1", "ponto 2", "ponto 3"],
-    "argumentos_negativos": ["ponto 1", "ponto 2"],
-    "preco_alvo": 55.0,
-    "horizonte": "12 meses"
+    "pontos_positivos": ["ponto 1", "ponto 2", "ponto 3"],
+    "pontos_de_atencao": ["ponto 1", "ponto 2"],
+    "horizonte": "Prazo de referência ao qual a análise se aplica (ex.: longo prazo)"
   },
   "comparaveis": ["TICKER1", "TICKER2", "TICKER3"],
-  "resumo": "1-2 frases finais: vale a pena ou não, agora"
+  "resumo": "1-2 frases finais de leitura educacional neutra, SEM dizer se vale a pena comprar ou vender e SEM indicar momento de entrada"
 }
 
-Use os dados quantitativos para JUSTIFICAR a tese. Se ROE ou DY estiver baixo,
-mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está caro.`;
+Use os dados quantitativos para JUSTIFICAR a análise de forma factual. Se ROE ou DY estiver baixo,
+aponte isso nos pontos de atenção. Se canal52 > 70%, sinalize que o preço está próximo da máxima de 52 semanas.
+NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é hora de entrar/sair.`;
 
       const teseIA = await chamarIAComSearch(promptIA);
 
@@ -2338,7 +2341,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
         tese: teseIA?.tese,
         comparaveis: teseIA?.comparaveis || [],
         resumo: teseIA?.resumo,
-        aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Tese gerada por IA. Confirme antes de operar.",
+        aviso: "Conteúdo educacional e informativo. NÃO é recomendação de investimento. Cotação e fundamentos via brapi/bolsai (B3/CVM); análise gerada por IA. As decisões são suas.",
       };
 
       if (reqRef.current === id) setResultado(resultadoFinal);
@@ -2357,7 +2360,7 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
   const steps = [
     { label: "Buscando cotação na brapi (B3)" },
     { label: "Buscando fundamentos na bolsai (CVM)", detail: "DY, P/L, ROE, P/VP, margens..." },
-    { label: "Gemini gerando tese de investimento", detail: "Pode levar 5-15 segundos" },
+    { label: "Gemini gerando análise educacional", detail: "Pode levar 5-15 segundos" },
   ];
 
   return (
@@ -2438,6 +2441,9 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
           {resultado.valuation && (
             <Card>
               <STitle>VALUATION & BOLA DE NEVE</STitle>
+              <div style={{fontSize:11,color:"var(--ui-text-muted)",marginBottom:10,lineHeight:1.5}}>
+                Referência educacional de valuation, calculada por fórmulas públicas (Bazin e Graham). Não é preço-alvo nem meta de investimento.
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
                 {resultado.valuation.magicNumber != null && <Stat label="MAGIC NUMBER" value={resultado.valuation.magicNumber.toLocaleString("pt-BR")+" cotas"} color="var(--ui-accent)" mono/>}
                 {resultado.valuation.precoTetoBazin != null && <Stat label="PREÇO-TETO (BAZIN 6%)" value={fmtBRL(resultado.valuation.precoTetoBazin)} color="var(--ui-warning)" mono/>}
@@ -2485,50 +2491,37 @@ mencione isso nos argumentos negativos. Se canal52 > 70%, mencione que está car
             );
           })()}
 
-          {/* Tese */}
+          {/* Análise educacional */}
           {resultado.tese && (
-            <Card style={{border:`1px solid ${resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.25)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.25)":"rgba(255,77,109,0.25)"}`}}>
+            <Card>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{
-                    fontSize:11,fontWeight:800,letterSpacing:1.5,padding:"5px 12px",borderRadius:6,
-                    background:resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.18)":resultado.tese.tipo==="aguardar"?"rgba(255,214,10,0.22)":"rgba(255,77,109,0.18)",
-                    border:`1px solid ${resultado.tese.tipo==="comprar"?"rgba(0,229,160,0.4)":resultado.tese.tipo==="aguardar"?"rgba(194,65,12,0.35)":"rgba(255,77,109,0.4)"}`,
-                    color:resultado.tese.tipo==="comprar"?"var(--ui-success)":resultado.tese.tipo==="aguardar"?"var(--ui-warning)":"var(--ui-danger)"
-                  }}>{resultado.tese.tipo.toUpperCase()}</span>
-                  {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
-                </div>
-                {resultado.tese.preco_alvo && resultado.preco > 0 && (
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>PREÇO ALVO ({resultado.tese.horizonte || "12m"})</div>
-                    <div style={{fontSize:18,fontWeight:800,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(resultado.tese.preco_alvo)}</div>
-                    <div style={{fontSize:11,color:resultado.tese.preco_alvo>resultado.preco?"var(--ui-success)":"var(--ui-danger)",fontWeight:600}}>
-                      {resultado.tese.preco_alvo>resultado.preco?"+":""}{fmt((resultado.tese.preco_alvo-resultado.preco)/resultado.preco*100,1)}%
-                    </div>
-                  </div>
-                )}
+                <STitle>ANÁLISE EDUCACIONAL</STitle>
+                {resultado.tese.score && <span style={{fontSize:11,color:"var(--ui-text-muted)"}}>Score <b style={{color:"var(--ui-text)"}}>{resultado.tese.score}/100</b></span>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                {resultado.tese.argumentos_positivos?.length>0 && (
+                {(resultado.tese.pontos_positivos || resultado.tese.argumentos_positivos)?.length>0 && (
                   <div>
                     <div style={{fontSize:10,color:"var(--ui-success)",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><CheckCircle2 size={12}/>PONTOS POSITIVOS</div>
-                    {resultado.tese.argumentos_positivos.map((arg,i) => (
+                    {(resultado.tese.pontos_positivos || resultado.tese.argumentos_positivos).map((arg,i) => (
                       <div key={i} style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
                         <span style={{position:"absolute",left:0,color:"var(--ui-success)"}}>+</span>{arg}
                       </div>
                     ))}
                   </div>
                 )}
-                {resultado.tese.argumentos_negativos?.length>0 && (
+                {(resultado.tese.pontos_de_atencao || resultado.tese.argumentos_negativos)?.length>0 && (
                   <div>
                     <div style={{fontSize:10,color:"var(--ui-danger)",fontWeight:700,letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><AlertCircle size={12}/>PONTOS DE ATENÇÃO</div>
-                    {resultado.tese.argumentos_negativos.map((arg,i) => (
+                    {(resultado.tese.pontos_de_atencao || resultado.tese.argumentos_negativos).map((arg,i) => (
                       <div key={i} style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:6,paddingLeft:14,position:"relative",lineHeight:1.5}}>
                         <span style={{position:"absolute",left:0,color:"var(--ui-danger)"}}>−</span>{arg}
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+              <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:12,lineHeight:1.5}}>
+                Conteúdo educacional e informativo. NÃO é recomendação de investimento. As decisões são suas.
               </div>
             </Card>
           )}
@@ -2651,12 +2644,12 @@ function TabComparador({ chamarIAComSearch }) {
       // ── PASSO 2: IA só para análise comparativa qualitativa ──
       setFase("Gerando análise comparativa...");
 
-      const promptIA = `Você é analista financeiro brasileiro. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
+      const promptIA = `Você é um assistente de análise EDUCACIONAL para investidores da B3. Você NÃO faz recomendação de compra ou venda nem indica preço-alvo nem elege "vencedor". Você organiza dados, explica fundamentos e aponta prós, contras e trade-offs — a decisão é sempre do usuário. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
 
 DADOS REAIS DOS ATIVOS (já consultei B3/CVM, NÃO precisa buscar):
 ${JSON.stringify(ativosReais, null, 2)}
 
-Sua tarefa: comparação qualitativa baseada nesses números.
+Sua tarefa: comparação EDUCACIONAL e factual baseada nesses números, para o usuário estudar os trade-offs e decidir por conta própria.
 
 Responda APENAS este JSON (sem markdown, sem inventar números):
 {
@@ -2664,21 +2657,21 @@ Responda APENAS este JSON (sem markdown, sem inventar números):
     {
       "ticker": "${ts[0]}",
       "ponto_forte": "principal vantagem em uma frase curta baseada nos dados",
-      "ponto_fraco": "principal risco em uma frase curta",
+      "ponto_fraco": "principal ponto de atenção em uma frase curta",
       "score": 80
     }
   ],
-  "comparativo": "Análise em 2-3 parágrafos: quem é melhor para RENDA, quem é melhor para CRESCIMENTO, qual o trade-off de cada um. Use os números fornecidos para justificar.",
-  "vencedor": {
-    "ticker": "TICKER",
-    "motivo": "Por que esse é a melhor opção considerando o conjunto"
+  "comparativo": "Análise em 2-3 parágrafos: qual ativo se destaca em RENDA, qual em CRESCIMENTO e o trade-off de cada um. Use os números fornecidos para justificar, de forma factual. NÃO eleja o melhor para comprar.",
+  "destaques": {
+    "renda": "Ticker que se destaca objetivamente em geração de renda (maior DY), com o dado que justifica — sem dizer para comprar",
+    "crescimento": "Ticker que se destaca objetivamente em crescimento (CAGR/ROE), com o dado que justifica — sem dizer para comprar"
   },
   "ranking": [
-    {"ticker":"TICKER","posicao":1,"justificativa":"motivo curto baseado nos números"}
+    {"ticker":"TICKER","posicao":1,"justificativa":"posição no ordenamento por score objetivo, com o motivo factual baseado nos números — não é indicação de compra"}
   ]
 }
 
-Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem que recebeu.`;
+Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem que recebeu. O ranking é apenas um ordenamento por critérios objetivos para estudo, NÃO uma indicação de qual comprar.`;
 
       const teseIA = await chamarIAComSearch(promptIA).catch(e => { console.warn("[comparador] IA falhou, usando fallback:", e?.message); return {}; });
 
@@ -2700,9 +2693,9 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
         tickers: ts,
         ativos: ativosFinais,
         comparativo: teseIA?.comparativo || "Análise comparativa indisponível.",
-        vencedor: teseIA?.vencedor || null,
+        destaques: teseIA?.destaques || null,
         ranking: teseIA?.ranking || [],
-        aviso: "Cotação e fundamentos via brapi/bolsai (B3/CVM). Comparação gerada por IA. Confirme antes de operar.",
+        aviso: "Conteúdo educacional e informativo. NÃO é recomendação de investimento. Cotação e fundamentos via brapi/bolsai (B3/CVM); comparação gerada por IA. As decisões são suas.",
       });
     } catch (e) {
       setErro(e.message || "Erro");
@@ -2717,7 +2710,7 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
       <Card>
         <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><GitCompare size={12} strokeWidth={2.5}/>COMPARADOR DE ATIVOS</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:12,lineHeight:1.6}}>
-          Compare 2 a 4 ativos lado a lado. A IA analisa fundamentos, valuation e indica qual é a melhor escolha.
+          Compare 2 a 4 ativos lado a lado. A IA organiza fundamentos, valuation e trade-offs para você estudar — sem indicar qual comprar.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:14}}>
           {tickers.map((t,i) => (
@@ -2738,15 +2731,22 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
 
       {resultado && (
         <>
-          {/* Vencedor */}
-          {resultado.vencedor && (
+          {/* Destaques por objetivo (educacional) */}
+          {resultado.destaques && (resultado.destaques.renda || resultado.destaques.crescimento) && (
             <Card accent style={{background:"linear-gradient(135deg,rgba(123,97,255,0.06),#00e5a005)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#7b61ff,#00e5a0)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={22} color="#ffffff" strokeWidth={2.5}/></div>
+              <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+                <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#7b61ff,#00e5a0)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Sparkles size={22} color="#ffffff" strokeWidth={2.5}/></div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1.5,marginBottom:4}}>VENCEDOR DA COMPARAÇÃO</div>
-                  <div style={{fontSize:24,fontWeight:800,color:"var(--ui-text)",marginBottom:6}}>{resultado.vencedor.ticker}</div>
-                  <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6}}>{resultado.vencedor.motivo}</div>
+                  <div style={{fontSize:11,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1.5,marginBottom:8}}>DESTAQUES POR OBJETIVO (PARA ESTUDAR)</div>
+                  {resultado.destaques.renda && (
+                    <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6,marginBottom:6}}><b style={{color:"var(--ui-warning)"}}>Renda:</b> {resultado.destaques.renda}</div>
+                  )}
+                  {resultado.destaques.crescimento && (
+                    <div style={{fontSize:13,color:"var(--ui-text-muted)",lineHeight:1.6}}><b style={{color:"var(--ui-success)"}}>Crescimento:</b> {resultado.destaques.crescimento}</div>
+                  )}
+                  <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:10,lineHeight:1.5}}>
+                    Leitura factual por objetivo, não é indicação de compra. Conteúdo educacional — a decisão é sua.
+                  </div>
                 </div>
               </div>
             </Card>
@@ -2773,7 +2773,7 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
                     {resultado.ativos.map((a,i) => (
                       <tr key={i} style={{borderBottom:"1px solid var(--ui-border-soft)"}}>
                         <td style={{padding:"12px 8px"}}>
-                          <div style={{fontWeight:700,color:a.ticker===resultado.vencedor?.ticker?"var(--ui-accent)":"var(--ui-text)"}}>{a.ticker}</div>
+                          <div style={{fontWeight:700,color:"var(--ui-text)"}}>{a.ticker}</div>
                           <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{a.setor}</div>
                         </td>
                         <td style={{textAlign:"right",padding:"12px 8px",fontFamily:"'JetBrains Mono',monospace",color:"var(--ui-text)",fontWeight:600}}>{fmtBRL(a.preco)}</td>
@@ -2836,7 +2836,7 @@ Inclua TODOS os ${ts.length} tickers em ativos_extra e ranking, na mesma ordem q
       {!resultado && !loading && (
         <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
           <GitCompare size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Compare ativos lado a lado e descubra a melhor escolha</div>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13}}>Compare ativos lado a lado e estude os trade-offs de cada um</div>
         </Card>
       )}
     </div>
@@ -2915,7 +2915,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                     <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Clock size={11}/>{data.toLocaleDateString("pt-BR")} {data.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
                     {a.perfil && <span>· {a.perfil}</span>}
                     {a.foco && <span>· {a.foco}</span>}
-                    {a.resultado?.recomendacoes?.length > 0 && <span>· {a.resultado.recomendacoes.length} recomendações</span>}
+                    {a.resultado?.recomendacoes?.length > 0 && <span>· {a.resultado.recomendacoes.length} ideias para estudar</span>}
                   </div>
                 </div>
               </div>
@@ -2932,7 +2932,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                 )}
                 {a.resultado?.recomendacoes?.length > 0 && (
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:10,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1,marginBottom:8}}>RECOMENDAÇÕES</div>
+                    <div style={{fontSize:10,color:"var(--ui-accent)",fontWeight:700,letterSpacing:1,marginBottom:8}}>IDEIAS PARA ESTUDAR</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
                       {a.resultado.recomendacoes.map((r,i) => (
                         <div key={i} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:"10px 12px"}}>
@@ -4831,30 +4831,31 @@ function TabOportunidades({ chamarIAComSearch }) {
             const dyTxt = o.dy ? `, DY ${o.dy.toFixed(1)}%` : "";
             return `${o.ticker} (${o.nome})${setorTxt}, P/L ${o.pl?.toFixed(1) || "?"}, P/VP ${o.pvp?.toFixed(2) || "?"}${dyTxt}`;
           }).join("; ");
-          const promptIA = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
-Tipo de oportunidade: ${cfg.titulo} — ${cfg.descricao}
-Perfil: ${filtros.perfil}
+          const promptIA = `Você é um assistente de análise EDUCACIONAL para investidores da B3. Você NÃO faz recomendação de compra ou venda nem indica preço-alvo nem prescreve alocação. Você organiza dados e aponta prós, contras e pontos de atenção — a decisão é sempre do usuário. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
+Filtro objetivo aplicado: ${cfg.titulo} — ${cfg.descricao}
+Perfil informado: ${filtros.perfil}
 
-Estes ${ordenados.length} ativos PASSARAM nos critérios objetivos via API B3/CVM:
+Estes ${ordenados.length} ativos ATENDERAM aos critérios objetivos via API B3/CVM (lista para o usuário ESTUDAR):
 ${tickersStr}
 
-Sua tarefa: análise qualitativa.
+Sua tarefa: análise EDUCACIONAL e factual de cada ativo, para estudo — SEM dizer para comprar e SEM prescrever alocação.
 
 REGRAS OBRIGATÓRIAS pra evitar erros factuais:
 - O setor de cada ativo está informado entre [setor: ...]. NUNCA contradiga isso.
 - Se você não tiver conhecimento confiável sobre o ativo específico, escreva
-  uma tese genérica baseada APENAS no setor informado (ex: "Empresa do setor
-  de moda com múltiplos descontados sugere recuperação de margem").
+  uma leitura genérica baseada APENAS no setor informado (ex: "Empresa do setor
+  de moda com múltiplos descontados; observar a recuperação de margem").
 - NUNCA invente fatos sobre o negócio (produtos, mercados, expansão geográfica)
   se você não tem certeza. Em caso de dúvida, mencione APENAS o que está nos
   dados quantitativos e no setor.
 - Se confundir o ticker com outra empresa, prefira ser genérico a errar.
+- NÃO emita veredito de compra/venda nem indique se é hora de entrar.
 
 Responda APENAS este JSON (sem markdown):
 {
-  "contexto_macro": "1 parágrafo sobre o cenário atual e porque esse tipo de oportunidade faz sentido agora",
+  "contexto_macro": "1 parágrafo educacional sobre o cenário atual e por que esse perfil de filtro objetivo é relevante para estudo agora, de forma neutra",
   "teses": [
-    {"ticker":"TICKER","destaque":"vantagem em 1 frase coerente com o setor","risco_principal":"risco em 1 frase coerente com o setor"}
+    {"ticker":"TICKER","destaque":"ponto positivo em 1 frase coerente com o setor","risco_principal":"ponto de atenção em 1 frase coerente com o setor"}
   ]
 }`;
           const r = await chamarIAComSearch(promptIA);
@@ -4884,8 +4885,8 @@ Responda APENAS este JSON (sem markdown):
         oportunidades: finais,
         contexto_macro: contextoMacro,
         aviso: finais.length === 0
-          ? `Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez). Nenhum passou nos critérios objetivos. Tente outro tipo ou setor.`
-          : `Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez), ${finais.length} passaram nos critérios (${reprovados} descartados). Dados via B3/CVM oficial.`,
+          ? `Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez). Nenhum atendeu aos critérios objetivos. Tente outro tipo ou setor.`
+          : `Conteúdo educacional e informativo, NÃO é recomendação de investimento. Analisei ${candidatosCatalogo.length} ativos do catálogo B3 (top liquidez), ${finais.length} atenderam aos critérios objetivos para estudo (${reprovados} descartados). Dados via B3/CVM oficial. As decisões são suas.`,
         _stats: {
           total_catalogo: candidatosCatalogo.length,
           aprovados: finais.length,
@@ -5474,18 +5475,18 @@ CONTEXTO DE RISCO (calculado a partir da carteira):
 - Setores na carteira: ${riscoPre.setorial.qtdSetores}
 ${riscoPre.concentracao.acima10Pct.length > 0 ? `- Posições acima de 10%: ${riscoPre.concentracao.acima10Pct.map(p => `${p.ticker} (${p.peso}%)`).join(", ")}` : ""}
 
-USE este contexto ao recomendar:
-- Se HHI > 2500 ou setor dominante > 40%, EVITE reforçar setores/posições já concentrados
-- Se houver posição > 25%, NÃO recomende mais cotas dela
-- Se setores < 4, PRIORIZE diversificação setorial
-- Mencione na justificativa como a recomendação melhora ou mantém o perfil de risco` : "";
+USE este contexto ao analisar:
+- Se HHI > 2500 ou setor dominante > 40%, SINALIZE que a carteira já está concentrada nesses setores/posições
+- Se houver posição > 25%, SINALIZE a concentração elevada dessa posição
+- Se setores < 4, SINALIZE baixa diversificação setorial
+- Na justificativa, explique de forma factual como cada ativo se relaciona com o perfil de risco atual` : "";
 
-      const prompt = `Analista B3, ${new Date().toLocaleDateString("pt-BR")}.
+      const prompt = `Você é um assistente de análise EDUCACIONAL para investidores da B3. Você NÃO faz recomendação de compra ou venda nem indica preço-alvo nem prescreve alocação. Você organiza dados e aponta prós, contras e pontos de atenção — a decisão é sempre do usuário. Hoje: ${new Date().toLocaleDateString("pt-BR")}.
 
 ${temCarteira
   ? `Carteira: ${carteira.map(a=>`${a.ticker}(${a.qtd})`).join(", ")}.
-Aloque R$ ${v.toFixed(2)} (perfil ${perfil}, ${focoDesc}). Pode reforçar ou diversificar.`
-  : `Recomende ${focoDesc} para R$ ${v.toFixed(2)} (perfil ${perfil}).`}
+Liste ativos do universo que ATENDEM aos critérios objetivos abaixo, para o usuário ESTUDAR um aporte de R$ ${v.toFixed(2)} (perfil ${perfil}, ${focoDesc}). NÃO prescreva comprar nem alocar — apenas analise de forma educacional.`
+  : `Liste ${focoDesc} que ATENDEM aos critérios objetivos abaixo, para o usuário ESTUDAR (R$ ${v.toFixed(2)}, perfil ${perfil}). NÃO prescreva comprar nem alocar — apenas analise de forma educacional.`}
 ${contextoRisco}
 
 Use APENAS estes tickers: ${universoFiltrado.slice(0, 20).join(", ")}.
@@ -5494,17 +5495,17 @@ CRITÉRIOS FUNDAMENTALISTAS — busque e retorne TODOS os indicadores possíveis
 - AÇÕES: ROE (preferir ≥15%), Dívida Líquida/EBITDA (preferir ≤3), Margem Líquida (preferir ≥5%), DY, P/L, P/VP
 - FIIs: DY (preferir ≥7%), P/VP (preferir 0.7-1.15), vacância, liquidez diária
 
-Priorize ativos que ATENDEM aos critérios. Se recomendar algo que não atende, justifique o porquê.
+Liste ativos que ATENDEM aos critérios objetivos. O campo "alocacao" é apenas um peso ilustrativo para uma SIMULAÇÃO/calculadora de quantas cotas caberiam no valor — NÃO é indicação de alocação nem conselho de compra.
 
 Responda APENAS com JSON (sem markdown):
 {
-  "diagnostico": "1-2 frases sobre o mercado E sobre o risco da carteira atual",
+  "diagnostico": "1-2 frases factuais sobre o mercado E sobre o risco da carteira atual",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
   "recomendacoes": [
-    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","acao":"Comprar","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, mencionando impacto no risco e aderência aos critérios"}
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, factual, mencionando aderência aos critérios e relação com o perfil de risco — SEM dizer para comprar"}
   ],
   "vender": ${temCarteira ? `[]` : "[]"},
-  "aviso": "Confirme na sua corretora."
+  "aviso": "Conteúdo educacional e informativo. NÃO é recomendação de investimento. As decisões são suas."
 }
 
 INDICADORES por tipo de ativo (use seu conhecimento de mercado, retorne null se não souber):
@@ -5514,14 +5515,15 @@ INDICADORES por tipo de ativo (use seu conhecimento de mercado, retorne null se 
 OBS: Não retorne canal52 - o backend calcula com dados reais da B3.
 
 IMPORTANTE: O sistema enriquece os indicadores DEPOIS com dados oficiais (B3, CVM).
-Sua função é montar a TESE: qual ticker, % alocação, justificativa. Os números
+Sua função é organizar a análise educacional: quais tickers atendem aos critérios, o peso ilustrativo da simulação e a justificativa factual. Os números
 exatos serão sobrescritos pelo backend. Se não tiver certeza de um indicador,
 retorne null - é mais seguro que inventar.
 
 Regras:
-- 3 a 5 recomendações, alocação soma 100
+- 3 a 5 ativos, o campo alocacao (peso ilustrativo da simulação) soma 100
 - Se um indicador for desconhecido, retorne null (NÃO invente)
 - Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
+- NÃO emita veredito de compra/venda
 - SOMENTE JSON, sem markdown`;
 
       setFase("IA analisando o mercado...");

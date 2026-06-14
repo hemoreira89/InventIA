@@ -125,46 +125,48 @@ function montarPrompt(ativos, watch, cot, hoje) {
     const c = cot[w.ticker];
     const atual = c ? `R$${fmt(c.preco)}` : "?";
     const v = c?.varPct != null ? ` (${c.varPct > 0 ? "+" : ""}${c.varPct.toFixed(1)}% dia)` : "";
-    return `${w.ticker}: alvo R$${w.preco_alvo ? fmt(w.preco_alvo) : "?"} | atual ${atual}${v}`;
+    return `${w.ticker}: referência R$${w.preco_alvo ? fmt(w.preco_alvo) : "?"} | atual ${atual}${v}`;
   }).join("\n") || "(watchlist vazia)";
 
-  return `Hoje é ${hoje}. Você é o RADAR DE EVENTOS do Cauril, focado na B3.
+  return `Hoje é ${hoje}. Você é o RADAR INFORMATIVO do Cauril, focado na B3.
+Você NÃO faz recomendação de compra ou venda. Seu papel é apenas RELATAR FATOS RELEVANTES e EVENTOS, com a fonte, para o usuário ficar informado — a decisão é sempre dele.
 Use o Google Search para checar NOTÍCIAS e FATOS RELEVANTES das últimas 48h sobre os ativos abaixo.
 
-Reporte SOMENTE eventos FORTES e ACIONÁVEIS (alta convicção). Ignore ruído, variações normais e notícias genéricas de mercado.
+Reporte SOMENTE eventos FORTES (alta relevância). Ignore ruído, variações normais e notícias genéricas de mercado. NÃO diga para comprar nem vender — apenas relate o fato.
 
 CARTEIRA (posições atuais):
 ${linhaCart}
 
-WATCHLIST (quero comprar — com preço-alvo):
+WATCHLIST (ativos monitorados — com preço de referência do usuário):
 ${linhaWatch}
 
 Gatilhos válidos:
 - Notícia/fato relevante forte: resultado surpreendente, mudança de guidance, M&A, evento regulatório, problema sério.
 - Movimento de preço forte: queda/alta brusca no dia (≈ ≥4%) com motivo identificável.
 - Provento relevante: anúncio de dividendo/JCP, data-com próxima.
-- Watchlist: se o preço atual está NO/ABAIXO do alvo → COMPRA (severidade alta).
+- Watchlist: se o preço atual chegou ao patamar de referência do usuário → relate como FATO (sem dizer para comprar).
 
 Responda APENAS um array JSON (nada de texto fora dele). Cada item:
-{"ticker":"XXXX","tipo":"noticia|preco|provento|ia","acao":"comprar|vender|observar","severidade":"alta|media|baixa","motivo":"1-2 frases com o fato concreto e a data","fonte":"veículo curto"}
+{"ticker":"XXXX","tipo":"noticia|preco|provento","categoria":"fato_relevante|evento|atencao","severidade":"alta|media|baixa","motivo":"1-2 frases com o fato concreto e a data, de forma neutra e informativa","fonte":"veículo curto"}
 
 Inclua SOMENTE itens com severidade "alta". Se não houver nada forte, responda exatamente: []`;
 }
 
-function emojiAcao(acao) {
-  const a = (acao || "").toLowerCase();
-  if (a === "vender") return ["🔴", "VENDA?"];
-  if (a === "comprar") return ["🟢", "COMPRA?"];
-  return ["🟡", "ATENÇÃO"];
+function rotuloCategoria(categoria, tipo) {
+  const c = (categoria || tipo || "").toLowerCase();
+  if (c === "provento") return ["💰", "PROVENTO"];
+  if (c === "fato_relevante" || c === "noticia") return ["📣", "FATO RELEVANTE"];
+  if (c === "evento" || c === "preco") return ["📊", "EVENTO"];
+  return ["ℹ️", "ATENÇÃO"];
 }
 
 function montarMensagem(alertas, hoje) {
   const blocos = alertas.map(a => {
-    const [emoji, rotulo] = emojiAcao(a.acao);
+    const [emoji, rotulo] = rotuloCategoria(a.categoria, a.tipo);
     const fonte = a.fonte ? `\n_fonte: ${a.fonte}_` : "";
-    return `${emoji} *${rotulo} ${a.ticker}*\n${a.motivo}${fonte}`;
+    return `${emoji} *${rotulo} · ${a.ticker}*\n${a.motivo}${fonte}`;
   });
-  return `⚡ *Radar Cauril* — ${hoje}\n\n${blocos.join("\n\n")}\n\n_Sinais informativos, não recomendação. Você decide e executa._\n_Silenciar: /alertas off_`;
+  return `⚡ *Radar Cauril* — ${hoje}\n\n${blocos.join("\n\n")}\n\n_Conteúdo informativo e educacional. NÃO é recomendação de investimento. As decisões são suas._\n_Silenciar: /alertas off_`;
 }
 
 const slug = s => (s || "").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "").slice(0, 50);
@@ -226,7 +228,9 @@ export default async function handler(req, res) {
         user_id: link.user_id,
         ticker: a.ticker,
         tipo: (a.tipo || "").toLowerCase(),
-        acao: (a.acao || "").toLowerCase(),
+        // Coluna "acao" existente reaproveitada para guardar a categoria informativa
+        // (fato_relevante|evento|atencao) — sem semântica de comprar/vender.
+        acao: (a.categoria || "").toLowerCase(),
         severidade: "alta",
         assinatura: a.__assinatura,
         motivo: (a.motivo || "").slice(0, 500),

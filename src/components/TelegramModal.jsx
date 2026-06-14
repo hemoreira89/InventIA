@@ -144,7 +144,7 @@ export default function TelegramModal({ open, onClose, userId }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
               {[
                 "Como está minha carteira hoje?",
-                "Vale a pena comprar mais MXRF11?",
+                "Quais os fundamentos do MXRF11?",
                 "Quando vou receber dividendos?"
               ].map(ex => (
                 <div key={ex} style={{

@@ -200,7 +200,7 @@ export default function TabUniverso({ userId }) {
               Universo de Investimento
             </div>
             <div style={{fontSize: 12, color: "var(--ui-text-muted)"}}>
-              Defina quais ativos a IA vai considerar nas análises e recomendações
+              Defina quais ativos a IA vai considerar nas análises e insights
             </div>
           </div>
         </div>
@@ -482,7 +482,7 @@ export default function TabUniverso({ userId }) {
         <Star size={14} fill="var(--ui-warning)" color="var(--ui-warning)"/>
         <span>
           Estrelas amarelas indicam ativos populares (pré-selecionados no padrão).
-          Quanto mais focado seu universo, mais relevantes serão as recomendações da IA.
+          Quanto mais focado seu universo, mais relevantes serão as análises da IA.
         </span>
       </div>
     </div>

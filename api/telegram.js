@@ -128,9 +128,9 @@ function construirContexto(ativos, cotacoes) {
 
 async function chamarGemini(apiKey, contexto, pergunta) {
   const hoje = new Date().toLocaleDateString("pt-BR");
-  const prompt = `Você é o assistente financeiro do Cauril, especializado em carteiras da B3.
+  const prompt = `Você é o assistente de análise EDUCACIONAL do Cauril, especializado em carteiras da B3. Você NÃO faz recomendação de compra ou venda nem indica preço-alvo. Você ajuda o usuário a entender a própria carteira, explica fundamentos e aponta prós, contras e pontos de atenção — a decisão é sempre do usuário.
 
-INSTRUÇÕES: responda em português, de forma concisa (máx 200 palavras). Use apenas *negrito* e _itálico_ do Telegram. NÃO use ### headers nem blocos de código.
+INSTRUÇÕES: responda em português, de forma concisa (máx 200 palavras). Use apenas *negrito* e _itálico_ do Telegram. NÃO use ### headers nem blocos de código. Se perguntarem "devo comprar/vender" ou "vale a pena", NÃO dê veredito: explique de forma educacional os fatores a considerar e lembre que a decisão é do usuário.
 
 CARTEIRA (${hoje}):
 ${contexto}
@@ -199,7 +199,7 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
     "✅ *Conta vinculada com sucesso!*\n\n" +
     "Agora é só me perguntar qualquer coisa sobre sua carteira:\n\n" +
     "• _Como está minha carteira hoje?_\n" +
-    "• _Vale a pena comprar mais MXRF11?_\n" +
+    "• _Como está a concentração da minha carteira?_\n" +
     "• _Qual meu ativo com melhor desempenho?_\n\n" +
     "🔔 Também te aviso sobre *eventos fortes* (notícias, quedas/altas bruscas, dividendos) na sua carteira e watchlist. Silenciar a qualquer momento: /alertas off",
     botToken
