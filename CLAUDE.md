@@ -1,4 +1,4 @@
-# CLAUDE.md — InventIA
+# CLAUDE.md — Cauril
 
 Plataforma web de análise de carteira de investimentos da B3 com IA (Gemini 2.5 Flash), cotações em tempo real e visualizações ricas.
 

@@ -1,4 +1,4 @@
-# Testes do InvestIA
+# Testes do Cauril
 
 Estrutura completa de testes automatizados.
 

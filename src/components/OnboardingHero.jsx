@@ -71,7 +71,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
             color: "var(--ui-accent)",
             fontWeight: 700,
             letterSpacing: 1.5
-          }}>BEM-VINDO AO INVESTIA PRO</span>
+          }}>BEM-VINDO AO CAURIL</span>
         </div>
 
         {/* Título */}
