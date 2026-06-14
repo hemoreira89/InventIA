@@ -703,28 +703,20 @@ function PilaresQualidade({ pilares }) {
   );
 }
 
-// Linha de valuation educacional (Graham/Bazin) — referência, não meta.
+// Linha de valuation educacional (Graham/Bazin) — só o preço justo de referência.
+// Sem margem %: nos cards da lista, exibir "+X%" em todos parecia sinal de upside.
 function ValuationEducacional({ valuation }) {
   if (!valuation || valuation.precoJusto == null) return null;
-  const desconto = valuation.margem != null && valuation.margem >= 0;
-  const cor = desconto ? "var(--ui-success)" : "var(--ui-warning)";
   const ajuda = valuation.metodo === "Graham"
     ? EXPLICACOES_INDICADORES.precoJustoGraham
     : EXPLICACOES_INDICADORES.precoTetoBazin;
   return (
-    <div title={`${ajuda} Margem positiva = preço atual abaixo da referência.`}
+    <div title={ajuda}
       style={{marginTop:10,padding:"8px 10px",background:"var(--ui-bg-input)",borderRadius:7,border:"1px solid var(--ui-border-soft)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,cursor:"help"}}>
       <span style={{fontSize:10,color:"var(--ui-text-muted)",fontWeight:600}}>
-        Referência {valuation.metodo} <span style={{color:"var(--ui-text-faint)"}}>(estudo)</span>
+        Preço justo de referência ({valuation.metodo}) <span style={{color:"var(--ui-text-faint)"}}>· estudo</span>
       </span>
-      <span style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(valuation.precoJusto)}</span>
-        {valuation.margem != null && (
-          <span style={{fontSize:11,fontWeight:700,color:cor,fontFamily:"'JetBrains Mono',monospace"}}>
-            {valuation.margem >= 0 ? "+" : ""}{fmt(valuation.margem,1)}%
-          </span>
-        )}
-      </span>
+      <span style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(valuation.precoJusto)}</span>
     </div>
   );
 }
