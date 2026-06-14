@@ -32,14 +32,14 @@ const FEATURES = [
 
 const PASSOS = [
   { n: "01", titulo: "Cadastre sua carteira", texto: "Adicione seus ativos em segundos com autocomplete de 1.400+ tickers da B3. Ações, FIIs, BDRs e ETFs." },
-  { n: "02", titulo: "Peça a análise", texto: "Um clique e a IA cruza seus dados com fundamentos e cotações reais para montar a tese da sua carteira." },
+  { n: "02", titulo: "Peça a análise", texto: "Um clique e a IA cruza seus dados com fundamentos e cotações reais para montar a análise da sua carteira." },
   { n: "03", titulo: "Decida com confiança", texto: "Siga o plano de rebalanceamento, acompanhe o risco e veja seu patrimônio evoluir contra o CDI." },
 ];
 
 const FAQ = [
   { q: "Preciso de cartão de crédito para testar?", a: `Não. O teste de ${TRIAL_DIAS} dias é completo e não pede cartão. Se não assinar, sua conta apenas pausa — seus dados ficam salvos.` },
-  { q: "Preciso saber investir ou analisar ações?", a: "Não. A IA faz o trabalho pesado e explica tudo em português simples — tese, riscos e o que fazer. Você decide; a ferramenta organiza e mostra o caminho." },
-  { q: "É só um ChatGPT genérico?", a: "Não. Cruzamos os seus ativos reais com cotações ao vivo da B3 (brapi) e fundamentos oficiais (CVM/bolsai). A IA monta a tese sobre números reais da sua carteira, não sobre achismo." },
+  { q: "Preciso saber investir ou analisar ações?", a: "Não. A IA faz o trabalho pesado e explica tudo em português simples — análise, riscos e pontos de atenção. Você decide; a ferramenta organiza e mostra as informações." },
+  { q: "É só um ChatGPT genérico?", a: "Não. Cruzamos os seus ativos reais com cotações ao vivo da B3 (brapi) e fundamentos oficiais (CVM/bolsai). A IA monta a análise sobre números reais da sua carteira, não sobre achismo." },
   { q: "Minha carteira é pequena. Vale a pena?", a: "Sim — é justamente no começo que organizar aporte, risco e rebalanceamento mais muda o resultado lá na frente. A ferramenta cresce junto com você." },
   { q: "Meus dados ficam seguros?", a: "Sim. Cada usuário só acessa os próprios dados (isolamento por RLS no banco), a conexão é criptografada e não pedimos senha de corretora — você informa apenas os ativos e quantidades." },
   { q: "A IA dá recomendação de compra?", a: "A IA monta análises e cenários educacionais a partir dos seus dados e de fundamentos públicos. Não é recomendação de investimento — a decisão final é sempre sua." },
