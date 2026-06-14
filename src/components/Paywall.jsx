@@ -21,13 +21,14 @@ function abrirCheckout(plano, email) {
 
 export default function Paywall({ email, status, onLogout, onClose }) {
   const bloqueio = !onClose;
+  const mostrarBloqueado = bloqueio || !!status?.expirado;
   useEffect(() => {
     track("paywall_view", { motivo: bloqueio ? "bloqueio" : "overlay" });
   }, [bloqueio]);
-  const titulo = bloqueio
+  const titulo = mostrarBloqueado
     ? (status?.trial ? "Seu teste grátis terminou" : "Sua assinatura expirou")
     : `Assine o ${BRAND.full}`;
-  const subtitulo = bloqueio
+  const subtitulo = mostrarBloqueado
     ? "Continue acompanhando sua carteira com IA escolhendo um plano abaixo. Seus dados estão salvos e voltam exatamente como você deixou."
     : `Você está no período de teste${status?.diasRestantes != null ? ` — ${status.diasRestantes} dia${status.diasRestantes === 1 ? "" : "s"} restante${status.diasRestantes === 1 ? "" : "s"}` : ""}. Assine para não perder o acesso.`;
 
@@ -73,8 +74,8 @@ export default function Paywall({ email, status, onLogout, onClose }) {
             borderRadius: 99, padding: "6px 14px", fontSize: 11, fontWeight: 700,
             color: "var(--ui-accent)", letterSpacing: 0.5, marginBottom: 18
           }}>
-            {bloqueio ? <Clock size={13}/> : <Sparkles size={13}/>}
-            {bloqueio ? "ACESSO PAUSADO" : `TESTE GRÁTIS DE ${TRIAL_DIAS} DIAS`}
+            {mostrarBloqueado ? <Clock size={13}/> : <Sparkles size={13}/>}
+            {mostrarBloqueado ? "ACESSO PAUSADO" : `TESTE GRÁTIS DE ${TRIAL_DIAS} DIAS`}
           </div>
           <h1 style={{ fontSize: "clamp(24px,4vw,34px)", fontWeight: 900, letterSpacing: -0.5, marginBottom: 12 }}>
             {titulo}

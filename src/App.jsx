@@ -5772,21 +5772,29 @@ Regras:
     return { label:"FECHADO", cor:"var(--ui-text-faint)", aberto:false };
   }, [agora]);
 
-  // Trial/assinatura expirada: bloqueia o app com a tela de planos.
-  // (Depois de TODOS os hooks — early return não pode mudar a ordem deles.)
-  if (planoStatus?.expirado) {
-    return (
-      <PrivacyContext.Provider value={privacy}>
-        <style>{THEME_CSS}</style>
-        <Paywall email={userEmail} status={planoStatus} onLogout={onLogout}/>
-      </PrivacyContext.Provider>
-    );
-  }
+  // Soft wall: trial/assinatura expirada NÃO bloqueia o app inteiro.
+  // A pessoa continua vendo/usando carteira, risco, rebalance etc. (cálculo local);
+  // a IA fica travada no servidor (/api/analyze → 402 → abre o paywall) e um banner
+  // persistente (abaixo) convida a assinar.
 
   return (
    <PrivacyContext.Provider value={privacy}>
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
+      {planoStatus?.expirado && (
+        <div style={{
+          background:"linear-gradient(90deg,var(--ui-accent),#5540dd)", color:"#fff",
+          padding:"8px clamp(12px,3vw,24px)", display:"flex", alignItems:"center",
+          justifyContent:"center", gap:12, flexWrap:"wrap", textAlign:"center",
+          fontSize:13, fontWeight:600
+        }}>
+          <span>🐚 Seu teste grátis terminou — a análise com IA está pausada. Seus dados continuam salvos.</span>
+          <button onClick={() => setShowPlanos(true)} style={{
+            background:"#fff", color:"#5540dd", border:"none", borderRadius:8,
+            padding:"6px 16px", fontWeight:800, fontSize:12, cursor:"pointer", whiteSpace:"nowrap"
+          }}>Assinar agora</button>
+        </div>
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
