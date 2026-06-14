@@ -1,4 +1,4 @@
-// Webhook do bot Telegram do Invetoria.
+// Webhook do bot Telegram do Cauril.
 // Usa REST API do Supabase diretamente (sem SDK) para evitar problemas de configuração.
 
 export const config = { maxDuration: 30 };
@@ -128,7 +128,7 @@ function construirContexto(ativos, cotacoes) {
 
 async function chamarGemini(apiKey, contexto, pergunta) {
   const hoje = new Date().toLocaleDateString("pt-BR");
-  const prompt = `Você é o assistente financeiro do Invetoria, especializado em carteiras da B3.
+  const prompt = `Você é o assistente financeiro do Cauril, especializado em carteiras da B3.
 
 INSTRUÇÕES: responda em português, de forma concisa (máx 200 palavras). Use apenas *negrito* e _itálico_ do Telegram. NÃO use ### headers nem blocos de código.
 
@@ -177,7 +177,7 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
   );
 
   if (!link) {
-    await enviarMensagem(chatId, "❌ Código inválido. Gere um novo código no app Invetoria.", botToken);
+    await enviarMensagem(chatId, "❌ Código inválido. Gere um novo código no app Cauril.", botToken);
     return;
   }
   if (link.used) {
@@ -185,7 +185,7 @@ async function handleVinculo(chatId, code, serviceKey, botToken) {
     return;
   }
   if (new Date(link.expires_at) < new Date()) {
-    await enviarMensagem(chatId, "❌ Código expirado. Gere um novo código no app Invetoria.", botToken);
+    await enviarMensagem(chatId, "❌ Código expirado. Gere um novo código no app Cauril.", botToken);
     return;
   }
 
@@ -262,7 +262,7 @@ export default async function handler(req, res) {
     if (!linkData?.user_id) {
       await enviarMensagem(
         chatId,
-        "👋 Olá! Para usar o assistente do Invetoria, primeiro vincule sua conta.\n\nAbra o app, clique no ícone do Telegram no canto superior direito e envie o código que aparecer aqui.",
+        "👋 Olá! Para usar o assistente do Cauril, primeiro vincule sua conta.\n\nAbra o app, clique no ícone do Telegram no canto superior direito e envie o código que aparecer aqui.",
         botToken
       );
       return res.status(200).json({ ok: true });

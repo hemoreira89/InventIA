@@ -38,7 +38,7 @@ const svg = `
   <path d="${chart}" fill="none" stroke="#00e5a0" stroke-width="3"/>
 
   <!-- brand (o logo é composto por cima via sharp) -->
-  <text x="178" y="92" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#e8e8f2">Invet<tspan fill="#7b61ff">oria</tspan></text>
+  <text x="178" y="92" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#e8e8f2">Cau<tspan fill="#7b61ff">ril</tspan></text>
 
   <!-- badge -->
   <g>

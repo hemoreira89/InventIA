@@ -1,4 +1,4 @@
-# Invetoria
+# Cauril
 
 > Plataforma web de análise de carteira de investimentos da B3 com IA (Gemini 2.5 + Google Search), cotações em tempo real e visualizações ricas.
 
@@ -24,7 +24,7 @@
 
 ## 🎯 O que é
 
-Invetoria é um assistente pessoal de investimentos para a B3 (bolsa brasileira). Ele combina:
+Cauril é um assistente pessoal de investimentos para a B3 (bolsa brasileira). Ele combina:
 
 - **Análise de carteira por IA** — recomendações personalizadas baseadas em perfil (conservador/moderado/arrojado) e foco (ações/FIIs/misto), com cotações reais buscadas via Google Search.
 - **Cotações em tempo real** — atualização automática a cada 60 segundos via API gratuita brapi.dev (sem rodar IA).

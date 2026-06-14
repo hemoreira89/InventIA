@@ -21,7 +21,7 @@ const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 
 function paginaTicker(t, todos) {
   const tipoLabel = t.tipo === "fii" ? "Fundo Imobiliário (FII)" : "Ação";
-  const titulo = `${t.ticker} (${t.nome}) — cotação, dividendos e análise com IA | Invetoria`;
+  const titulo = `${t.ticker} (${t.nome}) — cotação, dividendos e análise com IA | Cauril`;
   const desc = `${t.ticker} — ${t.nome}, do setor de ${t.setor}. Veja ${t.ticker} na sua carteira com análise por IA, risco, dividendos e rebalanceamento. Teste grátis 7 dias, sem cartão.`;
   const url = `${BASE}/ativo/${t.ticker}`;
   const relacionados = todos.filter(x => x.ticker !== t.ticker).slice(0, 8);
@@ -30,7 +30,7 @@ function paginaTicker(t, todos) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Invetoria", item: BASE },
+      { "@type": "ListItem", position: 1, name: "Cauril", item: BASE },
       { "@type": "ListItem", position: 2, name: "Ativos da B3", item: `${BASE}/ativos` },
       { "@type": "ListItem", position: 3, name: t.ticker, item: url },
     ],
@@ -47,7 +47,7 @@ function paginaTicker(t, todos) {
 <meta name="robots" content="index,follow"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png"/>
 <meta property="og:type" content="article"/>
-<meta property="og:site_name" content="Invetoria"/>
+<meta property="og:site_name" content="Cauril"/>
 <meta property="og:title" content="${esc(titulo)}"/>
 <meta property="og:description" content="${esc(desc)}"/>
 <meta property="og:url" content="${url}"/>
@@ -80,15 +80,15 @@ li{margin:6px 0}
 </head>
 <body>
 <div class="wrap">
-  <div class="nav"><img src="/icons/icon-192.png" alt="" width="30" height="30" style="border-radius:7px"/><b>Invet<span style="color:#7b61ff">oria</span></b></div>
+  <div class="nav"><img src="/icons/icon-192.png" alt="" width="30" height="30" style="border-radius:7px"/><b>Cau<span style="color:#7b61ff">ril</span></b></div>
   <div class="crumb"><a href="/">Início</a> › <a href="/ativos">Ativos da B3</a> › ${esc(t.ticker)}</div>
   <h1>${esc(t.ticker)}</h1>
   <div class="sub">${esc(t.nome)}</div>
   <div class="chips"><span class="chip">${esc(tipoLabel)}</span><span class="chip">${esc(t.setor)}</span><span class="chip">B3</span></div>
 
-  <p>${esc(t.ticker)} (${esc(t.nome)}) é um ativo da B3 no segmento de <b>${esc(t.setor)}</b>${t.setorDesc ? ` — ${esc(t.setorDesc)}` : ""}. No Invetoria você acompanha ${esc(t.ticker)} dentro da <b>sua</b> carteira: cotação ao vivo, dividendos, indicadores fundamentalistas e uma tese de investimento gerada por IA, no contexto dos seus aportes e do seu perfil.</p>
+  <p>${esc(t.ticker)} (${esc(t.nome)}) é um ativo da B3 no segmento de <b>${esc(t.setor)}</b>${t.setorDesc ? ` — ${esc(t.setorDesc)}` : ""}. No Cauril você acompanha ${esc(t.ticker)} dentro da <b>sua</b> carteira: cotação ao vivo, dividendos, indicadores fundamentalistas e uma tese de investimento gerada por IA, no contexto dos seus aportes e do seu perfil.</p>
 
-  <h2>O que o Invetoria mostra sobre ${esc(t.ticker)}</h2>
+  <h2>O que o Cauril mostra sobre ${esc(t.ticker)}</h2>
   <ul>
     <li><b>Tese com IA</b> — análise qualitativa de ${esc(t.ticker)} cruzando fundamentos e cotações reais.</li>
     <li><b>Dividendos e DY</b> — histórico de proventos e projeção de renda passiva.</li>
@@ -107,7 +107,7 @@ li{margin:6px 0}
   <div class="rel">${relacionados.map(r => `<a href="/ativo/${r.ticker}">${esc(r.ticker)}</a>`).join("")}</div>
   <p style="margin-top:14px"><a href="/ativos">Ver todos os ativos →</a></p>
 
-  <div class="foot">Conteúdo educacional de organização e análise de carteira. Não é recomendação de investimento, oferta ou solicitação de compra de ativos. Rentabilidade passada não garante resultados futuros. Dados sujeitos a atraso. © ${new Date().getFullYear()} Invetoria.</div>
+  <div class="foot">Conteúdo educacional de organização e análise de carteira. Não é recomendação de investimento, oferta ou solicitação de compra de ativos. Rentabilidade passada não garante resultados futuros. Dados sujeitos a atraso. © ${new Date().getFullYear()} Cauril.</div>
 </div>
 </body>
 </html>`;
@@ -118,13 +118,13 @@ function paginaHub(todos) {
   return `<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Ativos da B3 — ações e FIIs analisados por IA | Invetoria</title>
-<meta name="description" content="Lista de ações e FIIs da B3 com análise por IA, dividendos, risco e rebalanceamento no Invetoria. Teste grátis 7 dias."/>
+<title>Ativos da B3 — ações e FIIs analisados por IA | Cauril</title>
+<meta name="description" content="Lista de ações e FIIs da B3 com análise por IA, dividendos, risco e rebalanceamento no Cauril. Teste grátis 7 dias."/>
 <link rel="canonical" href="${BASE}/ativos"/><meta name="robots" content="index,follow"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png"/>
 <style>body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#06060f;color:#e8e8f2;line-height:1.7}a{color:#9a86ff;text-decoration:none}.wrap{max-width:760px;margin:0 auto;padding:24px 20px 64px}h1{font-size:30px;font-weight:800}ul{margin:18px 0 0 18px}li{margin:8px 0;color:#b8b8cc}</style>
 </head><body><div class="wrap">
-<p><a href="/">← Invetoria</a></p>
+<p><a href="/">← Cauril</a></p>
 <h1>Ativos da B3</h1>
 <p style="color:#8b8ba3">Ações e FIIs com análise por IA, dividendos, risco e rebalanceamento. <a href="/?ref=seo">Teste grátis 7 dias →</a></p>
 <ul>${itens}</ul>

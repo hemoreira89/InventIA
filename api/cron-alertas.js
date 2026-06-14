@@ -128,7 +128,7 @@ function montarPrompt(ativos, watch, cot, hoje) {
     return `${w.ticker}: alvo R$${w.preco_alvo ? fmt(w.preco_alvo) : "?"} | atual ${atual}${v}`;
   }).join("\n") || "(watchlist vazia)";
 
-  return `Hoje é ${hoje}. Você é o RADAR DE EVENTOS do Invetoria, focado na B3.
+  return `Hoje é ${hoje}. Você é o RADAR DE EVENTOS do Cauril, focado na B3.
 Use o Google Search para checar NOTÍCIAS e FATOS RELEVANTES das últimas 48h sobre os ativos abaixo.
 
 Reporte SOMENTE eventos FORTES e ACIONÁVEIS (alta convicção). Ignore ruído, variações normais e notícias genéricas de mercado.
@@ -164,7 +164,7 @@ function montarMensagem(alertas, hoje) {
     const fonte = a.fonte ? `\n_fonte: ${a.fonte}_` : "";
     return `${emoji} *${rotulo} ${a.ticker}*\n${a.motivo}${fonte}`;
   });
-  return `⚡ *Radar Invetoria* — ${hoje}\n\n${blocos.join("\n\n")}\n\n_Sinais informativos, não recomendação. Você decide e executa._\n_Silenciar: /alertas off_`;
+  return `⚡ *Radar Cauril* — ${hoje}\n\n${blocos.join("\n\n")}\n\n_Sinais informativos, não recomendação. Você decide e executa._\n_Silenciar: /alertas off_`;
 }
 
 const slug = s => (s || "").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "").slice(0, 50);
