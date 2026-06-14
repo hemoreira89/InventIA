@@ -56,12 +56,13 @@ import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
 import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
-import { buscarFundamentosCached } from "./lib/fundamentosCached";
+import { buscarFundamentosCached, buscarMediasSetor } from "./lib/fundamentosCached";
 import { buscarHistorico, buscarHistoricos } from "./lib/historico";
 import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
+import { calcularPilares, valuationEducacional, compararComSetor, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -637,6 +638,115 @@ function CriteriosBadges({ avaliacao, classificacao }) {
                   {c.mensagem}
                 </span>
               )}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Resolve chave de cor qualitativa (success/warning/danger/default) → CSS var.
+function corQualitativa(cor) {
+  if (cor === "success") return "var(--ui-success)";
+  if (cor === "warning") return "var(--ui-warning)";
+  if (cor === "danger") return "var(--ui-danger)";
+  return "var(--ui-text-faint)";
+}
+
+// Rótulos curtos dos indicadores (para comparação setorial)
+const ROTULO_INDICADOR = { pl: "P/L", pvp: "P/VP", roe: "ROE", dy: "DY" };
+
+// Barra de 5 segmentos para um pilar de qualidade (Rentabilidade/Proventos/Solidez)
+function BarraPilar({ rotulo, pilar, ajuda }) {
+  if (!pilar) return null;
+  const cor = pilar.disponivel ? corQualitativa(corDaNota(pilar.nota)) : "var(--ui-border)";
+  const cheios = pilar.disponivel ? notaParaEstrelas(pilar.nota) : 0;
+  const titulo = pilar.disponivel
+    ? `${rotulo}: ${pilar.nota}/100 — baseado em ${pilar.base.join(", ")}. ${ajuda}`
+    : `${rotulo}: dado indisponível. ${ajuda}`;
+  return (
+    <div title={titulo} style={{display:"flex",alignItems:"center",gap:8,cursor:"help"}}>
+      <span style={{fontSize:10,color:"var(--ui-text-muted)",fontWeight:600,width:78,flexShrink:0}}>{rotulo}</span>
+      <div style={{display:"flex",gap:3,flex:1}}>
+        {[0,1,2,3,4].map(i => (
+          <div key={i} style={{
+            flex:1,height:6,borderRadius:3,
+            background: i < cheios ? cor : "var(--ui-bg-tertiary)"
+          }}/>
+        ))}
+      </div>
+      <span style={{fontSize:10,color:pilar.disponivel?cor:"var(--ui-text-faint)",fontWeight:700,width:30,textAlign:"right",fontFamily:"'JetBrains Mono',monospace"}}>
+        {pilar.disponivel ? pilar.nota : "—"}
+      </span>
+    </div>
+  );
+}
+
+// Bloco "Pilares de qualidade": quebra o score em 3 dimensões didáticas.
+function PilaresQualidade({ pilares }) {
+  if (!pilares) return null;
+  const algum = pilares.rentabilidade?.disponivel || pilares.proventos?.disponivel || pilares.solidez?.disponivel;
+  if (!algum) return null;
+  return (
+    <div style={{marginTop:10,padding:"10px 10px 8px",background:"var(--ui-bg-secondary)",borderRadius:7,border:"1px solid var(--ui-border-soft)"}}>
+      <div style={{fontSize:9,fontWeight:800,letterSpacing:1,color:"var(--ui-text-faint)",marginBottom:8}}>PILARES DE QUALIDADE</div>
+      <div style={{display:"flex",flexDirection:"column",gap:7}}>
+        <BarraPilar rotulo="Rentabilidade" pilar={pilares.rentabilidade} ajuda="Quanto o ativo gera de retorno (ROE, margem; DY para FIIs)." />
+        <BarraPilar rotulo="Proventos" pilar={pilares.proventos} ajuda="Geração de renda e consistência de lucros/dividendos." />
+        <BarraPilar rotulo="Solidez" pilar={pilares.solidez} ajuda="Saúde financeira (endividamento, P/VP, vacância)." />
+      </div>
+    </div>
+  );
+}
+
+// Linha de valuation educacional (Graham/Bazin) — referência, não meta.
+function ValuationEducacional({ valuation }) {
+  if (!valuation || valuation.precoJusto == null) return null;
+  const desconto = valuation.margem != null && valuation.margem >= 0;
+  const cor = desconto ? "var(--ui-success)" : "var(--ui-warning)";
+  const ajuda = valuation.metodo === "Graham"
+    ? EXPLICACOES_INDICADORES.precoJustoGraham
+    : EXPLICACOES_INDICADORES.precoTetoBazin;
+  return (
+    <div title={`${ajuda} Margem positiva = preço atual abaixo da referência.`}
+      style={{marginTop:10,padding:"8px 10px",background:"var(--ui-bg-input)",borderRadius:7,border:"1px solid var(--ui-border-soft)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,cursor:"help"}}>
+      <span style={{fontSize:10,color:"var(--ui-text-muted)",fontWeight:600}}>
+        Referência {valuation.metodo} <span style={{color:"var(--ui-text-faint)"}}>(estudo)</span>
+      </span>
+      <span style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(valuation.precoJusto)}</span>
+        {valuation.margem != null && (
+          <span style={{fontSize:11,fontWeight:700,color:cor,fontFamily:"'JetBrains Mono',monospace"}}>
+            {valuation.margem >= 0 ? "+" : ""}{fmt(valuation.margem,1)}%
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+// Chips comparando o ativo com a mediana do seu setor.
+function ComparacaoSetor({ comparacao, setor }) {
+  if (!comparacao || comparacao.length === 0) return null;
+  return (
+    <div style={{marginTop:10}}>
+      <div style={{fontSize:9,fontWeight:800,letterSpacing:1,color:"var(--ui-text-faint)",marginBottom:6}}>
+        VS. MEDIANA DO SETOR{setor ? ` · ${setor}` : ""}
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+        {comparacao.map(c => {
+          const cor = c.favoravel ? "var(--ui-success)" : "var(--ui-warning)";
+          const bg = c.favoravel ? "rgba(0,229,160,0.10)" : "rgba(255,214,10,0.10)";
+          const pct = c.chave === "dy" || c.chave === "roe";
+          const fmtV = v => pct ? `${fmt(v,1)}%` : fmt(v,2);
+          return (
+            <span key={c.chave}
+              title={`${ROTULO_INDICADOR[c.chave]} do ativo: ${fmtV(c.valor)} · mediana do setor: ${fmtV(c.mediana)}. ${c.favoravel ? "Melhor que a mediana." : "Pior que a mediana."}`}
+              style={{display:"inline-flex",alignItems:"center",gap:5,padding:"2px 7px",background:bg,border:`1px solid ${cor}33`,borderRadius:5,fontSize:10,fontWeight:600,color:cor,cursor:"help",fontFamily:"'JetBrains Mono',monospace"}}>
+              <span style={{fontWeight:800}}>{c.favoravel ? "▲" : "▼"}</span>
+              {ROTULO_INDICADOR[c.chave]} {fmtV(c.valor)}
+              <span style={{opacity:0.7}}>· setor {fmtV(c.mediana)}</span>
             </span>
           );
         })}
@@ -2052,6 +2162,10 @@ function TabAnalise({ dados, loading, fase }) {
           // Usa avaliação pré-calculada (enriquecimento) ou calcula se for análise antiga
           const avaliacao = r.avaliacaoCriterios || avaliarRecomendacao(r);
           const classificacao = classificarAderencia(avaliacao);
+          // Insights educacionais (com fallback para análises salvas antes da feature)
+          const pilares = r.pilares || calcularPilares(r);
+          const valuation = r.valuation || valuationEducacional(r);
+          const comparacao = r.comparacaoSetor || [];
           return (
           <Card key={i} style={{
             borderColor: r.score>=80 ? "rgba(0,229,160,0.31)" : r.score>=60 ? "rgba(255,214,10,0.25)" : r.nova ? "rgba(0,229,160,0.18)" : "var(--ui-bg-tertiary)",
@@ -2081,13 +2195,23 @@ function TabAnalise({ dados, loading, fase }) {
             {/* Indicadores estimados */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
               {(r.precoReal||r.precoEstimado) ? <span style={{fontSize:11,background:r.precoReal?"rgba(0,229,160,0.12)":"var(--ui-bg-secondary)",color:r.precoReal?"var(--ui-success)":"var(--ui-text-muted)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>{r.precoReal?"● ":"~"}{fmtBRL(r.precoReal||r.precoEstimado)}{r.fontePreco?` · ${r.fontePreco}`:""}</span> : null}
-              {r.dy > 0 ? <span style={{fontSize:11,background:"rgba(255,214,10,0.14)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>DY ~{fmt(r.dy)}%</span> : null}
-              {r.pl > 0 ? <span style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>P/L ~{fmt(r.pl)}</span> : null}
-              {r.score > 0 ? <span style={{fontSize:11,background:"rgba(0,229,160,0.14)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Score {r.score}/100</span> : null}
-              {r.canal52 != null && <span style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.14)":r.canal52<=70?"rgba(255,214,10,0.14)":"rgba(255,77,109,0.14)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px",fontWeight:600}}>Canal {r.canal52}%</span>}
+              {r.dy > 0 ? <span title={EXPLICACOES_INDICADORES.dy} style={{fontSize:11,background:"rgba(255,214,10,0.14)",color:"var(--ui-warning)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>DY ~{fmt(r.dy)}%</span> : null}
+              {r.pl > 0 ? <span title={EXPLICACOES_INDICADORES.pl} style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>P/L ~{fmt(r.pl)}</span> : null}
+              {r.pvp > 0 ? <span title={EXPLICACOES_INDICADORES.pvp} style={{fontSize:11,background:"rgba(123,97,255,0.14)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>P/VP ~{fmt(r.pvp)}</span> : null}
+              {r.score > 0 ? <span title={EXPLICACOES_INDICADORES.score} style={{fontSize:11,background:"rgba(0,229,160,0.14)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>Score {r.score}/100</span> : null}
+              {r.canal52 != null && <span title={EXPLICACOES_INDICADORES.canal52} style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.14)":r.canal52<=70?"rgba(255,214,10,0.14)":"rgba(255,77,109,0.14)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>Canal {r.canal52}%</span>}
             </div>
 
             <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
+
+            {/* Pilares de qualidade (score quebrado em 3 dimensões) */}
+            <PilaresQualidade pilares={pilares}/>
+
+            {/* Comparação com a mediana do setor */}
+            <ComparacaoSetor comparacao={comparacao} setor={avaliacao?.setor}/>
+
+            {/* Valuation educacional (Graham/Bazin) — referência, não meta */}
+            <ValuationEducacional valuation={valuation}/>
 
             {/* Critérios fundamentalistas validados */}
             <CriteriosBadges avaliacao={avaliacao} classificacao={classificacao}/>
@@ -4769,6 +4893,14 @@ function TabOportunidades({ chamarIAComSearch }) {
           roe: roe ?? null,
           debtEquity: fund?.debtEquity ?? null,
           canal52: canal52 != null ? Math.round(canal52) : null,
+          // Campos extras para os insights educacionais (pilares/valuation/setor)
+          setorCVM: fund?.setorCVM ?? null,
+          margemLiquida: fund?.margemLiquida ?? null,
+          divEbitda: fund?.divEbitda ?? null,
+          lucrosConsistentes: fund?.lucrosConsistentes ?? null,
+          lpa: fund?.lpa ?? null,
+          vpa: fund?.vpa ?? null,
+          precoReal: cot?.preco ?? cat.preco ?? null,
           // Volume: usado pra desempate em dedup ON/PN (mais líquido vence)
           volume: cat.volume ?? 0,
           score,
@@ -4859,11 +4991,22 @@ Responda APENAS este JSON (sem markdown):
         }
       }
 
-      // Anexa tese qualitativa nos resultados
+      // Medianas setoriais para contextualizar (não-fatal se falhar)
+      let mediasSetorOp = {};
+      try {
+        mediasSetorOp = await buscarMediasSetor();
+      } catch (e) {
+        console.warn("medianas setoriais (oportunidades) falharam:", e.message);
+      }
+
+      // Anexa tese qualitativa + insights educacionais nos resultados
       const finais = ordenados.map(o => ({
         ...o,
         destaque: tesePorTicker[o.ticker]?.destaque || null,
         risco_principal: tesePorTicker[o.ticker]?.risco_principal || null,
+        pilares: calcularPilares(o),
+        valuation: valuationEducacional(o),
+        comparacaoSetor: compararComSetor(o, mediasSetorOp),
       }));
 
       const reprovados = oportunidades.filter(o => o.temDados && !o.passaCriterio).length;
@@ -5012,19 +5155,24 @@ Responda APENAS este JSON (sem markdown):
                         <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>PREÇO</div>
                         <div style={{fontSize:12,fontWeight:700,color:"var(--ui-text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(o.preco)}</div>
                       </div>
-                      {o.dy != null && <div>
+                      {o.dy != null && <div title={EXPLICACOES_INDICADORES.dy} style={{cursor:"help"}}>
                         <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>DY</div>
                         <div style={{fontSize:12,fontWeight:700,color:"var(--ui-warning)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.dy,1)}%</div>
                       </div>}
-                      {o.pl != null && <div>
+                      {o.pl != null && <div title={EXPLICACOES_INDICADORES.pl} style={{cursor:"help"}}>
                         <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>P/L</div>
                         <div style={{fontSize:12,fontWeight:700,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pl,1)}</div>
                       </div>}
-                      {o.pvp != null && <div>
+                      {o.pvp != null && <div title={EXPLICACOES_INDICADORES.pvp} style={{cursor:"help"}}>
                         <div style={{fontSize:9,color:"var(--ui-text-disabled)",fontWeight:700,letterSpacing:0.5}}>P/VP</div>
                         <div style={{fontSize:12,fontWeight:700,color:"var(--ui-accent)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt(o.pvp,2)}</div>
                       </div>}
                     </div>
+
+                    {/* Insights educacionais */}
+                    <PilaresQualidade pilares={o.pilares}/>
+                    <ComparacaoSetor comparacao={o.comparacaoSetor} setor={o.setorCVM}/>
+                    <ValuationEducacional valuation={o.valuation}/>
 
                     {/* Flag de alavancagem extrema: debt/equity > 5 sinaliza
                         risco real em empresas não-financeiras. Bancos têm
@@ -5540,7 +5688,16 @@ Regras:
         }
       }
 
-      // Enriquecer recomendações com unidades calculadas + fundamentos reais
+      // Medianas setoriais (cache Supabase) para contextualizar cada ativo.
+      // Não-fatal: se falhar, os cards simplesmente não mostram a comparação.
+      let mediasSetor = {};
+      try {
+        mediasSetor = await buscarMediasSetor();
+      } catch (e) {
+        console.warn("medianas setoriais falharam:", e.message);
+      }
+
+      // Enriquecer recomendações com fundamentos reais + insights educacionais
       const recsEnriquecidas = (analise.recomendacoes || []).map(r => {
         const cot = cotacoesReais[r.ticker];
         const fund = fundamentosReais[r.ticker];
@@ -5566,6 +5723,9 @@ Regras:
           // P/L, P/VP funcionam para ações e FIIs
           pl: fund?.pl ?? r.pl,
           pvp: fund?.pvp ?? r.pvp,
+          // LPA/VPA (bolsai) — usados no valuation educacional de Graham
+          lpa: fund?.lpa ?? r.lpa ?? null,
+          vpa: fund?.vpa ?? r.vpa ?? null,
 
           // Específicos por tipo
           ...(ehFII ? {
@@ -5598,6 +5758,10 @@ Regras:
           ...enriquecido,
           // Avalia critérios fundamentalistas com dados (preferencialmente) reais
           avaliacaoCriterios: avaliarRecomendacao(enriquecido),
+          // Insights educacionais (pilares + valuation + comparação setorial)
+          pilares: calcularPilares(enriquecido),
+          valuation: valuationEducacional(enriquecido),
+          comparacaoSetor: compararComSetor(enriquecido, mediasSetor),
         };
       });
 

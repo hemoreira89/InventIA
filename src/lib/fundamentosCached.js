@@ -12,6 +12,13 @@
 // buscarFundamentos que tem fallback.
 
 import { supabase } from "../supabase.js";
+import { calcularMediasSetor } from "./insights.js";
+
+// Cache em memória das medianas setoriais (recalcular toda análise seria
+// desperdício — o cache no Supabase só muda 1x/dia via cron).
+const MEDIAS_TTL_MS = 30 * 60 * 1000; // 30 min
+let cacheMedias = null;
+let cacheMediasTs = 0;
 
 /**
  * Busca fundamentos pré-cacheados de múltiplos tickers (1 query só).
@@ -67,6 +74,35 @@ export async function buscarFundamentosCached(tickers) {
   }
 
   return mapa;
+}
+
+/**
+ * Calcula medianas de P/L, P/VP, ROE e DY por setor a partir de TODO o cache
+ * `screening_fundamentos` (~1430 ativos da B3). Usado para contextualizar um
+ * ativo ("P/L 8 vs. setor ~12"). Cacheado 30min em memória.
+ *
+ * @returns {Promise<Object>} mapa setor → { pl, pvp, roe, dy, n }
+ */
+export async function buscarMediasSetor() {
+  if (cacheMedias && (Date.now() - cacheMediasTs) < MEDIAS_TTL_MS) {
+    return cacheMedias;
+  }
+
+  const { data, error } = await supabase
+    .from("screening_fundamentos")
+    .select("setor_cvm, pl, pvp, roe, dy");
+
+  if (error) {
+    console.warn("[medias-setor] Supabase erro:", error.message);
+    return cacheMedias || {};
+  }
+
+  const populacao = (data || []).map(r => ({
+    setorCVM: r.setor_cvm, pl: r.pl, pvp: r.pvp, roe: r.roe, dy: r.dy,
+  }));
+  cacheMedias = calcularMediasSetor(populacao);
+  cacheMediasTs = Date.now();
+  return cacheMedias;
 }
 
 /**
