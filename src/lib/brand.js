@@ -6,13 +6,12 @@
 //   - "Carteira Nobre" com accent "Nobre" → Carteira + [Nobre destacado]
 //   - accent "" → nome inteiro em uma cor só
 //
-// ⚠️ Lugares FORA do bundle React (atualizar à mão ao rebrandar):
-//   - index.html ............ <title> + meta og:/twitter: (NOME ok; URLs após migrar domínio)
-//   - public/manifest.json .. name / short_name (PWA)
-//   - api/*.js .............. APP_URL (mp-criar-pagamento.js, cron-emails.js) — trocar após comprar domínio
-//   - scripts/*.{mjs,js} .... gen-seo.mjs, gen-og.mjs, seed-test-user.js (BASE/URL)
-//   - .github/workflows/*.yml SITE_URL / BASE_URL / URLs de cron
-//   - README.md / CLAUDE.md . menções de produção
+// URLs públicas/canônicas JÁ migradas para cauril.com.br:
+//   index.html (og/twitter), public/manifest.json, api/*.js (APP_URL),
+//   scripts/gen-seo.mjs (BASE), scripts/seed-test-user.js, README.md, CLAUDE.md
+// Mantidos PROPOSITALMENTE em invent-ia.vercel.app (domínio default, sempre no ar):
+//   CI (.github/workflows/ci.yml), testes (smoke.js, playwright.config.js) e os
+//   triggers de cron (.github/workflows/cron-*.yml) — plumbing interno, mais robusto.
 
 const name = "Cauril";   // ← wordmark (texto puro)
 const accent = "ril";    // ← trecho final destacado no logo ("" desliga o destaque)

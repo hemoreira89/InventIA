@@ -2,7 +2,7 @@
 
 Plataforma web de análise de carteira de investimentos da B3 com IA (Gemini 2.5 Flash), cotações em tempo real e visualizações ricas.
 
-**Produção:** https://invent-ia.vercel.app  
+**Produção:** https://cauril.com.br  
 **Rollback:** `git checkout backup/pre-pending-tasks-20260509`
 
 ---

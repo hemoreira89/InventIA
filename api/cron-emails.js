@@ -19,7 +19,7 @@ import nodemailer from "nodemailer";
 export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const APP_URL = "https://invent-ia.vercel.app";
+const APP_URL = "https://cauril.com.br";
 const MAX_POR_RUN = 200; // teto defensivo
 
 // ─── Supabase REST ──────────────────────────────────────────────────────────

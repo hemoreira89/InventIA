@@ -8,7 +8,7 @@
 export const config = { maxDuration: 15 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const APP_URL = "https://invent-ia.vercel.app";
+const APP_URL = "https://cauril.com.br";
 
 // Preço/título definidos no SERVIDOR (nunca confiar no valor do cliente).
 const PLANOS = {

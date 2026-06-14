@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const BASE = "https://invent-ia.vercel.app";
+const BASE = "https://cauril.com.br";
 
 // Piloto: tickers mais buscados. Os que não existirem no catálogo são ignorados.
 const PILOTO = [

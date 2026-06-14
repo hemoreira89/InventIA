@@ -234,7 +234,7 @@ async function main() {
   console.log('💰 Total de proventos recebidos:', totalProventos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
   console.log('📊 Snapshots:', SNAPSHOTS.length, '(últimos 90 dias)');
   console.log('👁️  Watchlist:', WATCHLIST.length, 'ativos monitorados');
-  console.log('\n🌐 Acesse: https://invent-ia.vercel.app');
+  console.log('\n🌐 Acesse: https://cauril.com.br');
   console.log('📧 Login:', EMAIL);
   console.log('🔑 Senha:', PASSWORD);
 
