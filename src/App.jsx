@@ -5791,10 +5791,11 @@ Regras:
       const tickersParaBuscar = Array.from(tickersCarteiraSet);
       let cotacoesReais = {};
       let fundamentosReais = {};
+      let fundamentosCache = {};
       if (tickersParaBuscar.length > 0) {
         setFase("Buscando cotações e fundamentos reais...");
         try {
-          const [dadosCotacoes, dadosFundamentos] = await Promise.all([
+          const [dadosCotacoes, dadosFundamentos, dadosCache] = await Promise.all([
             buscarCotacoes(tickersParaBuscar).catch(e => {
               console.warn("brapi falhou:", e.message);
               return {};
@@ -5802,10 +5803,17 @@ Regras:
             buscarFundamentos(tickersParaBuscar).catch(e => {
               console.warn("bolsai falhou:", e.message);
               return {};
+            }),
+            // Cache do screening tem DY de ações (cron via /dividends), que a bolsai
+            // runtime não retorna — fonte do DY real para ações nos cards.
+            buscarFundamentosCached(tickersParaBuscar).catch(e => {
+              console.warn("cache fundamentos falhou:", e.message);
+              return {};
             })
           ]);
           cotacoesReais = dadosCotacoes;
           fundamentosReais = dadosFundamentos;
+          fundamentosCache = dadosCache;
         } catch (e) {
           console.warn("Falhou ao buscar dados externos:", e.message);
         }
@@ -5824,6 +5832,7 @@ Regras:
       const recsEnriquecidas = (analise.recomendacoes || []).map(r => {
         const cot = cotacoesReais[r.ticker];
         const fund = fundamentosReais[r.ticker];
+        const cac = fundamentosCache[r.ticker];
         const ehFII = fund?.tipo === "FII" || /11$/.test(r.ticker || "");
 
         // Sobrescreve chutes da IA com dados reais quando disponíveis
@@ -5852,14 +5861,15 @@ Regras:
 
           // Específicos por tipo
           ...(ehFII ? {
-            // FII: DY do bolsai é dividend_yield_ttm (12 meses)
-            dy: fund?.dy ?? r.dy,
+            // FII: DY do bolsai é dividend_yield_ttm (12 meses); cache como reforço
+            dy: fund?.dy ?? cac?.dy ?? r.dy,
             // vacancia e liquidez não vêm do bolsai - mantém o que a IA chutou
             vacancia: r.vacancia ?? null,
             liquidez: r.liquidez ?? null,
           } : {
-            // Ação: indicadores fundamentalistas reais
-            dy: r.dy, // bolsai não retorna DY direto pra ações
+            // Ação: DY real vem do cache do screening (/dividends); bolsai não dá.
+            // Cai para a estimativa da IA só se o cache não tiver o ticker.
+            dy: cac?.dy ?? r.dy,
             roe: fund?.roe ?? r.roe,
             margemLiquida: fund?.margemLiquida ?? r.margemLiquida,
             divEbitda: fund?.divEbitda ?? r.divEbitda,
