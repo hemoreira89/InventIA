@@ -4362,8 +4362,9 @@ function TabPatrimonio({ userId, dados }) {
   const ibovBase = ibovSeries.length ? ibovNaData(ibovSeries, t0) : null;
   const ibovReal = !!(base && ibovBase);
   const ibovFim = ibovReal ? ibovNaData(ibovSeries, new Date(ultimo.data).getTime()) : null;
-  const fatorIBOV = Math.pow(1 + IBOV_HIST/100, diasPeriodo/365) - 1;
-  const ibovAcumulado = (ibovReal && ibovFim) ? base * (ibovFim / ibovBase - 1) : base * fatorIBOV;
+  // Sem índice real não fabricamos um IBOV "de taxa fixa" — um índice de ações é
+  // volátil, não rende taxa fixa. Mostra "—" quando o ^BVSP real está indisponível.
+  const ibovAcumulado = (ibovReal && ibovFim) ? base * (ibovFim / ibovBase - 1) : null;
 
   // Linhas do gráfico: patrimônio real + curvas de CDI e IBOV no mesmo ponto inicial
   const dadosGrafico = snapshots.map(s => {
@@ -4374,8 +4375,7 @@ function TabPatrimonio({ userId, dados }) {
       data: new Date(s.data).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
       valor: Number(s.valor),
       cdi: base ? Math.round(base * Math.pow(1 + CDI_ANO/100, dias/365)) : null,
-      ibov: (ibovReal && ibovClose) ? Math.round(base * (ibovClose / ibovBase))
-            : (base ? Math.round(base * Math.pow(1 + IBOV_HIST/100, dias/365)) : null),
+      ibov: (ibovReal && ibovClose) ? Math.round(base * (ibovClose / ibovBase)) : null,
     };
   });
 
@@ -4411,7 +4411,7 @@ function TabPatrimonio({ userId, dados }) {
           <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="var(--ui-warning)" mono/>
-          <Stat label="IBOV NO PERÍODO" value={fmtBRL(ibovAcumulado)} color="var(--ui-info)" mono/>
+          <Stat label="IBOV NO PERÍODO" value={ibovAcumulado != null ? fmtBRL(ibovAcumulado) : "—"} color="var(--ui-info)" mono/>
         </div>
       )}
 
@@ -4448,14 +4448,14 @@ function TabPatrimonio({ userId, dados }) {
               <Tooltip content={<TTip/>}/>
               <Area type="monotone" dataKey="valor" name="Patrimônio" stroke="var(--ui-accent)" strokeWidth={2} fill="url(#gradPatrimonio)"/>
               <Line type="monotone" dataKey="cdi" name="CDI (ref.)" stroke="var(--ui-warning)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
-              <Line type="monotone" dataKey="ibov" name={ibovReal ? "IBOV" : "IBOV (ref.)"} stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
+              {ibovReal && <Line type="monotone" dataKey="ibov" name="IBOV" stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>}
               <Legend wrapperStyle={{fontSize:11}}/>
             </AreaChart>
           </ResponsiveContainer>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
             CDI: projeção por taxa de referência fixa ({fmt(CDI_ANO,2)}% a.a.). IBOV: {ibovReal
               ? "índice real (^BVSP via brapi), normalizado no 1º snapshot"
-              : `referência ${fmt(IBOV_HIST,1)}% a.a. (índice real indisponível no momento)`}.
+              : "índice real (^BVSP) indisponível no momento — referência não exibida"}.
           </div>
         </Card>
       )}

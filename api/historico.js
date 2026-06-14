@@ -49,7 +49,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = `${BRAPI_BASE}/quote/${ticker}?range=${range}&interval=1d&token=${token}`;
+    // encodeURIComponent: tickers de índice (ex.: ^BVSP) têm '^', que quebra a URL crua.
+    const url = `${BRAPI_BASE}/quote/${encodeURIComponent(ticker)}?range=${range}&interval=1d&token=${token}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
 
     if (!r.ok) {
