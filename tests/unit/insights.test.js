@@ -7,9 +7,33 @@ import {
   calcularMediasSetor,
   compararComSetor,
   sanitizarIndicadores,
+  suprimirMetricasNaoAplicaveis,
+  ehSetorFinanceiro,
   classificarPorte,
   EXPLICACOES_INDICADORES,
 } from "../../src/lib/insights.js";
+
+describe("suprimirMetricasNaoAplicaveis", () => {
+  it("zera EV/EBITDA, Dív/EBITDA e ROIC para banco/holding", () => {
+    const r = suprimirMetricasNaoAplicaveis({ ticker: "ITSA4", setorCVM: "Bancos", evEbitda: 200, divEbitda: 6, roic: 0.3, roe: 17 });
+    expect(r.evEbitda).toBeNull();
+    expect(r.divEbitda).toBeNull();
+    expect(r.roic).toBeNull();
+    expect(r.roe).toBe(17); // ROE permanece
+  });
+  it("não altera setores não-financeiros", () => {
+    const r = suprimirMetricasNaoAplicaveis({ ticker: "WEGE3", setorCVM: "Bens de Capital", evEbitda: 20, divEbitda: 1, roic: 30 });
+    expect(r.evEbitda).toBe(20);
+    expect(r.divEbitda).toBe(1);
+    expect(r.roic).toBe(30);
+  });
+  it("ehSetorFinanceiro detecta variações", () => {
+    expect(ehSetorFinanceiro({ setorCVM: "Bancos" })).toBe(true);
+    expect(ehSetorFinanceiro({ setor: "Serviços Financeiros" })).toBe(true);
+    expect(ehSetorFinanceiro({ setor: "Seguros" })).toBe(true);
+    expect(ehSetorFinanceiro({ setor: "Petróleo" })).toBe(false);
+  });
+});
 
 describe("sanitizarIndicadores", () => {
   it("zera DY absurdo (bug real bolsai: -2071%)", () => {

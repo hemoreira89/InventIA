@@ -62,7 +62,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
-import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
+import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, suprimirMetricasNaoAplicaveis, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -5073,7 +5073,7 @@ Responda APENAS este JSON (sem markdown):
 
       // Anexa tese qualitativa + insights educacionais nos resultados
       const finais = ordenados.map(o => {
-        const limpo = sanitizarIndicadores(o);
+        const limpo = suprimirMetricasNaoAplicaveis(sanitizarIndicadores(o));
         return {
           ...limpo,
           destaque: tesePorTicker[o.ticker]?.destaque || null,
@@ -5670,16 +5670,30 @@ export default function App({ session, onLogout }) {
         ...universoFiltrado
       ])].join(", ");
 
+      // Composição por classe (ações vs FIIs) — fato extra para o diagnóstico
+      const comp = posEstimadas.length > 0 ? {
+        pctAcoes: Math.round(posEstimadas.filter(p => p.tipo === "Ação").reduce((s, p) => s + p.peso, 0)),
+        pctFIIs: Math.round(posEstimadas.filter(p => p.tipo === "FII").reduce((s, p) => s + p.peso, 0)),
+        n: posEstimadas.length,
+      } : null;
+
+      // Distribuição setorial completa (até 5 setores) para o diagnóstico
+      const distSetorial = riscoPre?.setorial?.distribuicao
+        ? riscoPre.setorial.distribuicao.slice(0, 5).map(s => `${s.setor} ${s.peso}%`).join(", ")
+        : "";
+
       // Bloco de contexto de risco (apenas se já há carteira)
       const contextoRisco = riscoPre ? `
 
 CONTEXTO DE RISCO (calculado a partir da carteira):
 - HHI ativos: ${riscoPre.concentracao.hhi} (${classificarHHI(riscoPre.concentracao.hhi).nivel})
 - HHI setorial: ${riscoPre.setorial.hhi} (${classificarHHI(riscoPre.setorial.hhi).nivel})
+- Score de saúde: ${riscoPre.score}/100
 - Maior posição: ${riscoPre.concentracao.maiorPosicao?.ticker || "–"} com ${riscoPre.concentracao.maiorPosicao?.peso || 0}%
 - Top 3 ativos: ${riscoPre.concentracao.top3Pct}% da carteira
 - Setor dominante: ${riscoPre.setorial.maiorSetor?.setor || "–"} com ${riscoPre.setorial.maiorSetor?.peso || 0}%
-- Setores na carteira: ${riscoPre.setorial.qtdSetores}
+- Setores na carteira: ${riscoPre.setorial.qtdSetores}${distSetorial ? ` (${distSetorial})` : ""}
+${comp ? `- Composição: ${comp.n} ativos — ${comp.pctAcoes}% em ações, ${comp.pctFIIs}% em FIIs` : ""}
 ${riscoPre.concentracao.acima10Pct.length > 0 ? `- Posições acima de 10%: ${riscoPre.concentracao.acima10Pct.map(p => `${p.ticker} (${p.peso}%)`).join(", ")}` : ""}
 
 USE este contexto ao analisar:
@@ -5706,7 +5720,7 @@ Liste ativos que ATENDEM aos critérios objetivos, para o usuário ESTUDAR. NÃO
 
 Responda APENAS com JSON (sem markdown):
 {
-  "diagnostico": "1-2 frases factuais e NEUTRAS sobre o mercado e a concentração/risco da carteira atual — apenas descreva os dados, SEM sugerir comprar, evitar ou alocar",
+  "diagnostico": "${temCarteira ? "3 a 5 frases factuais e NEUTRAS analisando a carteira atual a partir do CONTEXTO DE RISCO: (1) nível de diversificação por ativo (HHI) e a(s) maior(es) posição(ões); (2) diversificação setorial — quantos setores, setor dominante e setores sub-representados ou ausentes; (3) composição entre ações e FIIs; (4) um ou dois pontos factuais de atenção (concentração, exposição setorial) descritos de forma neutra. Apenas descreva os dados e o que eles significam — SEM sugerir comprar, vender, evitar ou alocar" : "2 a 3 frases factuais e NEUTRAS sobre o cenário de mercado atual relevante para o perfil informado, SEM sugerir comprar, vender ou alocar"}",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"fato/risco descrito de forma neutra e factual, SEM instruir o usuário a comprar ou evitar aportes"}],
   "recomendacoes": [
     {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","nova":${!temCarteira},"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, factual, mencionando aderência aos critérios e relação com o perfil de risco — SEM dizer para comprar"}
@@ -5843,9 +5857,9 @@ Regras:
           } : {}),
         };
 
-        // Sanea indicadores claramente inválidos (ex.: DY -2071% de fonte) antes
-        // de calcular pilares/critérios/comparação, para não distorcer os cards.
-        const limpo = sanitizarIndicadores(enriquecido);
+        // Sanea indicadores inválidos (ex.: DY -2071%) e suprime métricas que
+        // não se aplicam ao setor financeiro (EV/EBITDA, Dív/EBITDA, ROIC).
+        const limpo = suprimirMetricasNaoAplicaveis(sanitizarIndicadores(enriquecido));
         return {
           ...limpo,
           // Avalia critérios fundamentalistas com dados (preferencialmente) reais

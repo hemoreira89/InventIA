@@ -58,6 +58,27 @@ export function sanitizarIndicadores(rec) {
   return limpo;
 }
 
+/**
+ * Detecta se o ativo é do setor financeiro/banco/holding/seguros, onde métricas
+ * baseadas em EBITDA (EV/EBITDA, Dívida/EBITDA) e ROIC não têm significado
+ * convencional (bancos não têm EBITDA; holdings vivem de participações).
+ */
+export function ehSetorFinanceiro(rec) {
+  if (!rec) return false;
+  const s = `${rec.setorCVM || ""} ${rec.setor || ""}`.toLowerCase();
+  return /banco|financ|segur|holding|interm|previd|capitaliz/.test(s);
+}
+
+/**
+ * Zera métricas que não se aplicam ao setor financeiro/bancos (EV/EBITDA,
+ * Dívida/EBITDA, ROIC). Evita falsos negativos (ex.: "Dív/EBITDA 5.98" reprovado
+ * num banco) e badges sem sentido. Não altera nada para os demais setores.
+ */
+export function suprimirMetricasNaoAplicaveis(rec) {
+  if (!rec || !ehSetorFinanceiro(rec)) return rec;
+  return { ...rec, evEbitda: null, divEbitda: null, roic: null };
+}
+
 // Clampa um valor em [0, 100].
 function clamp100(n) {
   return Math.max(0, Math.min(100, n));
