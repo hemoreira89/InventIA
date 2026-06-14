@@ -17,8 +17,8 @@ const svg = `
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#08081a"/>
-      <stop offset="100%" stop-color="#06060f"/>
+      <stop offset="0%" stop-color="#0b0d24"/>
+      <stop offset="100%" stop-color="#070713"/>
     </linearGradient>
     <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#00e5a0" stop-opacity="0.28"/>
