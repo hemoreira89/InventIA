@@ -2800,7 +2800,7 @@ function TabComparador({ chamarIAComSearch }) {
         const cot = cotacoes[t];
         const fund = fundamentos[t];
         const ehFII = fund?.tipo === "FII" || /11$/.test(t);
-        return {
+        const ativo = {
           ticker: t,
           nome: fund?.nome || cot?.nome || t,
           setor: fund?.setorCVM || (ehFII ? "Fundo Imobiliário" : null),
@@ -2823,6 +2823,9 @@ function TabComparador({ chamarIAComSearch }) {
             divEbitda: fund?.divEbitda ?? null,
           }),
         };
+        // Bancos/holdings: remove Dív/EBITDA, ROIC (sem EBITDA convencional) para a
+        // IA não citá-los como vantagem/desvantagem enganosa na comparação.
+        return suprimirMetricasNaoAplicaveis(ativo);
       });
 
       // ── PASSO 2: IA só para análise comparativa qualitativa ──
