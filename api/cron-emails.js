@@ -62,11 +62,11 @@ function botao(texto) {
   return `<a href="${APP_URL}" style="display:inline-block;background:#7b61ff;color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:10px;font-size:15px">${texto}</a>`;
 }
 function wrap(corpo) {
-  return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#06060f;padding:32px 0">
-  <div style="max-width:520px;margin:0 auto;background:#0b0b1a;border:1px solid #1f1f36;border-radius:16px;padding:32px 28px;color:#e8e8f2">
+  return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#eef0f6;padding:32px 0">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e6e7ee;border-radius:16px;padding:32px 28px;color:#16161f">
     <div style="font-size:18px;font-weight:800;margin-bottom:20px">Cau<span style="color:#7b61ff">ril</span></div>
     ${corpo}
-    <div style="margin-top:28px;padding-top:18px;border-top:1px solid #1f1f36;font-size:11px;color:#5b5b76;line-height:1.7">
+    <div style="margin-top:28px;padding-top:18px;border-top:1px solid #e6e7ee;font-size:11px;color:#8a8a9a;line-height:1.7">
       Conteúdo educacional — não é recomendação de investimento. Você recebe este email porque criou uma conta no Cauril.
       Não quer mais receber? Basta responder este email.
     </div>
@@ -76,41 +76,41 @@ function wrap(corpo) {
 const TEMPLATES = {
   boas_vindas: () => ({
     subject: "Bem-vindo ao Cauril — seu teste de 7 dias começou",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste grátis está rodando. Em 1 minuto você já vê sua carteira da B3 analisada por IA: tese, risco e o que fazer no próximo aporte.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Comece adicionando seus ativos (ou rode com uma carteira de exemplo) e peça a primeira análise.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Seu teste grátis está rodando. Em 1 minuto você já vê sua carteira da B3 analisada por IA: tese, risco e o que fazer no próximo aporte.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Comece adicionando seus ativos (ou rode com uma carteira de exemplo) e peça a primeira análise.</p>
       <p style="margin:24px 0">${botao("Fazer minha primeira análise")}</p>`),
   }),
   historia: () => ({
     subject: "O nome por trás do Cauril",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Quando alguém te pergunta o que é dinheiro, a resposta automática é uma nota, uma moeda, um número na tela do banco. Mas a história é bem mais antiga que isso.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Há mais de 3 mil anos, muito antes do metal e do papel, as pessoas já guardavam valor numa concha: o <b style="color:#e8e8f2">cauri</b>. Da África ao Brasil, ele foi uma das primeiras moedas do mundo — pequeno, resistente, aceito por todos. Cabia na palma da mão e atravessava continentes.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">É daí que vem o nome <b style="color:#e8e8f2">Cauril</b>.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">No fundo, investir é a mesma ideia de sempre: pegar o que você tem hoje e transformar em segurança amanhã. O que mudou foi a ferramenta — agora você não precisa decifrar a B3 sozinho. Uma IA lê o mercado por você, organiza sua carteira e aponta o próximo passo.</p>
-      <p style="font-size:16px;line-height:1.8;color:#e8e8f2;font-weight:700;font-style:italic;margin:22px 0 0">A sabedoria de milênios, com a tecnologia de hoje. A sua riqueza, com história. 🐚</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Quando alguém te pergunta o que é dinheiro, a resposta automática é uma nota, uma moeda, um número na tela do banco. Mas a história é bem mais antiga que isso.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Há mais de 3 mil anos, muito antes do metal e do papel, as pessoas já guardavam valor numa concha: o <b style="color:#16161f">cauri</b>. Da África ao Brasil, ele foi uma das primeiras moedas do mundo — pequeno, resistente, aceito por todos. Cabia na palma da mão e atravessava continentes.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">É daí que vem o nome <b style="color:#16161f">Cauril</b>.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">No fundo, investir é a mesma ideia de sempre: pegar o que você tem hoje e transformar em segurança amanhã. O que mudou foi a ferramenta — agora você não precisa decifrar a B3 sozinho. Uma IA lê o mercado por você, organiza sua carteira e aponta o próximo passo.</p>
+      <p style="font-size:16px;line-height:1.8;color:#16161f;font-weight:700;font-style:italic;margin:22px 0 0">A sabedoria de milênios, com a tecnologia de hoje. A sua riqueza, com história. 🐚</p>
       <p style="margin:26px 0 0">${botao("Analisar minha carteira")}</p>`),
   }),
   valor: () => ({
     subject: "Já viu o raio-X de risco da sua carteira?",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Além da análise com IA, o Cauril mostra a concentração por ativo e setor, um score de risco e o plano de rebalanceamento com simulação de aporte.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Aproveite enquanto o teste está completo:</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Além da análise com IA, o Cauril mostra a concentração por ativo e setor, um score de risco e o plano de rebalanceamento com simulação de aporte.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Aproveite enquanto o teste está completo:</p>
       <p style="margin:24px 0">${botao("Ver meu painel de risco")}</p>`),
   }),
   urgencia: () => ({
     subject: "Faltam 2 dias do seu teste grátis",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste do Cauril termina em <b style="color:#e8e8f2">2 dias</b>. Depois disso, o acesso à análise com IA pausa — mas seus dados continuam salvos.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Assine e continue sem interrupção: <b style="color:#e8e8f2">R$ 24,90/mês</b> ou <b style="color:#00e5a0">R$ 199/ano</b> (2 meses grátis). Cancele quando quiser.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Seu teste do Cauril termina em <b style="color:#16161f">2 dias</b>. Depois disso, o acesso à análise com IA pausa — mas seus dados continuam salvos.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Assine e continue sem interrupção: <b style="color:#16161f">R$ 24,90/mês</b> ou <b style="color:#0a9d6e">R$ 199/ano</b> (2 meses grátis). Cancele quando quiser.</p>
       <p style="margin:24px 0">${botao("Assinar e manter o acesso")}</p>`),
   }),
   ultima_chance: () => ({
     subject: "Último dia do seu teste grátis ⏳",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Hoje é o <b style="color:#e8e8f2">último dia</b> do seu teste. A partir de amanhã a análise com IA fica pausada até você assinar.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Garanta o acesso por <b style="color:#e8e8f2">R$ 24,90/mês</b> ou <b style="color:#00e5a0">R$ 199/ano</b>. Sem fidelidade.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Hoje é o <b style="color:#16161f">último dia</b> do seu teste. A partir de amanhã a análise com IA fica pausada até você assinar.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Garanta o acesso por <b style="color:#16161f">R$ 24,90/mês</b> ou <b style="color:#0a9d6e">R$ 199/ano</b>. Sem fidelidade.</p>
       <p style="margin:24px 0">${botao("Assinar agora")}</p>`),
   }),
   winback: () => ({
     subject: "Sua carteira continua salva — volte quando quiser",
-    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste terminou, mas tudo que você cadastrou continua aqui, intacto. Quando voltar, a IA retoma de onde parou.</p>
-      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Reative por <b style="color:#e8e8f2">R$ 24,90/mês</b> ou <b style="color:#00e5a0">R$ 199/ano</b> — cancele quando quiser.</p>
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#4a4a5e">Seu teste terminou, mas tudo que você cadastrou continua aqui, intacto. Quando voltar, a IA retoma de onde parou.</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Reative por <b style="color:#16161f">R$ 24,90/mês</b> ou <b style="color:#0a9d6e">R$ 199/ano</b> — cancele quando quiser.</p>
       <p style="margin:24px 0">${botao("Reativar meu acesso")}</p>`),
   }),
 };
