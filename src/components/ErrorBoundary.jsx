@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { AlertTriangle } from "lucide-react";
 
 /**
  * Error Boundary global. Captura erros de renderização em qualquer aba e
@@ -35,7 +36,7 @@ export default class ErrorBoundary extends Component {
           background: "var(--ui-bg-card)", border: "1px solid var(--ui-border)",
           borderRadius: 14, padding: "32px 24px", textAlign: "center", margin: "8px 0",
         }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+          <AlertTriangle size={32} strokeWidth={2} color="var(--ui-warning, #f59e0b)" style={{ display: "block", margin: "0 auto 10px" }} />
           <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ui-text)", marginBottom: 6 }}>
             Esta tela teve um problema
           </div>
@@ -78,7 +79,7 @@ export default class ErrorBoundary extends Component {
           padding: "32px 28px", maxWidth: 440, width: "100%", textAlign: "center",
           boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
         }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <AlertTriangle size={40} strokeWidth={2} color="#f59e0b" style={{ display: "block", margin: "0 auto 12px" }} />
           <h1 style={{ fontSize: 18, fontWeight: 800, color: text, margin: "0 0 8px" }}>
             Algo deu errado
           </h1>

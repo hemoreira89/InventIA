@@ -542,7 +542,7 @@ function MetricaRisco({ icone: Icone, label, valor, cor = "default", detalhe, to
 }
 
 // Componente de badges dos critérios fundamentalistas
-// Mostra ✅/⚠️/❌ por critério, com pontuação e tooltip explicativo
+// Mostra aprovado/reprovado/indisponível por critério, com pontuação e tooltip
 function CriteriosBadges({ avaliacao, classificacao }) {
   if (!avaliacao || !avaliacao.criterios?.length) return null;
 
@@ -3573,8 +3573,8 @@ function TabRisco({ carteira, cotacoesGlobais, dados }) {
               }}>
                 <div style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:800,fontSize:15,color:"var(--ui-warning)"}}>{p.ticker}</div>
                 <div style={{fontSize:13,color:"var(--ui-text-muted)",fontWeight:600}}>{fmt(p.peso,1)}% da carteira</div>
-                <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>
-                  {p.peso > 25 ? "⚠ Risco elevado" : "Requer atenção"}
+                <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2,display:"flex",alignItems:"center",gap:4}}>
+                  {p.peso > 25 ? <><AlertTriangle size={10} strokeWidth={2.4}/>Risco elevado</> : "Requer atenção"}
                 </div>
               </div>
             ))}
@@ -6150,7 +6150,10 @@ Regras:
           justifyContent:"center", gap:12, flexWrap:"wrap", textAlign:"center",
           fontSize:13, fontWeight:600
         }}>
-          <span>🐚 Seu teste grátis terminou — a análise com IA está pausada. Seus dados continuam salvos.</span>
+          <span style={{display:"inline-flex",alignItems:"center",gap:8}}>
+            <Crown size={15} strokeWidth={2.4} style={{flexShrink:0}}/>
+            Seu teste grátis terminou — a análise com IA está pausada. Seus dados continuam salvos.
+          </span>
           <button onClick={() => setShowPlanos(true)} style={{
             background:"#fff", color:"#5540dd", border:"none", borderRadius:8,
             padding:"6px 16px", fontWeight:800, fontSize:12, cursor:"pointer", whiteSpace:"nowrap"
