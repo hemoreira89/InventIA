@@ -68,6 +68,16 @@ describe("sanitizarIndicadores", () => {
     expect(sanitizarIndicadores({ margemLiquida: -40 }).margemLiquida).toBe(-40);
   });
 
+  it("faixas mais estritas cortam valores ruidosos", () => {
+    expect(sanitizarIndicadores({ pl: 500 }).pl).toBeNull();       // > 200
+    expect(sanitizarIndicadores({ pl: 18 }).pl).toBe(18);
+    expect(sanitizarIndicadores({ pvp: 30 }).pvp).toBeNull();      // > 20
+    expect(sanitizarIndicadores({ pvp: 2 }).pvp).toBe(2);
+    expect(sanitizarIndicadores({ divEbitda: 30 }).divEbitda).toBeNull(); // > 20
+    expect(sanitizarIndicadores({ divEbitda: 2.5 }).divEbitda).toBe(2.5);
+    expect(sanitizarIndicadores({ evEbitda: 70 }).evEbitda).toBeNull();   // > 60
+  });
+
   it("não quebra com entrada nula", () => {
     expect(sanitizarIndicadores(null)).toBeNull();
   });
@@ -188,6 +198,14 @@ describe("valuationEducacional", () => {
   it("retorna null sem dados suficientes", () => {
     expect(valuationEducacional({ ticker: "ZZZZ3", tipo: "Ação", precoReal: 10 })).toBeNull();
     expect(valuationEducacional(null)).toBeNull();
+  });
+
+  it("suprime Graham com margem absurda (> 250%) e cai para Bazin se houver DY", () => {
+    // preço 10, lpa 10, vpa 10 → Graham √2250≈47,4 → margem ~374% (artefato)
+    expect(valuationEducacional({ ticker: "XXXX3", tipo: "Ação", precoReal: 10, lpa: 10, vpa: 10 })).toBeNull();
+    // mesmo caso, mas com DY → cai para Bazin
+    const v = valuationEducacional({ ticker: "YYYY3", tipo: "Ação", precoReal: 10, lpa: 10, vpa: 10, dy: 8 });
+    expect(v.metodo).toBe("Bazin");
   });
 });
 

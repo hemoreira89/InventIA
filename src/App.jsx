@@ -2490,8 +2490,13 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
         margemGraham: margemSeguranca(cotacao?.preco, justoGraham),
       } : null;
 
-      // Segurança dos dividendos (heurística transparente sobre os fundamentos)
-      const segurancaDividendos = avaliarSegurancaDividendos(fundamentos, dadosParaIA.tipo);
+      // Segurança dos dividendos (heurística transparente sobre os fundamentos).
+      // Sanea e suprime métricas não aplicáveis a bancos/holdings (ex.: não exibir
+      // "Dívida/EBITDA 0.0x" como ponto bom para um banco, nem margem > 100%).
+      const segurancaDividendos = avaliarSegurancaDividendos(
+        suprimirMetricasNaoAplicaveis(sanitizarIndicadores(fundamentos)),
+        dadosParaIA.tipo
+      );
 
       // ── PASSO 4: monta resultado final unindo dados reais + tese da IA ──
       const resultadoFinal = {

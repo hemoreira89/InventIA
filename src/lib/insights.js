@@ -35,12 +35,12 @@ export const EXPLICACOES_INDICADORES = {
 // indisponível para não poluir os cards com dado claramente inválido.
 export const FAIXAS_INDICADORES = {
   dy: [0, 40],            // % ao ano — acima de 40% é praticamente sempre erro
-  pl: [-1000, 1000],      // P/L pode ser negativo (prejuízo); só corta absurdos
-  pvp: [0.01, 50],        // P/VP é estritamente positivo; 0 = dado ausente/erro
+  pl: [-200, 200],        // P/L pode ser negativo (prejuízo); acima de |200| ≈ lucro ~zero (ruído)
+  pvp: [0.01, 20],        // P/VP é estritamente positivo; acima de 20× patrimônio é irreal
   roe: [-200, 200],       // %
   margemLiquida: [-300, 100], // % — acima de 100% é lucro não-operacional (ex.: equivalência em holdings), não margem real
-  divEbitda: [-50, 50],
-  evEbitda: [0, 80],      // bancos/holdings estouram (EBITDA ~0) → acima de 80 é erro
+  divEbitda: [-20, 20],   // acima de |20| ≈ EBITDA ~zero (ruído/distorção)
+  evEbitda: [0, 60],      // bancos/holdings estouram (EBITDA ~0) → acima de 60 é erro
 };
 
 /**
@@ -212,7 +212,12 @@ export function valuationEducacional(rec) {
   if (!ehFII) {
     const justo = precoJustoGraham(num(rec.lpa), num(rec.vpa));
     if (justo != null) {
-      return { metodo: "Graham", precoJusto: round2(justo), margem: round1(margemSeguranca(preco, justo)) };
+      const margem = round1(margemSeguranca(preco, justo));
+      // Margem de Graham acima de +250% quase sempre indica LPA/VPA distorcidos
+      // (evita "preço justo" e upside absurdos); nesse caso cai para Bazin.
+      if (margem == null || margem <= 250) {
+        return { metodo: "Graham", precoJusto: round2(justo), margem };
+      }
     }
   }
 
