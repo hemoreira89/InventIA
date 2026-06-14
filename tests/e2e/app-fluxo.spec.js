@@ -75,9 +75,9 @@ test.describe('Fluxo principal autenticado', () => {
     await expect(page.getByText(/EVOLUÇÃO DO PATRIMÔNIO/i)).toBeVisible();
   });
 
-  test('aba Oportunidades abre corretamente', async ({ page }) => {
-    await gotoTab(page, 'o'); // Oportunidades
-    await expect(page.getByText(/OPORTUNIDADES DO MOMENTO/i)).toBeVisible();
+  test('aba Explorar ativos abre corretamente', async ({ page }) => {
+    await gotoTab(page, 'o'); // Explorar ativos (antiga "Oportunidades")
+    await expect(page.getByText(/EXPLORAR ATIVOS/i)).toBeVisible();
   });
 
   test('aba Analisar Ticker abre corretamente', async ({ page }) => {
