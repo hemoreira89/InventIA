@@ -5924,7 +5924,13 @@ Regras:
             valorAtual,
             dy: fund.dy || 0,
             pl: fund.pl || null,
-            setor: fund.setorCVM || getSetorPorTicker(a.ticker),
+            // Setor para AGRUPAMENTO de risco: prioriza o catálogo B3 curado
+            // (acerta units como SAPR11/TAEE11), que a bolsai às vezes classifica
+            // errado. Cai para setorCVM só quando o ticker não está no catálogo.
+            // (O setorCVM bruto segue usado nos critérios p/ ROE setorial.)
+            setor: getSetorPorTicker(a.ticker) !== "Outros"
+              ? getSetorPorTicker(a.ticker)
+              : (fund.setorCVM || "Outros"),
             tipo: fund.tipo || (/11$/.test(a.ticker) ? "FII" : "Ação"),
             // Canal 52 semanas real (brapi retorna fiftyTwoWeekHigh/Low direto)
             canal52: cot.canal52 != null ? Math.round(cot.canal52) : null,
