@@ -49,6 +49,7 @@ async function supaInsert(table, rows, key) {
 // ─── Etapa do dia a partir dos dias restantes do trial ──────────────────────
 function etapaDoDia(diasRestantes) {
   if (diasRestantes >= 6) return "boas_vindas";
+  if (diasRestantes === 5) return "historia";
   if (diasRestantes === 4) return "valor";
   if (diasRestantes === 2) return "urgencia";
   if (diasRestantes === 1) return "ultima_chance";
@@ -78,6 +79,15 @@ const TEMPLATES = {
     html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Seu teste grátis está rodando. Em 1 minuto você já vê sua carteira da B3 analisada por IA: tese, risco e o que fazer no próximo aporte.</p>
       <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Comece adicionando seus ativos (ou rode com uma carteira de exemplo) e peça a primeira análise.</p>
       <p style="margin:24px 0">${botao("Fazer minha primeira análise")}</p>`),
+  }),
+  historia: () => ({
+    subject: "O nome por trás do Cauril",
+    html: wrap(`<p style="font-size:15px;line-height:1.7;color:#b8b8cc">Quando alguém te pergunta o que é dinheiro, a resposta automática é uma nota, uma moeda, um número na tela do banco. Mas a história é bem mais antiga que isso.</p>
+      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">Há mais de 3 mil anos, muito antes do metal e do papel, as pessoas já guardavam valor numa concha: o <b style="color:#e8e8f2">cauri</b>. Da África ao Brasil, ele foi uma das primeiras moedas do mundo — pequeno, resistente, aceito por todos. Cabia na palma da mão e atravessava continentes.</p>
+      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">É daí que vem o nome <b style="color:#e8e8f2">Cauril</b>.</p>
+      <p style="font-size:15px;line-height:1.7;color:#b8b8cc">No fundo, investir é a mesma ideia de sempre: pegar o que você tem hoje e transformar em segurança amanhã. O que mudou foi a ferramenta — agora você não precisa decifrar a B3 sozinho. Uma IA lê o mercado por você, organiza sua carteira e aponta o próximo passo.</p>
+      <p style="font-size:16px;line-height:1.8;color:#e8e8f2;font-weight:700;font-style:italic;margin:22px 0 0">A sabedoria de milênios, com a tecnologia de hoje. A sua riqueza, com história. 🐚</p>
+      <p style="margin:26px 0 0">${botao("Analisar minha carteira")}</p>`),
   }),
   valor: () => ({
     subject: "Já viu o raio-X de risco da sua carteira?",
