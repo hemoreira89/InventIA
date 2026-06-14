@@ -194,7 +194,7 @@ export default function OnboardingHero({ onAddAtivo, onAnalyzeMercado, onImportC
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ui-text)", marginBottom: 3 }}>
-                Ver oportunidades
+                Explorar ativos
               </div>
               <div style={{ fontSize: 11, color: "var(--ui-text-faint)", lineHeight: 1.4 }}>
                 IA analisa o mercado para você

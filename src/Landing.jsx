@@ -232,7 +232,7 @@ export default function Landing({ onEntrar, onComecar }) {
           })}
         </div>
         <div style={{textAlign:"center",marginTop:18,fontSize:12.5,color:"#5b5b76"}}>
-          E mais: patrimônio vs CDI · comparador de ativos · buscador de oportunidades · watchlist com preço-alvo ·
+          E mais: patrimônio vs CDI · comparador de ativos · explorador de ativos · watchlist com preço-alvo ·
           proventos · simulador do 1º milhão · alertas no Telegram
         </div>
       </section>

@@ -1121,7 +1121,7 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
           icon={Briefcase}
           iconColor="var(--ui-accent)"
           title="Sua carteira está pronta para começar"
-          description="Adicione ativos manualmente no formulário ao lado, importe um CSV existente, ou analise o mercado sem carteira para ver oportunidades."
+          description="Adicione ativos manualmente no formulário ao lado, importe um CSV existente, ou analise o mercado sem carteira para explorar ativos."
           examples={["PETR4", "ITUB4", "MXRF11", "VALE3", "BBAS3"]}
           onExampleClick={(ex) => {
             // Foca o input de ticker e preenche
@@ -1320,7 +1320,7 @@ function VisualizacoesCarteira({ dados }) {
                 </BarChart>
               </ResponsiveContainer>
               <div style={{display:"flex",gap:10,marginTop:8,justifyContent:"center",flexWrap:"wrap"}}>
-                {[{c:"var(--ui-success)",l:"Oportunidade"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
+                {[{c:"var(--ui-success)",l:"Desconto"},{c:"var(--ui-warning)",l:"Neutro"},{c:"var(--ui-danger)",l:"Caro"}].map(x=><div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:"var(--ui-text-muted)"}}>{x.l}</span></div>)}
               </div>
             </>;
           })() : <div style={{textAlign:"center",padding:"32px 0"}}>
@@ -3699,16 +3699,17 @@ function TabRebalanceamento({ carteira, dados, cotacoesGlobais }) {
                         {r.pesoAlvo > 0 && r.valorAlvo != null ? (() => {
                           const d = r.valorAlvo - r.valorAtual;
                           const limiar = Math.max(50, r.valorAlvo * 0.02);
-                          const acao = d > limiar ? "Comprar" : d < -limiar ? "Reduzir" : "Manter";
-                          const cor = acao === "Comprar" ? "var(--ui-success)" : acao === "Reduzir" ? "var(--ui-warning)" : "var(--ui-text-muted)";
+                          const noAlvo = !(d > limiar || d < -limiar);
+                          const acao = d > limiar ? "Abaixo do alvo" : d < -limiar ? "Acima do alvo" : "No alvo";
+                          const cor = d > limiar ? "var(--ui-success)" : d < -limiar ? "var(--ui-warning)" : "var(--ui-text-muted)";
                           return (
                           <div>
                             <span style={{fontWeight:700,fontSize:12,color:cor}}>
-                              {acao}{acao !== "Manter" ? " " + fmtBRL(Math.abs(d)) : ""}
+                              {acao}{!noAlvo ? " · " + fmtBRL(Math.abs(d)) : ""}
                             </span>
-                            {r.preco && acao !== "Manter" && (
+                            {r.preco && !noAlvo && (
                               <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>
-                                ≈ {Math.ceil(Math.abs(d)/r.preco)} cotas
+                                ≈ {Math.ceil(Math.abs(d)/r.preco)} cotas de diferença
                               </div>
                             )}
                           </div>
@@ -4906,7 +4907,7 @@ Responda APENAS este JSON (sem markdown):
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <Card>
-        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>OPORTUNIDADES DO MOMENTO</span></STitle>
+        <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={12} strokeWidth={2.5}/>EXPLORAR ATIVOS</span></STitle>
         <div style={{fontSize:12,color:"var(--ui-text-muted)",marginBottom:14,lineHeight:1.6}}>
           Filtra mais de 1.400 ativos da B3 (atualizado diariamente) por critérios objetivos. Top liquidez é validado via fundamentos B3/CVM oficiais. IA gera apenas a análise qualitativa.
         </div>
@@ -4960,7 +4961,7 @@ Responda APENAS este JSON (sem markdown):
             padding:"10px 18px",color:"#ffffff",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8
           }}>
-            {loading ? <><Loader2 size={14} className="spin"/>{fase || "Buscando..."}</> : <><Sparkles size={14} strokeWidth={2.5}/>Buscar oportunidades</>}
+            {loading ? <><Loader2 size={14} className="spin"/>{fase || "Buscando..."}</> : <><Sparkles size={14} strokeWidth={2.5}/>Buscar ativos</>}
           </button>
         </div>
 
@@ -4983,7 +4984,7 @@ Responda APENAS este JSON (sem markdown):
 
           {resultado.oportunidades?.length > 0 && (
             <>
-              <STitle>{resultado.oportunidades.length} OPORTUNIDADES IDENTIFICADAS</STitle>
+              <STitle>{resultado.oportunidades.length} ATIVOS PARA ESTUDAR</STitle>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,360px),1fr))",gap:12}}>
                 {resultado.oportunidades.map((o,i) => (
                   <Card key={i} className="card-hover" style={{position:"relative",overflow:"hidden"}}>
@@ -5087,7 +5088,7 @@ Responda APENAS este JSON (sem markdown):
           {resultado.oportunidades && resultado.oportunidades.length === 0 && (
             <Card style={{textAlign:"center",padding:"32px 20px",border:"1px dashed var(--ui-border)"}}>
               <Sparkles size={30} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 12px"}}/>
-              <div style={{color:"var(--ui-text-muted)",fontSize:14,fontWeight:600,marginBottom:6}}>Nenhuma oportunidade passou nos critérios desta busca</div>
+              <div style={{color:"var(--ui-text-muted)",fontSize:14,fontWeight:600,marginBottom:6}}>Nenhum ativo passou nos critérios desta busca</div>
               <div style={{color:"var(--ui-text-faint)",fontSize:12.5,lineHeight:1.6,maxWidth:420,margin:"0 auto"}}>Tente afrouxar os filtros (DY, P/L, setor) ou ampliar o universo de busca e rode novamente.</div>
             </Card>
           )}
@@ -5099,10 +5100,10 @@ Responda APENAS este JSON (sem markdown):
       {!resultado && !loading && (
         <Card style={{textAlign:"center",padding:"40px 20px",border:"1px dashed var(--ui-border)"}}>
           <Lightbulb size={36} color="var(--ui-bg-strong)" strokeWidth={1.5} style={{margin:"0 auto 14px"}}/>
-          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:6}}>Descubra novas oportunidades de investimento</div>
+          <div style={{color:"var(--ui-text-faint)",fontSize:13,marginBottom:6}}>Explore ativos da B3 para estudar</div>
           <div style={{color:"var(--ui-text-disabled)",fontSize:12,lineHeight:1.6}}>
-            Escolha o tipo de oportunidade que busca acima<br/>
-            e clique em <b style={{color:"var(--ui-accent)"}}>Buscar oportunidades</b>.
+            Escolha o tipo de busca acima<br/>
+            e clique em <b style={{color:"var(--ui-accent)"}}>Buscar ativos</b>.
           </div>
         </Card>
       )}
@@ -5119,7 +5120,7 @@ const TABS = [
   {k:"analise",icon:Brain,label:"Análise IA",cor:"var(--ui-accent)",grupo:"analysis"},
   {k:"ticker",icon:FileSearch,label:"Analisar Ticker",cor:"var(--ui-accent)",grupo:"analysis"},
   {k:"comparador",icon:GitCompare,label:"Comparador",cor:"var(--ui-accent)",grupo:"analysis"},
-  {k:"oportunidades",icon:Lightbulb,label:"Oportunidades",cor:"var(--ui-accent)",grupo:"analysis"},
+  {k:"oportunidades",icon:Lightbulb,label:"Explorar ativos",cor:"var(--ui-accent)",grupo:"analysis"},
   {k:"historico",icon:History,label:"Histórico",cor:"var(--ui-warning)",grupo:"control"},
   {k:"proventos",icon:Coins,label:"Proventos",cor:"var(--ui-warning)",grupo:"control"},
   {k:"calendario",icon:Calendar,label:"Calendário",cor:"var(--ui-warning)",grupo:"control"},
@@ -6464,7 +6465,7 @@ Regras:
                     <KeyRow keys={["g","b"]} desc="Rebalancear"/>
                     <KeyRow keys={["g","a"]} desc="Análise IA"/>
                     <KeyRow keys={["g","t"]} desc="Analisar Ticker"/>
-                    <KeyRow keys={["g","o"]} desc="Oportunidades"/>
+                    <KeyRow keys={["g","o"]} desc="Explorar ativos"/>
                     <KeyRow keys={["g","h"]} desc="Histórico"/>
                     <KeyRow keys={["g","d"]} desc="Proventos (Dividendos)"/>
                     <KeyRow keys={["g","k"]} desc="Calendário de Proventos"/>

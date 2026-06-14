@@ -43,7 +43,7 @@ export const PLANOS = [
 export const BENEFICIOS = [
   "Análise da carteira completa com IA (Gemini)",
   "Análise individual de qualquer ticker da B3",
-  "Buscador de oportunidades e comparador de ativos",
+  "Explorador de ativos e comparador",
   "Cotações em tempo real e evolução do patrimônio",
   "Dashboard de risco, rebalanceamento e renda passiva",
   "Calculadora de IR, proventos, watchlist e alertas",
