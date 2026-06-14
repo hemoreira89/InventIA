@@ -859,6 +859,26 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
   const [pesoAlvo,setPesoAlvo]=useState({});
   const [,setSalvando]=useState(false);
 
+  // Carrega/sincroniza os pesos-alvo salvos (a.peso_alvo) no buffer de edição.
+  useEffect(() => {
+    setPesoAlvo(Object.fromEntries(carteira.map(a => [a.ticker, a.peso_alvo ?? ""])));
+  }, [carteira]);
+
+  // Persiste o peso-alvo de um ativo ao sair do campo (onBlur). Antes o input
+  // era só estado local e nunca chegava ao banco nem ao Rebalanceamento.
+  const salvarPesoAlvo = async (a) => {
+    if (!userId || !carteiraId) return;
+    const bruto = pesoAlvo[a.ticker];
+    const novo = (bruto === "" || bruto == null || isNaN(Number(bruto))) ? null : Number(bruto);
+    if ((a.peso_alvo ?? null) === novo) return; // sem mudança real
+    try {
+      await salvarAtivo(userId, carteiraId, { ticker: a.ticker, qtd: a.qtd, pm: a.pm ?? null, peso_alvo: novo });
+      setCarteira(prev => prev.map(x => x.ticker === a.ticker ? { ...x, peso_alvo: novo } : x));
+    } catch (e) {
+      showToast("Erro ao salvar peso-alvo: " + e.message, "error");
+    }
+  };
+
   // Cotações em tempo real (atualiza a cada 60s)
   const tickersCarteira = carteira.map(a => a.ticker);
   const { cotacoes, atualizadoEm } = useCotacoes(tickersCarteira, { intervalMs: 60000 });
@@ -1264,8 +1284,10 @@ function TabCarteira({ carteira, setCarteira, historico, setHistorico, dados, on
               )}
               <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:11,color:"var(--ui-text-disabled)"}}>Peso alvo %:</span>
-                <input type="number" placeholder="%" value={pesoAlvo[a.ticker]||""} min={0} max={100}
-                  onChange={e => setPesoAlvo(p => ({...p,[a.ticker]:Number(e.target.value)}))}
+                <input type="number" placeholder="%" value={pesoAlvo[a.ticker]??""} min={0} max={100}
+                  onChange={e => setPesoAlvo(p => ({...p,[a.ticker]:e.target.value}))}
+                  onBlur={() => salvarPesoAlvo(a)}
+                  onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
                   style={{width:58,background:"var(--ui-bg-input)",border:"1px solid var(--ui-border)",borderRadius:7,padding:"4px 8px",fontSize:12,color:"var(--ui-text)"}}/>
                 {pos && <span style={{fontSize:11,color:"var(--ui-text-disabled)"}}>atual {fmt(pos.peso,1)}%</span>}
               </div>
