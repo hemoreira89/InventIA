@@ -3,7 +3,8 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, LineChart, Line, Legend
+  PolarAngleAxis, PolarRadiusAxis, LineChart, Line, Legend,
+  ComposedChart
 } from "recharts";
 import {
   Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
@@ -4435,7 +4436,7 @@ function TabPatrimonio({ userId, dados }) {
         <Card>
           <STitle>HISTÓRICO ({snapshots.length} snapshots)</STitle>
           <ResponsiveContainer width="100%" height={320}>
-            <AreaChart data={dadosGrafico} margin={{left:0,right:0,top:10,bottom:5}}>
+            <ComposedChart data={dadosGrafico} margin={{left:0,right:0,top:10,bottom:5}}>
               <defs>
                 <linearGradient id="gradPatrimonio" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--ui-accent)" stopOpacity={0.4}/>
@@ -4450,7 +4451,7 @@ function TabPatrimonio({ userId, dados }) {
               <Line type="monotone" dataKey="cdi" name="CDI (ref.)" stroke="var(--ui-warning)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>
               {ibovReal && <Line type="monotone" dataKey="ibov" name="IBOV" stroke="var(--ui-info)" strokeWidth={1.5} strokeDasharray="5 3" dot={false}/>}
               <Legend wrapperStyle={{fontSize:11}}/>
-            </AreaChart>
+            </ComposedChart>
           </ResponsiveContainer>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
             CDI: projeção por taxa de referência fixa ({fmt(CDI_ANO,2)}% a.a.). IBOV: {ibovReal
