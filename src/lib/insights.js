@@ -29,7 +29,7 @@ export const EXPLICACOES_INDICADORES = {
 export const FAIXAS_INDICADORES = {
   dy: [0, 40],            // % ao ano — acima de 40% é praticamente sempre erro
   pl: [-1000, 1000],      // P/L pode ser negativo (prejuízo); só corta absurdos
-  pvp: [0, 50],
+  pvp: [0.01, 50],        // P/VP é estritamente positivo; 0 = dado ausente/erro
   roe: [-200, 200],       // %
   margemLiquida: [-500, 500], // % (holdings podem passar de 100% por equivalência)
   divEbitda: [-50, 50],

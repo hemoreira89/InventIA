@@ -27,6 +27,11 @@ describe("sanitizarIndicadores", () => {
     expect(sanitizarIndicadores({ pl: 99999 }).pl).toBeNull();
   });
 
+  it("trata P/VP zero como ausente (bug real bolsai: XPML11 P/VP 0.00)", () => {
+    expect(sanitizarIndicadores({ pvp: 0 }).pvp).toBeNull();
+    expect(sanitizarIndicadores({ pvp: 1 }).pvp).toBe(1);
+  });
+
   it("não quebra com entrada nula", () => {
     expect(sanitizarIndicadores(null)).toBeNull();
   });
