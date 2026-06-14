@@ -4412,7 +4412,9 @@ function TabPatrimonio({ userId, dados }) {
           <Stat label="VARIAÇÃO" value={`${variacao>=0?"+":""}${fmt(variacao,2)}%`} color={variacao>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="GANHO/PERDA" value={fmtBRL(ganho)} color={ganho>=0?"var(--ui-success)":"var(--ui-danger)"} mono/>
           <Stat label="CDI NO PERÍODO" value={fmtBRL(cdiAcumulado)} color="var(--ui-warning)" mono/>
-          <Stat label="IBOV NO PERÍODO" value={ibovAcumulado != null ? fmtBRL(ibovAcumulado) : "—"} color="var(--ui-info)" mono/>
+          {/* IBOV só aparece quando o índice real (^BVSP) está disponível —
+              nada de "—" órfão. Reaparece sozinho se a brapi voltar a fornecê-lo. */}
+          {ibovAcumulado != null && <Stat label="IBOV NO PERÍODO" value={fmtBRL(ibovAcumulado)} color="var(--ui-info)" mono/>}
         </div>
       )}
 
@@ -4454,9 +4456,9 @@ function TabPatrimonio({ userId, dados }) {
             </ComposedChart>
           </ResponsiveContainer>
           <div style={{fontSize:10,color:"var(--ui-text-disabled)",marginTop:8,lineHeight:1.5}}>
-            CDI: projeção por taxa de referência fixa ({fmt(CDI_ANO,2)}% a.a.). IBOV: {ibovReal
-              ? "índice real (^BVSP via brapi), normalizado no 1º snapshot"
-              : "índice real (^BVSP) indisponível no momento — referência não exibida"}.
+            CDI: projeção por taxa de referência fixa ({fmt(CDI_ANO,2)}% a.a.).{ibovReal
+              ? " IBOV: índice real (^BVSP via brapi), normalizado no 1º snapshot."
+              : ""}
           </div>
         </Card>
       )}
