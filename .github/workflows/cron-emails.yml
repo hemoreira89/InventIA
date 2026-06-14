@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "0 13 * * *"
   workflow_dispatch:
+    inputs:
+      preview_email:
+        description: "Enviar TODOS os templates p/ este email (validação). Vazio = envio normal."
+        required: false
+        default: ""
 
 concurrency:
   group: cron-emails
@@ -19,9 +24,13 @@ jobs:
     steps:
       - name: Disparar ciclo de email
         run: |
+          URL="https://invent-ia.vercel.app/api/cron-emails"
+          if [ -n "${{ github.event.inputs.preview_email }}" ]; then
+            URL="${URL}?preview=${{ github.event.inputs.preview_email }}"
+          fi
           response=$(curl -sS -w "\n%{http_code}" --max-time 90 -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://invent-ia.vercel.app/api/cron-emails")
+            "$URL")
           body=$(echo "$response" | head -n -1)
           status=$(echo "$response" | tail -n 1)
           echo "Status HTTP: $status"

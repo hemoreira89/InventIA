@@ -139,6 +139,20 @@ export default async function handler(req, res) {
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
 
+  // Preview/validação: ?preview=<email> envia TODOS os templates p/ o email informado.
+  // Já protegido pelo CRON_SECRET (validado acima). Uso pontual.
+  if (req.query?.preview) {
+    let n = 0;
+    for (const [etapa, criar] of Object.entries(TEMPLATES)) {
+      try {
+        const { subject, html } = criar();
+        await transporter.sendMail({ from, to: req.query.preview, subject: `[${etapa}] ${subject}`, html });
+        n++;
+      } catch (e) { console.error(`[EMAILS] preview ${etapa}:`, e.message); }
+    }
+    return res.status(200).json({ preview: req.query.preview, enviados: n });
+  }
+
   // 1) Usuários no trial (com email e trial_fim)
   const trials = await supaList(
     "profiles",
