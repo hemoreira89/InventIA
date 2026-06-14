@@ -41,6 +41,8 @@ export const FAIXAS_INDICADORES = {
   margemLiquida: [-300, 100], // % — acima de 100% é lucro não-operacional (ex.: equivalência em holdings), não margem real
   divEbitda: [-20, 20],   // acima de |20| ≈ EBITDA ~zero (ruído/distorção)
   evEbitda: [0, 60],      // bancos/holdings estouram (EBITDA ~0) → acima de 60 é erro
+  cagrLucro5y: [-60, 60], // CAGR > 60%/a por 5 anos ≈ efeito de base (ex.: PETR4 saindo de lucro baixo)
+  cagrReceita5y: [-60, 60],
 };
 
 /**

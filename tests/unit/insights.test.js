@@ -76,6 +76,9 @@ describe("sanitizarIndicadores", () => {
     expect(sanitizarIndicadores({ divEbitda: 30 }).divEbitda).toBeNull(); // > 20
     expect(sanitizarIndicadores({ divEbitda: 2.5 }).divEbitda).toBe(2.5);
     expect(sanitizarIndicadores({ evEbitda: 70 }).evEbitda).toBeNull();   // > 60
+    expect(sanitizarIndicadores({ cagrLucro5y: 78 }).cagrLucro5y).toBeNull(); // efeito de base (PETR4)
+    expect(sanitizarIndicadores({ cagrLucro5y: 22 }).cagrLucro5y).toBe(22);
+    expect(sanitizarIndicadores({ cagrReceita5y: 90 }).cagrReceita5y).toBeNull();
   });
 
   it("não quebra com entrada nula", () => {
