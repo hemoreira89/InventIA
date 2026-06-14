@@ -797,7 +797,9 @@ function ContextoFII({ rec }) {
   if (!ehFII) return null;
   const partes = [];
   if (rec.gestao) partes.push(`Gestão ${String(rec.gestao).toLowerCase()}`);
-  if (rec.cotistas > 0) partes.push(`${rec.cotistas >= 1000 ? Math.round(rec.cotistas/1000)+"k" : rec.cotistas} cotistas`);
+  // FIIs listados têm milhares de cotistas; valores baixíssimos (ex.: 11 para
+  // XPML11) são erro de fonte — só exibe quando plausível (>= 100).
+  if (rec.cotistas >= 100) partes.push(`${rec.cotistas >= 1000 ? Math.round(rec.cotistas/1000)+"k" : rec.cotistas} cotistas`);
   if (rec.nav > 0) partes.push(`NAV ${rec.nav >= 1e9 ? "R$ "+(rec.nav/1e9).toFixed(1)+" bi" : "R$ "+(rec.nav/1e6).toFixed(0)+" mi"}`);
   if (partes.length === 0) return null;
   return (
