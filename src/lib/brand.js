@@ -16,7 +16,7 @@
 
 const name = "Cauril";   // ← wordmark (texto puro)
 const accent = "ril";    // ← trecho final destacado no logo ("" desliga o destaque)
-const domain = "invent-ia.vercel.app"; // ⚠️ trocar p/ "cauril.com" depois de comprar o domínio
+const domain = "cauril.com.br"; // domínio de produção (migração em andamento)
 
 const base = accent && name.endsWith(accent) ? name.slice(0, -accent.length) : name;
 
