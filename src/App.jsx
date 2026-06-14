@@ -62,7 +62,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI, gerarDiagnosticoCarteira } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
-import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, suprimirMetricasNaoAplicaveis, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
+import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, suprimirMetricasNaoAplicaveis, ehSetorFinanceiro, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -2477,7 +2477,10 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
       const divMensalCalc = dividendoMensal(cotacao?.preco, dyCalc);
       const divAnualCalc = (cotacao?.preco && dyCalc) ? cotacao.preco * (dyCalc / 100) : null;
       const tetoBazin = precoTetoBazin(divAnualCalc);
-      const justoGraham = precoJustoGraham(fundamentos?.lpa, fundamentos?.vpa);
+      // Graham (√22,5×LPA×VPA) não se aplica a bancos/holdings (LPA/VPA distorcidos);
+      // suprime para não exibir "preço justo" e margem enganosos.
+      const ehFinanceiro = ehSetorFinanceiro({ setor: dadosParaIA.setor, setorCVM: fundamentos?.setorCVM });
+      const justoGraham = ehFinanceiro ? null : precoJustoGraham(fundamentos?.lpa, fundamentos?.vpa);
       const mn = magicNumber(cotacao?.preco, divMensalCalc);
       const valuation = (mn || tetoBazin || justoGraham) ? {
         magicNumber: mn,
@@ -2504,13 +2507,14 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
           pl: fundamentos?.pl,
           pvp: fundamentos?.pvp,
           roe: ehFII ? null : fundamentos?.roe,
-          roic: ehFII ? null : fundamentos?.roic,
+          // ROIC e Dív/EBITDA não se aplicam a bancos/holdings (sem EBITDA convencional)
+          roic: (ehFII || ehFinanceiro) ? null : fundamentos?.roic,
           margemLiquida: ehFII ? null : fundamentos?.margemLiquida,
-          divEbitda: ehFII ? null : fundamentos?.divEbitda,
+          divEbitda: (ehFII || ehFinanceiro) ? null : fundamentos?.divEbitda,
           cagrLucro5y: ehFII ? null : fundamentos?.cagrLucro5y,
           min52: cotacao?.min52,
           max52: cotacao?.max52,
-          canal52: cotacao?.canal52,
+          canal52: cotacao?.canal52 != null ? Math.round(cotacao.canal52) : null,
         },
         valuation,
         segurancaDividendos,
@@ -2803,7 +2807,7 @@ function TabComparador({ chamarIAComSearch }) {
           tipo: fund?.tipo || (ehFII ? "FII" : "Ação"),
           preco: cot?.preco ?? null,
           variacaoDia: cot?.variacaoPct ?? null,
-          canal52: cot?.canal52 ?? null,
+          canal52: cot?.canal52 != null ? Math.round(cot.canal52) : null,
           // Fundamentos (depende do tipo)
           ...(ehFII ? {
             dy: fund?.dy ?? null,
