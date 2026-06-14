@@ -1865,7 +1865,7 @@ function stepDaFase(fase) {
   return 0; // perfil de risco / default
 }
 
-function TabAnalise({ dados, aporte, loading, fase }) {
+function TabAnalise({ dados, loading, fase }) {
   if (loading) {
     const cur = stepDaFase(fase);
     // Injeta o texto ao vivo da fase como detalhe da etapa ativa.
@@ -2043,9 +2043,9 @@ function TabAnalise({ dados, aporte, loading, fase }) {
 
       {/* Ideias para estudar */}
       {a.recomendacoes?.length > 0 && <>
-        <STitle>IDEIAS PARA ESTUDAR ({fmtBRL(aporte)})</STitle>
+        <STitle>IDEIAS PARA ESTUDAR</STitle>
         <div style={{fontSize:11,color:"var(--ui-text-muted)",marginBottom:4,lineHeight:1.5,background:"var(--ui-bg-input)",borderRadius:8,padding:"10px 12px"}}>
-          Ativos que atendem aos critérios objetivos selecionados, para você ESTUDAR. Os percentuais e cotas abaixo são uma simulação/calculadora de como o valor caberia — não é recomendação de investimento nem indicação de alocação. As decisões são suas.
+          Ativos que atendem aos critérios objetivos selecionados, para você ESTUDAR com base em indicadores fundamentalistas públicos. Não é recomendação de investimento nem indicação de quanto comprar — as decisões são suas.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,380px),1fr))",gap:14}}>
         {a.recomendacoes.map((r,i) => {
@@ -2076,11 +2076,6 @@ function TabAnalise({ dados, aporte, loading, fase }) {
                   <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{r.tipo || "Ativo"} · {r.setor}</div>
                 </div>
               </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:9,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:0.5}}>SIMULAÇÃO</div>
-                <div style={{fontWeight:700,fontSize:16,color:"var(--ui-accent)"}}>{r.alocacao}%</div>
-                <div style={{fontSize:12,color:"var(--ui-text-faint)"}}>{fmtBRL(aporte*(r.alocacao/100))}</div>
-              </div>
             </div>
 
             {/* Indicadores estimados */}
@@ -2096,12 +2091,6 @@ function TabAnalise({ dados, aporte, loading, fase }) {
 
             {/* Critérios fundamentalistas validados */}
             <CriteriosBadges avaliacao={avaliacao} classificacao={classificacao}/>
-
-            {r.unidades > 0 && (
-              <div style={{marginTop:8,fontSize:11,color:"var(--ui-text-muted)"}}>
-                ~{r.unidades} {r.tipo==="FII"?"cotas":"ações"} com {fmtBRL(aporte*(r.alocacao/100))}
-              </div>
-            )}
           </Card>
           );
         })}
@@ -2938,7 +2927,7 @@ function TabHistorico({ userId, pedirConfirmacao }) {
                         <div key={i} style={{background:"var(--ui-bg-input)",border:"1px solid var(--ui-border-soft)",borderRadius:8,padding:"10px 12px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                             <span style={{fontWeight:700,color:"var(--ui-text)",fontSize:13}}>{r.ticker}</span>
-                            <span style={{fontSize:11,color:"var(--ui-accent)",fontWeight:700}}>{r.alocacao}%</span>
+                            {r.setor && <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:600}}>{r.setor}</span>}
                           </div>
                           {r.precoReal && <div style={{fontSize:11,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtBRL(r.precoReal)}</div>}
                           {r.dy && <div style={{fontSize:10,color:"var(--ui-warning)"}}>DY {fmt(r.dy)}%</div>}
@@ -5063,20 +5052,9 @@ Responda APENAS este JSON (sem markdown):
                     )}
 
                     {o.risco_principal && (
-                      <div style={{display:"flex",gap:8,marginBottom:o.potencial_upside?8:0}}>
+                      <div style={{display:"flex",gap:8}}>
                         <AlertCircle size={14} color="var(--ui-danger)" style={{flexShrink:0,marginTop:1}}/>
                         <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.5}}>{o.risco_principal}</div>
-                      </div>
-                    )}
-
-                    {o.potencial_upside != null && (
-                      <div style={{
-                        marginTop:10,padding:"6px 10px",borderRadius:6,
-                        background:"rgba(123,97,255,0.06)",border:"1px solid rgba(123,97,255,0.19)",
-                        display:"flex",alignItems:"center",justifyContent:"space-between"
-                      }}>
-                        <span style={{fontSize:10,color:"var(--ui-text-faint)",fontWeight:700,letterSpacing:1}}>POTENCIAL UPSIDE</span>
-                        <span style={{fontSize:14,fontWeight:800,color:"var(--ui-success)",fontFamily:"'JetBrains Mono',monospace"}}>+{o.potencial_upside}%</span>
                       </div>
                     )}
                   </Card>
@@ -5496,14 +5474,14 @@ CRITÉRIOS FUNDAMENTALISTAS — busque e retorne TODOS os indicadores possíveis
 - AÇÕES: ROE (preferir ≥15%), Dívida Líquida/EBITDA (preferir ≤3), Margem Líquida (preferir ≥5%), DY, P/L, P/VP
 - FIIs: DY (preferir ≥7%), P/VP (preferir 0.7-1.15), vacância, liquidez diária
 
-Liste ativos que ATENDEM aos critérios objetivos. O campo "alocacao" é apenas um peso ilustrativo para uma SIMULAÇÃO/calculadora de quantas cotas caberiam no valor — NÃO é indicação de alocação nem conselho de compra.
+Liste ativos que ATENDEM aos critérios objetivos, para o usuário ESTUDAR. NÃO atribua peso de alocação, percentual da carteira nem quantidade a comprar.
 
 Responda APENAS com JSON (sem markdown):
 {
   "diagnostico": "1-2 frases factuais e NEUTRAS sobre o mercado e a concentração/risco da carteira atual — apenas descreva os dados, SEM sugerir comprar, evitar ou alocar",
   "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"fato/risco descrito de forma neutra e factual, SEM instruir o usuário a comprar ou evitar aportes"}],
   "recomendacoes": [
-    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, factual, mencionando aderência aos critérios e relação com o perfil de risco — SEM dizer para comprar"}
+    {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","nova":${!temCarteira},"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, factual, mencionando aderência aos critérios e relação com o perfil de risco — SEM dizer para comprar"}
   ],
   "vender": ${temCarteira ? `[]` : "[]"},
   "aviso": "Conteúdo educacional e informativo. NÃO é recomendação de investimento. As decisões são suas."
@@ -5516,12 +5494,12 @@ INDICADORES por tipo de ativo (use seu conhecimento de mercado, retorne null se 
 OBS: Não retorne canal52 - o backend calcula com dados reais da B3.
 
 IMPORTANTE: O sistema enriquece os indicadores DEPOIS com dados oficiais (B3, CVM).
-Sua função é organizar a análise educacional: quais tickers atendem aos critérios, o peso ilustrativo da simulação e a justificativa factual. Os números
+Sua função é organizar a análise educacional: quais tickers atendem aos critérios e a justificativa factual. Os números
 exatos serão sobrescritos pelo backend. Se não tiver certeza de um indicador,
 retorne null - é mais seguro que inventar.
 
 Regras:
-- 3 a 5 ativos, o campo alocacao (peso ilustrativo da simulação) soma 100
+- 3 a 5 ativos (sem peso de alocação, percentual ou quantidade)
 - Se um indicador for desconhecido, retorne null (NÃO invente)
 - Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
 - No "diagnostico" e nas "descricao" dos alertas use linguagem DESCRITIVA e neutra (apenas relate os fatos). NÃO use frases prescritivas como "evite/evitamos aportes", "aloque", "reduza exposição", "foca em ativos X" — a interpretação é do usuário
@@ -5618,7 +5596,6 @@ Regras:
 
         return {
           ...enriquecido,
-          unidades: enriquecido.precoReal ? Math.floor(v * (r.alocacao/100) / enriquecido.precoReal) : null,
           // Avalia critérios fundamentalistas com dados (preferencialmente) reais
           avaliacaoCriterios: avaliarRecomendacao(enriquecido),
         };
@@ -6340,7 +6317,7 @@ Regras:
              (a key={tab} no pai remonta e reseta ao trocar de aba). */}
          <ErrorBoundary compact>
           {tab==="carteira" && <TabCarteira carteira={carteira} setCarteira={setCarteira} historico={historico} setHistorico={setHistorico} dados={dados} onSave={salvar} userId={userId} carteiraId={carteiraId} pedirConfirmacao={pedirConfirmacao} fundamentosCarteira={fundamentosCarteira}/>}
-          {tab==="analise" && <TabAnalise dados={dados} aporte={aporteNum()} perfil={perfil} loading={loading} fase={fase}/>}
+          {tab==="analise" && <TabAnalise dados={dados} perfil={perfil} loading={loading} fase={fase}/>}
           {tab==="ticker" && <TabTicker userId={userId} chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="comparador" && <TabComparador chamarIAComSearch={chamarIAComSearch}/>}
           {tab==="oportunidades" && <TabOportunidades chamarIAComSearch={chamarIAComSearch} universoTickers={universoTickers}/>}
