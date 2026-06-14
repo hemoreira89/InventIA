@@ -4049,18 +4049,15 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
 
   const resumo = useMemo(() => resumoCalendario(calendario), [calendario]);
 
-  // Escala de cor proporcional ao valor (para o heatmap)
+  // Máximo para dimensionar a barra de "tamanho do mês" (não é mais heatmap de fundo).
   const maxProj = Math.max(...calendario.map(m => m.projetado), 1);
 
-  const corMes = (mes) => {
-    if (!mes.projetado && !mes.real) return "var(--ui-bg-secondary)";
-    const intensidade = mes.projetado / maxProj;
-    return `rgba(0,229,160,${0.08 + intensidade * 0.35})`;
-  };
+  // Fundo neutro (padrão dos cards do site); o mês atual ganha um leve realce de acento.
+  const corMes = (mes) => mes.isAtual ? "rgba(123,97,255,0.05)" : "var(--ui-bg-card)";
 
   const bordaMes = (mes) => {
-    if (mes.isAtual) return "2px solid var(--ui-accent)";
-    if (mes.real != null && mes.real > 0) return "1px solid rgba(0,229,160,0.4)";
+    if (mes.isAtual) return "1.5px solid var(--ui-accent)";
+    if (mes.real != null && mes.real > 0) return "1px solid rgba(0,229,160,0.35)";
     return "1px solid var(--ui-border)";
   };
 
@@ -4116,10 +4113,10 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
             {v === "calendario" ? "📅 Calendário" : "📋 Por ativo"}
           </button>
         ))}
-        <div style={{marginLeft:"auto",fontSize:11,color:"var(--ui-text-disabled)",display:"flex",alignItems:"center",gap:8}}>
-          <span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"rgba(0,229,160,0.35)"}}/>Projetado
-          <span style={{display:"inline-block",width:10,height:10,borderRadius:2,border:"2px solid var(--ui-accent)"}}/>Mês atual
-          {proventosHist.length > 0 && <><span style={{display:"inline-block",width:10,height:10,borderRadius:2,border:"1px solid rgba(0,229,160,0.4)",background:"rgba(0,229,160,0.08)"}}/>Real registrado</>}
+        <div style={{marginLeft:"auto",fontSize:11,color:"var(--ui-text-muted)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{display:"inline-block",width:11,height:11,borderRadius:3,border:"1.5px solid var(--ui-accent)"}}/>Mês atual</span>
+          {proventosHist.length > 0 && <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{display:"inline-block",width:11,height:11,borderRadius:3,background:"var(--ui-success)"}}/>Recebido</span>}
+          <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{display:"inline-block",width:14,height:4,borderRadius:2,background:"var(--ui-success)"}}/>Tamanho do mês</span>
         </div>
       </div>
 
@@ -4130,9 +4127,10 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
               background: corMes(m),
               border: bordaMes(m),
               borderRadius:10,padding:"14px",
+              boxShadow:"var(--ui-shadow-sm)",
               position:"relative",
-              opacity: !m.isFuturo && !m.isAtual ? 0.75 : 1,
-              transition:"transform .15s ease",cursor:"default"
+              opacity: !m.isFuturo && !m.isAtual ? 0.6 : 1,
+              transition:"transform .15s ease, box-shadow .15s ease",cursor:"default"
             }}
               onMouseEnter={e => e.currentTarget.style.transform="translateY(-2px)"}
               onMouseLeave={e => e.currentTarget.style.transform="translateY(0)"}
@@ -4166,7 +4164,7 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
                 </div>
               ) : (
                 <div>
-                  <div style={{fontSize:18,fontWeight:900,color:m.projetado > 0 ? "var(--ui-success)" : "var(--ui-text-disabled)",fontFamily:"'JetBrains Mono',monospace"}}>
+                  <div style={{fontSize:18,fontWeight:900,color:m.projetado > 0 ? "var(--ui-text)" : "var(--ui-text-disabled)",fontFamily:"'JetBrains Mono',monospace"}}>
                     {m.projetado > 0 ? fmtBRL(m.projetado) : "—"}
                   </div>
                   <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:2}}>estimado</div>
@@ -4282,19 +4280,19 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
       {/* Gráfico de barras dos 12 meses */}
       <Card>
         <STitle>DISTRIBUIÇÃO MENSAL DE PROVENTOS</STitle>
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={210}>
           <BarChart data={calendario.map(m => ({
             name: m.mesAno,
             Projetado: m.projetado,
             Real: m.real || 0,
-          }))} margin={{left:0,right:0,top:5,bottom:5}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
-            <XAxis dataKey="name" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
-            <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>v>0?(v>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${Math.round(v)}`):""} width={48}/>
-            <Tooltip formatter={(v,name)=>[fmtBRL(v),name]} labelFormatter={l=>`${l}`}/>
-            <Legend iconSize={8} wrapperStyle={{fontSize:10}}/>
-            <Bar dataKey="Projetado" fill="rgba(0,229,160,0.6)" radius={[3,3,0,0]}/>
-            {proventosHist.length > 0 && <Bar dataKey="Real" fill="var(--ui-success)" radius={[3,3,0,0]}/>}
+          }))} margin={{left:0,right:6,top:8,bottom:5}} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-border-soft)" vertical={false}/>
+            <XAxis dataKey="name" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} interval={0}/>
+            <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>v>0?(v>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${Math.round(v)}`):""} width={50}/>
+            <Tooltip cursor={{fill:"var(--ui-bg-secondary)",opacity:0.4}} formatter={(v,name)=>[fmtBRL(v),name]} labelFormatter={l=>`${l}`}/>
+            <Legend iconType="circle" iconSize={9} wrapperStyle={{fontSize:11,paddingTop:8}}/>
+            <Bar dataKey="Projetado" fill="var(--ui-accent)" radius={[4,4,0,0]} maxBarSize={36}/>
+            {proventosHist.length > 0 && <Bar dataKey="Real" fill="var(--ui-success)" radius={[4,4,0,0]} maxBarSize={36}/>}
           </BarChart>
         </ResponsiveContainer>
       </Card>
