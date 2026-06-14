@@ -4,7 +4,7 @@
 import sharp from "sharp";
 
 const W = 1200, H = 630;
-const LOGO = "assets-src/logo-bull-master.png";
+const LOGO = "assets-src/cauril-shell.png";
 
 // Linha de "patrimônio" (área) em SVG — mesma vibe do mock da landing.
 // Mantém a curva baixa onde há texto (x<900) e só sobe na área direita vazia.
