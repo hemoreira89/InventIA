@@ -40,6 +40,7 @@ export const FAIXAS_INDICADORES = {
   roe: [-200, 200],       // %
   margemLiquida: [-500, 500], // % (holdings podem passar de 100% por equivalência)
   divEbitda: [-50, 50],
+  evEbitda: [0, 80],      // bancos/holdings estouram (EBITDA ~0) → acima de 80 é erro
 };
 
 /**

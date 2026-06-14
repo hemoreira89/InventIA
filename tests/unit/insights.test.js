@@ -33,6 +33,11 @@ describe("sanitizarIndicadores", () => {
     expect(sanitizarIndicadores({ pvp: 1 }).pvp).toBe(1);
   });
 
+  it("corta EV/EBITDA estourado de holding/banco (ITSA4 ~209)", () => {
+    expect(sanitizarIndicadores({ evEbitda: 209.4 }).evEbitda).toBeNull();
+    expect(sanitizarIndicadores({ evEbitda: 12 }).evEbitda).toBe(12);
+  });
+
   it("não quebra com entrada nula", () => {
     expect(sanitizarIndicadores(null)).toBeNull();
   });
