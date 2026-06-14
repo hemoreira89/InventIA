@@ -14,7 +14,7 @@ import {
   Building2, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Download, ExternalLink, Clock, Lightbulb,
   FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
-  MessageCircle
+  MessageCircle, LayoutList
 } from "lucide-react";
 import {
   carregarCarteiraPrincipal, listarCarteiras, criarCarteira,
@@ -4103,16 +4103,20 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
 
       {/* Toggle vista */}
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        {["calendario","tabela"].map(v => (
+        {["calendario","tabela"].map(v => {
+          const Icone = v === "calendario" ? Calendar : LayoutList;
+          return (
           <button key={v} onClick={() => setVista(v)} style={{
             background: vista === v ? "rgba(123,97,255,0.15)" : "transparent",
             border: `1px solid ${vista === v ? "rgba(123,97,255,0.4)" : "var(--ui-border)"}`,
             borderRadius:8,padding:"6px 14px",cursor:"pointer",fontSize:12,fontWeight:600,
-            color: vista === v ? "var(--ui-accent)" : "var(--ui-text-muted)",transition:"all .15s ease"
+            color: vista === v ? "var(--ui-accent)" : "var(--ui-text-muted)",transition:"all .15s ease",
+            display:"inline-flex",alignItems:"center",gap:6
           }}>
-            {v === "calendario" ? "📅 Calendário" : "📋 Por ativo"}
+            <Icone size={13} strokeWidth={2.2}/>{v === "calendario" ? "Calendário" : "Por ativo"}
           </button>
-        ))}
+          );
+        })}
         <div style={{marginLeft:"auto",fontSize:11,color:"var(--ui-text-muted)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
           <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{display:"inline-block",width:11,height:11,borderRadius:3,border:"1.5px solid var(--ui-accent)"}}/>Mês atual</span>
           {proventosHist.length > 0 && <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{display:"inline-block",width:11,height:11,borderRadius:3,background:"var(--ui-success)"}}/>Recebido</span>}
