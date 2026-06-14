@@ -5500,8 +5500,8 @@ Liste ativos que ATENDEM aos critérios objetivos. O campo "alocacao" é apenas 
 
 Responda APENAS com JSON (sem markdown):
 {
-  "diagnostico": "1-2 frases factuais sobre o mercado E sobre o risco da carteira atual",
-  "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"..."}],
+  "diagnostico": "1-2 frases factuais e NEUTRAS sobre o mercado e a concentração/risco da carteira atual — apenas descreva os dados, SEM sugerir comprar, evitar ou alocar",
+  "alertas": [{"tipo":"perigo|atencao|ok","titulo":"...","descricao":"fato/risco descrito de forma neutra e factual, SEM instruir o usuário a comprar ou evitar aportes"}],
   "recomendacoes": [
     {"ticker":"PETR4","nome":"Petrobras","tipo":"Ação","setor":"Petróleo","nova":${!temCarteira},"alocacao":30,"precoReal":48.5,"precoEstimado":48.5,"dy":12.5,"pl":4.2,"pvp":1.2,"roe":18.5,"divEbitda":1.5,"margemLiquida":15.2,"lucrosConsistentes":true,"vacancia":null,"diversificado":null,"score":82,"justificativa":"breve, factual, mencionando aderência aos critérios e relação com o perfil de risco — SEM dizer para comprar"}
   ],
@@ -5524,6 +5524,7 @@ Regras:
 - 3 a 5 ativos, o campo alocacao (peso ilustrativo da simulação) soma 100
 - Se um indicador for desconhecido, retorne null (NÃO invente)
 - Para FIIs use lucrosConsistentes=null. Para Ações use vacancia=null e diversificado=null.
+- No "diagnostico" e nas "descricao" dos alertas use linguagem DESCRITIVA e neutra (apenas relate os fatos). NÃO use frases prescritivas como "evite/evitamos aportes", "aloque", "reduza exposição", "foca em ativos X" — a interpretação é do usuário
 - NÃO emita veredito de compra/venda
 - SOMENTE JSON, sem markdown`;
 
