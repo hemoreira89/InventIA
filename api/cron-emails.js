@@ -64,7 +64,10 @@ function botao(texto) {
 function wrap(corpo) {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#eef0f6;padding:32px 0">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e6e7ee;border-radius:16px;padding:32px 28px;color:#16161f">
-    <div style="font-size:18px;font-weight:800;margin-bottom:20px">Cau<span style="color:#7b61ff">ril</span></div>
+    <div style="margin-bottom:22px">
+      <img src="https://cauril.com.br/icons/icon-192.png" width="34" height="34" alt="Cauril" style="border-radius:8px;vertical-align:middle"/>
+      <span style="font-size:18px;font-weight:800;vertical-align:middle;margin-left:8px;color:#16161f">Cau<span style="color:#7b61ff">ril</span></span>
+    </div>
     ${corpo}
     <div style="margin-top:28px;padding-top:18px;border-top:1px solid #e6e7ee;font-size:11px;color:#8a8a9a;line-height:1.7">
       Conteúdo educacional — não é recomendação de investimento. Você recebe este email porque criou uma conta no Cauril.
@@ -86,7 +89,7 @@ const TEMPLATES = {
       <p style="font-size:15px;line-height:1.7;color:#4a4a5e">Há mais de 3 mil anos, muito antes do metal e do papel, as pessoas já guardavam valor numa concha: o <b style="color:#16161f">cauri</b>. Da África ao Brasil, ele foi uma das primeiras moedas do mundo — pequeno, resistente, aceito por todos. Cabia na palma da mão e atravessava continentes.</p>
       <p style="font-size:15px;line-height:1.7;color:#4a4a5e">É daí que vem o nome <b style="color:#16161f">Cauril</b>.</p>
       <p style="font-size:15px;line-height:1.7;color:#4a4a5e">No fundo, investir é a mesma ideia de sempre: pegar o que você tem hoje e transformar em segurança amanhã. O que mudou foi a ferramenta — agora você não precisa decifrar a B3 sozinho. Uma IA lê o mercado por você, organiza sua carteira e aponta o próximo passo.</p>
-      <p style="font-size:16px;line-height:1.8;color:#16161f;font-weight:700;font-style:italic;margin:22px 0 0">A sabedoria de milênios, com a tecnologia de hoje. A sua riqueza, com história. 🐚</p>
+      <p style="font-size:16px;line-height:1.8;color:#16161f;font-weight:700;font-style:italic;margin:22px 0 0">A sabedoria de milênios, com a tecnologia de hoje. A sua riqueza, com história.</p>
       <p style="margin:26px 0 0">${botao("Analisar minha carteira")}</p>`),
   }),
   valor: () => ({
