@@ -7,6 +7,7 @@ import {
   calcularMediasSetor,
   compararComSetor,
   sanitizarIndicadores,
+  classificarPorte,
   EXPLICACOES_INDICADORES,
 } from "../../src/lib/insights.js";
 
@@ -91,6 +92,21 @@ describe("calcularPilares", () => {
     const alto = calcularPilares({ ticker: "AAAA3", tipo: "Ação", divEbitda: 6, pvp: 1 });
     const baixo = calcularPilares({ ticker: "BBBB3", tipo: "Ação", divEbitda: 0, pvp: 1 });
     expect(baixo.solidez.nota).toBeGreaterThan(alto.solidez.nota);
+  });
+
+  it("calcula pilar de crescimento por CAGR de lucro e receita", () => {
+    const p = calcularPilares({ ticker: "WEGE3", tipo: "Ação", cagrLucro5y: 20, cagrReceita5y: 20 });
+    expect(p.crescimento.disponivel).toBe(true);
+    expect(p.crescimento.nota).toBe(100); // 50 + 20*2.5 = 100
+    const baixo = calcularPilares({ ticker: "XPTO3", tipo: "Ação", cagrLucro5y: -20 });
+    expect(baixo.crescimento.nota).toBe(0);
+    const neutro = calcularPilares({ ticker: "YPTO3", tipo: "Ação", cagrLucro5y: 0 });
+    expect(neutro.crescimento.nota).toBe(50);
+  });
+
+  it("crescimento não se aplica a FIIs", () => {
+    const p = calcularPilares({ ticker: "HGLG11", tipo: "FII", dy: 8, cagrLucro5y: 10 });
+    expect(p.crescimento.disponivel).toBe(false);
   });
 
   it("usa DY como centro para FIIs", () => {
@@ -191,6 +207,20 @@ describe("compararComSetor", () => {
   it("retorna vazio quando setor não tem médias", () => {
     expect(compararComSetor({ setorCVM: "Inexistente", pl: 8 }, medias)).toEqual([]);
     expect(compararComSetor(null, medias)).toEqual([]);
+  });
+});
+
+describe("classificarPorte", () => {
+  it("classifica por valor de mercado", () => {
+    expect(classificarPorte(1e9).label).toBe("Small cap");
+    expect(classificarPorte(5e9).label).toBe("Mid cap");
+    expect(classificarPorte(30e9).label).toBe("Large cap");
+    expect(classificarPorte(200e9).label).toBe("Mega cap");
+  });
+  it("retorna null para entrada inválida", () => {
+    expect(classificarPorte(0)).toBeNull();
+    expect(classificarPorte(null)).toBeNull();
+    expect(classificarPorte(-5)).toBeNull();
   });
 });
 

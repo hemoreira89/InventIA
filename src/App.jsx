@@ -62,7 +62,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
-import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
+import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, classificarPorte, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -695,6 +695,9 @@ function PilaresQualidade({ pilares }) {
         <BarraPilar rotulo="Rentabilidade" pilar={pilares.rentabilidade} ajuda="Quanto o ativo gera de retorno (ROE, margem; DY para FIIs)." />
         <BarraPilar rotulo="Proventos" pilar={pilares.proventos} ajuda="Geração de renda e consistência de lucros/dividendos." />
         <BarraPilar rotulo="Solidez" pilar={pilares.solidez} ajuda="Saúde financeira (endividamento, P/VP, vacância)." />
+        {pilares.crescimento?.disponivel && (
+          <BarraPilar rotulo="Crescimento" pilar={pilares.crescimento} ajuda="Trajetória de lucro e receita nos últimos 5 anos (CAGR)." />
+        )}
       </div>
     </div>
   );
@@ -751,6 +754,56 @@ function ComparacaoSetor({ comparacao, setor }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Pill de porte da empresa (Small/Mid/Large/Mega cap) a partir do market cap.
+function PortePill({ marketCap }) {
+  const porte = classificarPorte(marketCap);
+  if (!porte) return null;
+  const bi = porte.valor / 1e9;
+  return (
+    <span title={`${EXPLICACOES_INDICADORES.marketCap} ≈ R$ ${bi >= 1 ? bi.toFixed(1)+" bi" : (porte.valor/1e6).toFixed(0)+" mi"}`}
+      style={{fontSize:9,fontWeight:700,letterSpacing:0.3,padding:"1px 6px",borderRadius:4,background:"var(--ui-bg-tertiary)",color:"var(--ui-text-muted)",cursor:"help"}}>
+      {porte.label}
+    </span>
+  );
+}
+
+// Badges extras de qualidade/crescimento: ROIC, EV/EBITDA e CAGR (5 anos).
+function BadgesExtras({ rec }) {
+  const roic = Number(rec.roic);
+  const ev = Number(rec.evEbitda);
+  const cagrL = Number(rec.cagrLucro5y);
+  const cagrR = Number(rec.cagrReceita5y);
+  const temAlgum = [rec.roic, rec.evEbitda, rec.cagrLucro5y, rec.cagrReceita5y].some(v => v != null && !isNaN(Number(v)));
+  if (!temAlgum) return null;
+  const corCagr = v => v >= 0 ? "var(--ui-success)" : "var(--ui-danger)";
+  const bgCagr = v => v >= 0 ? "rgba(0,229,160,0.12)" : "rgba(255,77,109,0.12)";
+  return (
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+      {rec.roic != null && !isNaN(roic) && <span title={EXPLICACOES_INDICADORES.roic} style={{fontSize:11,background:"rgba(0,229,160,0.12)",color:"var(--ui-success)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>ROIC ~{fmt(roic,1)}%</span>}
+      {rec.evEbitda != null && !isNaN(ev) && <span title={EXPLICACOES_INDICADORES.evEbitda} style={{fontSize:11,background:"rgba(123,97,255,0.12)",color:"var(--ui-accent)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>EV/EBITDA ~{fmt(ev,1)}</span>}
+      {rec.cagrLucro5y != null && !isNaN(cagrL) && <span title={EXPLICACOES_INDICADORES.cagrLucro5y} style={{fontSize:11,background:bgCagr(cagrL),color:corCagr(cagrL),borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>Lucro 5a {cagrL>=0?"+":""}{fmt(cagrL,0)}%/a</span>}
+      {rec.cagrReceita5y != null && !isNaN(cagrR) && <span title={EXPLICACOES_INDICADORES.cagrReceita5y} style={{fontSize:11,background:bgCagr(cagrR),color:corCagr(cagrR),borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>Receita 5a {cagrR>=0?"+":""}{fmt(cagrR,0)}%/a</span>}
+    </div>
+  );
+}
+
+// Linha de contexto de FII: gestão, cotistas, NAV (quando disponíveis).
+function ContextoFII({ rec }) {
+  const ehFII = rec.tipo === "FII" || /11$/.test(rec.ticker || "");
+  if (!ehFII) return null;
+  const partes = [];
+  if (rec.gestao) partes.push(`Gestão ${String(rec.gestao).toLowerCase()}`);
+  if (rec.cotistas > 0) partes.push(`${rec.cotistas >= 1000 ? Math.round(rec.cotistas/1000)+"k" : rec.cotistas} cotistas`);
+  if (rec.nav > 0) partes.push(`NAV ${rec.nav >= 1e9 ? "R$ "+(rec.nav/1e9).toFixed(1)+" bi" : "R$ "+(rec.nav/1e6).toFixed(0)+" mi"}`);
+  if (partes.length === 0) return null;
+  return (
+    <div title={`${EXPLICACOES_INDICADORES.nav} ${EXPLICACOES_INDICADORES.cotistas}`}
+      style={{marginTop:8,fontSize:10,color:"var(--ui-text-faint)",fontWeight:600,cursor:"help"}}>
+      {partes.join(" · ")}
     </div>
   );
 }
@@ -2187,7 +2240,10 @@ function TabAnalise({ dados, loading, fase }) {
                     <span style={{fontWeight:800,fontSize:15,color:"var(--ui-text)"}}>{r.ticker}</span>
                     {r.nova && <span style={{fontSize:9,background:"rgba(0,229,160,0.09)",color:"var(--ui-success)",border:"1px solid rgba(0,229,160,0.2)",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}}>NOVO</span>}
                   </div>
-                  <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>{r.tipo || "Ativo"} · {r.setor}</div>
+                  <div style={{fontSize:11,color:"var(--ui-text-faint)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span>{r.tipo || "Ativo"} · {r.setor}</span>
+                    <PortePill marketCap={r.marketCap}/>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2202,7 +2258,13 @@ function TabAnalise({ dados, loading, fase }) {
               {r.canal52 != null && <span title={EXPLICACOES_INDICADORES.canal52} style={{fontSize:11,background:r.canal52<=30?"rgba(0,229,160,0.14)":r.canal52<=70?"rgba(255,214,10,0.14)":"rgba(255,77,109,0.14)",color:r.canal52<=30?"var(--ui-success)":r.canal52<=70?"var(--ui-warning)":"var(--ui-danger)",borderRadius:10,padding:"3px 8px",fontWeight:600,cursor:"help"}}>Canal {r.canal52}%</span>}
             </div>
 
-            <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px"}}>{r.justificativa}</div>
+            {/* Badges extras: ROIC, EV/EBITDA, CAGR de lucro/receita */}
+            <BadgesExtras rec={r}/>
+
+            {/* Contexto do FII (gestão, cotistas, NAV) */}
+            <ContextoFII rec={r}/>
+
+            <div style={{fontSize:12,color:"var(--ui-text-muted)",lineHeight:1.65,background:"var(--ui-bg-input)",borderRadius:9,padding:"10px 12px",marginTop:10}}>{r.justificativa}</div>
 
             {/* Pilares de qualidade (score quebrado em 3 dimensões) */}
             <PilaresQualidade pilares={pilares}/>
@@ -4901,6 +4963,14 @@ function TabOportunidades({ chamarIAComSearch }) {
           lpa: fund?.lpa ?? null,
           vpa: fund?.vpa ?? null,
           precoReal: cot?.preco ?? cat.preco ?? null,
+          // Qualidade/crescimento/porte/contexto FII
+          roic: fund?.roic ?? null,
+          evEbitda: fund?.evEbitda ?? null,
+          cagrLucro5y: fund?.cagrLucro5y ?? null,
+          cagrReceita5y: fund?.cagrReceita5y ?? null,
+          marketCap: fund?.marketCap ?? null,
+          nav: fund?.nav ?? null,
+          segmento: fund?.segmento ?? null,
           // Volume: usado pra desempate em dedup ON/PN (mais líquido vence)
           volume: cat.volume ?? 0,
           score,
@@ -5144,7 +5214,10 @@ Responda APENAS este JSON (sem markdown):
                       }}>#{i+1}</div>
                       <div>
                         <div style={{fontWeight:800,color:"var(--ui-text)",fontSize:16}}>{o.ticker}</div>
-                        <div style={{fontSize:10,color:"var(--ui-text-faint)"}}>{o.setor}</div>
+                        <div style={{fontSize:10,color:"var(--ui-text-faint)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                          <span>{o.setor}</span>
+                          <PortePill marketCap={o.marketCap}/>
+                        </div>
                       </div>
                     </div>
 
@@ -5173,6 +5246,8 @@ Responda APENAS este JSON (sem markdown):
                     </div>
 
                     {/* Insights educacionais */}
+                    <BadgesExtras rec={o}/>
+                    <ContextoFII rec={o}/>
                     <PilaresQualidade pilares={o.pilares}/>
                     <ComparacaoSetor comparacao={o.comparacaoSetor} setor={o.setorCVM}/>
                     <ValuationEducacional valuation={o.valuation}/>
@@ -5749,11 +5824,20 @@ Regras:
 
           // Marca origem para debug/UI
           fonteDados: fund ? "bolsai+brapi" : (cot ? "brapi" : "ia"),
-          // Bônus disponíveis (não usados nos critérios atuais, mas úteis para futuras features)
+          // Qualidade/crescimento/porte (ações) — alimentam badges e pilar de crescimento
           ...(fund && !ehFII ? {
             roic: fund.roic,
             cagrLucro5y: fund.cagrLucro5y,
+            cagrReceita5y: fund.cagrReceita5y,
             evEbitda: fund.evEbitda,
+            marketCap: fund.marketCap,
+          } : {}),
+          // Contexto (FIIs) — gestão, cotistas, NAV, segmento
+          ...(fund && ehFII ? {
+            nav: fund.nav,
+            segmento: fund.segmento,
+            gestao: fund.gestao,
+            cotistas: fund.cotistas,
           } : {}),
         };
 

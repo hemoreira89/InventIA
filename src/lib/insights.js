@@ -16,6 +16,13 @@ export const EXPLICACOES_INDICADORES = {
   roe: "ROE (Retorno sobre Patrimônio): lucro gerado para cada real investido pelos sócios. Mede a eficiência da empresa.",
   margemLiquida: "Margem Líquida: percentual da receita que sobra como lucro depois de todas as despesas e impostos.",
   divEbitda: "Dívida Líquida/EBITDA: quantos anos de geração de caixa seriam necessários para quitar a dívida. Menor é mais saudável.",
+  roic: "ROIC (Retorno sobre Capital Investido): eficiência da empresa em gerar retorno sobre todo o capital (próprio + dívida). Complementa o ROE.",
+  evEbitda: "EV/EBITDA: valor da empresa (incluindo dívida) sobre sua geração de caixa operacional. Múltiplo de valuation; menor costuma indicar mais barato.",
+  cagrLucro5y: "Crescimento do lucro (CAGR 5 anos): taxa média anual de crescimento do lucro nos últimos 5 anos.",
+  cagrReceita5y: "Crescimento da receita (CAGR 5 anos): taxa média anual de crescimento da receita nos últimos 5 anos.",
+  marketCap: "Valor de mercado (market cap): preço da ação × número de ações. Indica o porte da empresa.",
+  nav: "NAV / Patrimônio: valor patrimonial líquido do fundo imobiliário.",
+  cotistas: "Cotistas: número de investidores no fundo. Mais cotistas costuma indicar maior liquidez e pulverização.",
   score: "Score: nota interna de 0 a 100 que resume a aderência do ativo aos critérios fundamentalistas objetivos. Não é recomendação.",
   canal52: "Canal de 52 semanas: posição do preço atual entre a mínima (0%) e a máxima (100%) do último ano.",
   vacancia: "Vacância: percentual de área/contratos vagos de um FII. Menor significa mais imóveis gerando renda.",
@@ -112,7 +119,9 @@ export function calcularPilares(rec) {
       pvp != null ? { nota: clamp100(100 - Math.abs(pvp - 1) * 120), label: `P/VP ${pvp.toFixed(2)}` } : null,
       vac != null ? { nota: clamp100(100 - (vac / 20) * 100), label: `Vacância ${vac.toFixed(1)}%` } : null,
     ]);
-    return { tipo: "FII", rentabilidade, proventos, solidez };
+    // FIIs não têm CAGR de lucro/receita — pilar de crescimento não se aplica.
+    const crescimento = { disponivel: false, nota: null, estrelas: 0, base: [] };
+    return { tipo: "FII", rentabilidade, proventos, solidez, crescimento };
   }
 
   // Ações
@@ -136,7 +145,31 @@ export function calcularPilares(rec) {
     div != null ? { nota: div <= 0 ? 100 : clamp100(100 - (div / 6) * 100), label: `Dív/EBITDA ${div.toFixed(1)}` } : null,
     pvp != null ? { nota: clamp100(100 - Math.max(0, pvp - 1.5) * 33), label: `P/VP ${pvp.toFixed(2)}` } : null,
   ]);
-  return { tipo: "Ação", rentabilidade, proventos, solidez };
+  // Crescimento: CAGR de lucro e receita (5 anos). Mapeia -20%→0, 0%→50, +20%→100.
+  const cagrL = num(rec.cagrLucro5y);
+  const cagrR = num(rec.cagrReceita5y);
+  const crescimento = montar([
+    cagrL != null ? { nota: clamp100(50 + cagrL * 2.5), label: `Lucro ${cagrL >= 0 ? "+" : ""}${cagrL.toFixed(0)}%/a` } : null,
+    cagrR != null ? { nota: clamp100(50 + cagrR * 2.5), label: `Receita ${cagrR >= 0 ? "+" : ""}${cagrR.toFixed(0)}%/a` } : null,
+  ]);
+  return { tipo: "Ação", rentabilidade, proventos, solidez, crescimento };
+}
+
+/**
+ * Classifica o porte da empresa pelo valor de mercado (market cap).
+ * Faixas comuns no mercado brasileiro.
+ * @param {number} marketCap - em reais
+ * @returns {{ label, valor } | null}
+ */
+export function classificarPorte(marketCap) {
+  const mc = num(marketCap);
+  if (mc == null || mc <= 0) return null;
+  let label;
+  if (mc < 2e9) label = "Small cap";
+  else if (mc < 10e9) label = "Mid cap";
+  else if (mc < 50e9) label = "Large cap";
+  else label = "Mega cap";
+  return { label, valor: mc };
 }
 
 /**
