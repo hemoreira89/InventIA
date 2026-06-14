@@ -2398,11 +2398,18 @@ function TabTicker({ chamarIAComSearch }) {
       setStep(1);
       setFase("Buscando dados B3 e fundamentos CVM...");
 
-      const [cotacao, fundamentos, historico] = await Promise.all([
+      const [cotacao, fundamentos, historico, cached] = await Promise.all([
         buscarCotacao(t).catch(() => null),
         buscarFundamento(t).catch(() => null),
         buscarHistorico(t, "1mo").catch(() => null),
+        // Cache do screening tem DY de ações (cron via /dividends); a bolsai runtime não.
+        buscarFundamentosCached([t]).then(m => m[t] || null).catch(() => null),
       ]);
+
+      // DY de ação: bolsai runtime não retorna; usa o cache do screening como fonte.
+      if (fundamentos && fundamentos.dy == null && cached?.dy != null) {
+        fundamentos.dy = cached.dy;
+      }
 
       // Se nenhuma API achou o ticker, aborta antes de gastar tempo da IA
       if (!cotacao && !fundamentos) {
@@ -2509,7 +2516,7 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
         variacaoDia: cotacao?.variacaoPct,
         // sanitizarIndicadores corta valores impossíveis (ex.: margem > 100%, DY absurdo)
         indicadores: sanitizarIndicadores({
-          dy: ehFII ? fundamentos?.dy : null, // Ações só têm DY se vier da brapi
+          dy: fundamentos?.dy ?? null, // ações: DY vem do cache do screening (/dividends)
           pl: fundamentos?.pl,
           pvp: fundamentos?.pvp,
           roe: ehFII ? null : fundamentos?.roe,
@@ -2790,9 +2797,12 @@ function TabComparador({ chamarIAComSearch }) {
       // ── PASSO 1: dados quantitativos via APIs (paralelo) ──
       setFase(`Buscando dados de ${ts.length} ativos (B3/CVM)...`);
 
-      const [cotacoes, fundamentos] = await Promise.all([
+      const [cotacoes, fundamentos, cached] = await Promise.all([
         buscarCotacoes(ts).catch(e => { console.warn("[comparador] cotações falhou:", e?.message); return {}; }),
         buscarFundamentos(ts).catch(e => { console.warn("[comparador] fundamentos falhou:", e?.message); return {}; }),
+        // Cache do screening tem DY de ações (cron via /dividends), que a bolsai
+        // runtime não retorna — usado como fonte do DY para ações.
+        buscarFundamentosCached(ts).catch(e => { console.warn("[comparador] cache falhou:", e?.message); return {}; }),
       ]);
 
       // Verifica se conseguiu pelo menos algum dado
@@ -2805,6 +2815,7 @@ function TabComparador({ chamarIAComSearch }) {
       const ativosReais = ts.map(t => {
         const cot = cotacoes[t];
         const fund = fundamentos[t];
+        const cac = cached[t];
         const ehFII = fund?.tipo === "FII" || /11$/.test(t);
         const ativo = {
           ticker: t,
@@ -2816,11 +2827,13 @@ function TabComparador({ chamarIAComSearch }) {
           canal52: cot?.canal52 != null ? Math.round(cot.canal52) : null,
           // Fundamentos (depende do tipo)
           ...(ehFII ? {
-            dy: fund?.dy ?? null,
-            pvp: fund?.pvp ?? null,
+            dy: fund?.dy ?? cac?.dy ?? null,
+            pvp: fund?.pvp ?? cac?.pvp ?? null,
             pl: null,
             roe: null,
           } : {
+            // bolsai runtime não dá DY de ação; usa o cache do screening (/dividends)
+            dy: fund?.dy ?? cac?.dy ?? null,
             pl: fund?.pl ?? null,
             pvp: fund?.pvp ?? null,
             roe: fund?.roe ?? null,
