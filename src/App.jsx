@@ -2502,7 +2502,8 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
         preco: cotacao?.preco,
         fontePreco: "brapi.dev (B3 oficial)",
         variacaoDia: cotacao?.variacaoPct,
-        indicadores: {
+        // sanitizarIndicadores corta valores impossíveis (ex.: margem > 100%, DY absurdo)
+        indicadores: sanitizarIndicadores({
           dy: ehFII ? fundamentos?.dy : null, // Ações só têm DY se vier da brapi
           pl: fundamentos?.pl,
           pvp: fundamentos?.pvp,
@@ -2515,7 +2516,7 @@ NÃO emita veredito de compra/venda, NÃO indique preço-alvo e NÃO diga que é
           min52: cotacao?.min52,
           max52: cotacao?.max52,
           canal52: cotacao?.canal52 != null ? Math.round(cotacao.canal52) : null,
-        },
+        }),
         valuation,
         segurancaDividendos,
         // Sparkline com últimos 30 dias
@@ -2823,9 +2824,9 @@ function TabComparador({ chamarIAComSearch }) {
             divEbitda: fund?.divEbitda ?? null,
           }),
         };
-        // Bancos/holdings: remove Dív/EBITDA, ROIC (sem EBITDA convencional) para a
-        // IA não citá-los como vantagem/desvantagem enganosa na comparação.
-        return suprimirMetricasNaoAplicaveis(ativo);
+        // Sanea valores impossíveis (ex.: margem > 100%) e remove Dív/EBITDA, ROIC
+        // de bancos/holdings para a IA não citá-los como vantagem/desvantagem enganosa.
+        return suprimirMetricasNaoAplicaveis(sanitizarIndicadores(ativo));
       });
 
       // ── PASSO 2: IA só para análise comparativa qualitativa ──

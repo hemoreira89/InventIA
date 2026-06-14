@@ -62,6 +62,12 @@ describe("sanitizarIndicadores", () => {
     expect(sanitizarIndicadores({ evEbitda: 12 }).evEbitda).toBe(12);
   });
 
+  it("corta margem líquida acima de 100% (artefato de holding, ex.: ITSA4 203,9%)", () => {
+    expect(sanitizarIndicadores({ margemLiquida: 203.9 }).margemLiquida).toBeNull();
+    expect(sanitizarIndicadores({ margemLiquida: 35 }).margemLiquida).toBe(35);
+    expect(sanitizarIndicadores({ margemLiquida: -40 }).margemLiquida).toBe(-40);
+  });
+
   it("não quebra com entrada nula", () => {
     expect(sanitizarIndicadores(null)).toBeNull();
   });

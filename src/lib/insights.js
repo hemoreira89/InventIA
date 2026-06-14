@@ -38,7 +38,7 @@ export const FAIXAS_INDICADORES = {
   pl: [-1000, 1000],      // P/L pode ser negativo (prejuízo); só corta absurdos
   pvp: [0.01, 50],        // P/VP é estritamente positivo; 0 = dado ausente/erro
   roe: [-200, 200],       // %
-  margemLiquida: [-500, 500], // % (holdings podem passar de 100% por equivalência)
+  margemLiquida: [-300, 100], // % — acima de 100% é lucro não-operacional (ex.: equivalência em holdings), não margem real
   divEbitda: [-50, 50],
   evEbitda: [0, 80],      // bancos/holdings estouram (EBITDA ~0) → acima de 80 é erro
 };
