@@ -4290,7 +4290,7 @@ function TabCalendarioProventos({ userId, carteira, cotacoesGlobais, fundamentos
           }))} margin={{left:0,right:0,top:5,bottom:5}}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--ui-bg-secondary)"/>
             <XAxis dataKey="name" tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false}/>
-            <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>v>0?`R$${(v/1000).toFixed(0)}k`:""} width={44}/>
+            <YAxis tick={{fill:"var(--ui-text-muted)",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>v>0?(v>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${Math.round(v)}`):""} width={48}/>
             <Tooltip formatter={(v,name)=>[fmtBRL(v),name]} labelFormatter={l=>`${l}`}/>
             <Legend iconSize={8} wrapperStyle={{fontSize:10}}/>
             <Bar dataKey="Projetado" fill="rgba(0,229,160,0.6)" radius={[3,3,0,0]}/>
