@@ -3853,13 +3853,35 @@ function TabRebalanceamento({ carteira, setCarteira, dados, cotacoesGlobais, use
   const totalAlvo = rows.reduce((s,r) => s + r.pesoAlvo, 0);
   const alertaAlvo = Math.abs(totalAlvo - 100) > 1 && totalAlvo > 0;
 
+  // Distribuição do aporte (só compra): direciona o valor simulado para os ativos
+  // mais ABAIXO do alvo do usuário, proporcional ao quanto falta — sem vender nada.
+  // É um cálculo sobre a meta do próprio usuário, não recomendação da IA.
+  const aporteDistribuido = {};
+  if (aporteNum > 0) {
+    const faltaDe = r => Math.max(0, (r.valorAlvo ?? 0) - r.valorAtual); // shortfall p/ o alvo
+    const totalFalta = rows.reduce((s, r) => s + faltaDe(r), 0);
+    if (totalFalta > 0) {
+      const fator = Math.min(1, aporteNum / totalFalta);
+      const excedente = Math.max(0, aporteNum - totalFalta);
+      const totalAlvoPct = totalAlvo > 0 ? totalAlvo : 100;
+      rows.forEach(r => {
+        // até fechar o gap; se sobrar aporte, distribui o excedente pelo peso-alvo
+        aporteDistribuido[r.ticker] = faltaDe(r) * fator + excedente * (r.pesoAlvo / totalAlvoPct);
+      });
+    } else {
+      // já balanceado: distribui pelo peso-alvo
+      const totalAlvoPct = totalAlvo > 0 ? totalAlvo : 100;
+      rows.forEach(r => { aporteDistribuido[r.ticker] = aporteNum * (r.pesoAlvo / totalAlvoPct); });
+    }
+  }
+
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <Card>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:14}}>
           <div>
             <STitle><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={11}/>REBALANCEAMENTO DA CARTEIRA</span></STitle>
-            <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>Compare o peso atual de cada ativo com o peso-alvo definido na carteira.</div>
+            <div style={{fontSize:12,color:"var(--ui-text-muted)"}}>Compare o peso atual com o peso-alvo. Simule um aporte para ver como distribuí-lo rumo às suas metas (só compra).</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{fontSize:11,color:"var(--ui-text-faint)"}}>Simular aporte:</div>
@@ -3904,7 +3926,7 @@ function TabRebalanceamento({ carteira, setCarteira, dados, cotacoesGlobais, use
                 <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>PESO ALVO</th>
                 <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>DELTA</th>
                 <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>VALOR ATUAL</th>
-                {aporteNum > 0 && <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>AÇÃO</th>}
+                {aporteNum > 0 && <th style={{textAlign:"right",padding:"10px 8px",color:"var(--ui-text-faint)",fontWeight:700,fontSize:10,letterSpacing:1}}>APORTE SUGERIDO</th>}
               </tr>
             </thead>
             <tbody>
@@ -3944,21 +3966,18 @@ function TabRebalanceamento({ carteira, setCarteira, dados, cotacoesGlobais, use
                     </td>
                     {aporteNum > 0 && (
                       <td style={{padding:"10px 8px",textAlign:"right"}}>
-                        {r.pesoAlvo > 0 && r.valorAlvo != null ? (() => {
-                          const d = r.valorAlvo - r.valorAtual;
-                          const limiar = Math.max(50, r.valorAlvo * 0.02);
-                          const noAlvo = !(d > limiar || d < -limiar);
-                          const acao = d > limiar ? "Abaixo do alvo" : d < -limiar ? "Acima do alvo" : "No alvo";
-                          const cor = d > limiar ? "var(--ui-success)" : d < -limiar ? "var(--ui-warning)" : "var(--ui-text-muted)";
+                        {r.pesoAlvo > 0 ? (() => {
+                          const v = aporteDistribuido[r.ticker] || 0;
+                          // Abaixo de R$1 não há aporte relevante (ativo já no/acima do alvo)
+                          if (v < 1) {
+                            return <span style={{color:"var(--ui-text-disabled)"}} title="Já no ou acima do alvo — o aporte vai para os mais abaixo">Manter</span>;
+                          }
+                          const cotas = r.preco ? Math.floor(v / r.preco) : null;
                           return (
                           <div>
-                            <span style={{fontWeight:700,fontSize:12,color:cor}}>
-                              {acao}{!noAlvo ? " · " + fmtBRL(Math.abs(d)) : ""}
-                            </span>
-                            {r.preco && !noAlvo && (
-                              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>
-                                ≈ {Math.ceil(Math.abs(d)/r.preco)} cotas de diferença
-                              </div>
+                            <span style={{fontWeight:700,fontSize:12,color:"var(--ui-success)"}}>≈ {fmtBRL(v)}</span>
+                            {cotas != null && cotas >= 1 && (
+                              <div style={{fontSize:10,color:"var(--ui-text-faint)",marginTop:1}}>≈ {cotas} {cotas === 1 ? "cota" : "cotas"}</div>
                             )}
                           </div>
                           );
