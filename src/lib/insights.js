@@ -23,6 +23,33 @@ export const EXPLICACOES_INDICADORES = {
   precoTetoBazin: "Preço-teto de Bazin: dividendo anual ÷ yield mínimo (6%). Referência educacional de quanto pagar para ter o yield desejado — não é meta.",
 };
 
+// Faixas plausíveis por indicador. Valores fora disso são quase sempre erro
+// de fonte (ex.: bolsai já devolveu DY = -2071% para FIIs). Tratamos como
+// indisponível para não poluir os cards com dado claramente inválido.
+export const FAIXAS_INDICADORES = {
+  dy: [0, 40],            // % ao ano — acima de 40% é praticamente sempre erro
+  pl: [-1000, 1000],      // P/L pode ser negativo (prejuízo); só corta absurdos
+  pvp: [0, 50],
+  roe: [-200, 200],       // %
+  margemLiquida: [-500, 500], // % (holdings podem passar de 100% por equivalência)
+  divEbitda: [-50, 50],
+};
+
+/**
+ * Devolve uma cópia do ativo com os indicadores numéricos saneados: o que
+ * estiver fora da faixa plausível (ou não-numérico) vira null. Não inventa
+ * nada — só remove lixo de fonte para não distorcer pilares/critérios/setor.
+ */
+export function sanitizarIndicadores(rec) {
+  if (!rec) return rec;
+  const limpo = { ...rec };
+  for (const [chave, [min, max]] of Object.entries(FAIXAS_INDICADORES)) {
+    const v = num(limpo[chave]);
+    limpo[chave] = (v != null && v >= min && v <= max) ? v : null;
+  }
+  return limpo;
+}
+
 // Clampa um valor em [0, 100].
 function clamp100(n) {
   return Math.max(0, Math.min(100, n));

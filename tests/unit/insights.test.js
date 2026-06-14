@@ -6,8 +6,38 @@ import {
   valuationEducacional,
   calcularMediasSetor,
   compararComSetor,
+  sanitizarIndicadores,
   EXPLICACOES_INDICADORES,
 } from "../../src/lib/insights.js";
+
+describe("sanitizarIndicadores", () => {
+  it("zera DY absurdo (bug real bolsai: -2071%)", () => {
+    const r = sanitizarIndicadores({ ticker: "XPML11", dy: -2071.2, pvp: 1 });
+    expect(r.dy).toBeNull();
+    expect(r.pvp).toBe(1);
+  });
+
+  it("mantém valores plausíveis", () => {
+    const r = sanitizarIndicadores({ dy: 8, pl: 10, pvp: 1.2, roe: 18, margemLiquida: 20, divEbitda: 2 });
+    expect(r).toMatchObject({ dy: 8, pl: 10, pvp: 1.2, roe: 18, margemLiquida: 20, divEbitda: 2 });
+  });
+
+  it("preserva P/L negativo (prejuízo) mas corta absurdos", () => {
+    expect(sanitizarIndicadores({ pl: -5 }).pl).toBe(-5);
+    expect(sanitizarIndicadores({ pl: 99999 }).pl).toBeNull();
+  });
+
+  it("não quebra com entrada nula", () => {
+    expect(sanitizarIndicadores(null)).toBeNull();
+  });
+
+  it("não altera campos não-indicadores", () => {
+    const r = sanitizarIndicadores({ ticker: "ABCD3", nome: "Teste", dy: 200 });
+    expect(r.ticker).toBe("ABCD3");
+    expect(r.nome).toBe("Teste");
+    expect(r.dy).toBeNull();
+  });
+});
 
 describe("notaParaEstrelas", () => {
   it("converte nota 0-100 em 0..5", () => {

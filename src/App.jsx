@@ -62,7 +62,7 @@ import { buscarIbovHistorico, ibovNaData } from "./lib/ibov";
 import { filtrarCatalogo } from "./lib/catalogoScreening";
 import { analisarRisco, classificarHHI } from "./lib/risco";
 import { avaliarRecomendacao, classificarAderencia } from "./lib/criterios";
-import { calcularPilares, valuationEducacional, compararComSetor, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
+import { calcularPilares, valuationEducacional, compararComSetor, sanitizarIndicadores, EXPLICACOES_INDICADORES, notaParaEstrelas, corDaNota } from "./lib/insights";
 import { avaliarSegurancaDividendos } from "./lib/dividendos";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -5000,14 +5000,17 @@ Responda APENAS este JSON (sem markdown):
       }
 
       // Anexa tese qualitativa + insights educacionais nos resultados
-      const finais = ordenados.map(o => ({
-        ...o,
-        destaque: tesePorTicker[o.ticker]?.destaque || null,
-        risco_principal: tesePorTicker[o.ticker]?.risco_principal || null,
-        pilares: calcularPilares(o),
-        valuation: valuationEducacional(o),
-        comparacaoSetor: compararComSetor(o, mediasSetorOp),
-      }));
+      const finais = ordenados.map(o => {
+        const limpo = sanitizarIndicadores(o);
+        return {
+          ...limpo,
+          destaque: tesePorTicker[o.ticker]?.destaque || null,
+          risco_principal: tesePorTicker[o.ticker]?.risco_principal || null,
+          pilares: calcularPilares(limpo),
+          valuation: valuationEducacional(limpo),
+          comparacaoSetor: compararComSetor(limpo, mediasSetorOp),
+        };
+      });
 
       const reprovados = oportunidades.filter(o => o.temDados && !o.passaCriterio).length;
       const semDados = oportunidades.filter(o => !o.temDados).length;
@@ -5754,14 +5757,17 @@ Regras:
           } : {}),
         };
 
+        // Sanea indicadores claramente inválidos (ex.: DY -2071% de fonte) antes
+        // de calcular pilares/critérios/comparação, para não distorcer os cards.
+        const limpo = sanitizarIndicadores(enriquecido);
         return {
-          ...enriquecido,
+          ...limpo,
           // Avalia critérios fundamentalistas com dados (preferencialmente) reais
-          avaliacaoCriterios: avaliarRecomendacao(enriquecido),
+          avaliacaoCriterios: avaliarRecomendacao(limpo),
           // Insights educacionais (pilares + valuation + comparação setorial)
-          pilares: calcularPilares(enriquecido),
-          valuation: valuationEducacional(enriquecido),
-          comparacaoSetor: compararComSetor(enriquecido, mediasSetor),
+          pilares: calcularPilares(limpo),
+          valuation: valuationEducacional(limpo),
+          comparacaoSetor: compararComSetor(limpo, mediasSetor),
         };
       });
 
