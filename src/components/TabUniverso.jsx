@@ -64,7 +64,7 @@ export default function TabUniverso({ userId }) {
   }, [userId]);
 
   // Onboarding: usuário escolheu os setores → universo = ativos desses setores
-  const aplicarSetores = (tickers) => {
+  const aplicarSetores = ({ tickers }) => {
     const catalogoTickers = new Set(getAllTickers());
     setSelecionados(new Set(tickers.filter(t => catalogoTickers.has(t))));
     setCustomizados([]);

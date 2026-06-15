@@ -5465,8 +5465,12 @@ export default function App({ session, onLogout }) {
   const [historico, setHistorico] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
   const [aporte, setAporte] = useState("");
-  const [foco, setFoco] = useState("misto");
-  const [perfil, setPerfil] = useState("moderado");
+  const [foco, setFoco] = useState(() => {
+    try { return localStorage.getItem("cauril_foco") || "misto"; } catch { return "misto"; }
+  });
+  const [perfil, setPerfil] = useState(() => {
+    try { return localStorage.getItem("cauril_perfil") || "moderado"; } catch { return "moderado"; }
+  });
   const [loading, setLoading] = useState(false);
   const [fase, setFase] = useState("");
   const [dados, setDados] = useState(null);
@@ -5751,10 +5755,12 @@ export default function App({ session, onLogout }) {
     }).catch(() => {});
   }, [userId]);
 
-  // Onboarding obrigatório: usuário escolheu os setores → salva e libera o app
-  const confirmarUniverso = useCallback(async (tickers) => {
+  // Onboarding obrigatório: usuário escolheu objetivo, risco e setores → salva e libera
+  const confirmarUniverso = useCallback(async ({ tickers, foco: fc, perfil: pf }) => {
     const lista = tickers?.length > 0 ? tickers : getDefaultUniverso();
     setUniversoTickers(lista);
+    if (fc) { setFoco(fc); try { localStorage.setItem("cauril_foco", fc); } catch {} }
+    if (pf) { setPerfil(pf); try { localStorage.setItem("cauril_perfil", pf); } catch {} }
     setPrecisaUniverso(false);
     try { await salvarUniverso(userId, lista); } catch (e) { console.error(e); }
   }, [userId]);
@@ -6178,6 +6184,7 @@ Regras:
       {precisaUniverso && userId && (
         <UniversoOnboarding
           bloqueante
+          mostrarPerfil
           onConfirm={confirmarUniverso}
         />
       )}
