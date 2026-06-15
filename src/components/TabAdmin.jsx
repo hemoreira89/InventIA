@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Users, UserCheck, UserX, UserPlus, Crown, TrendingUp,
   DollarSign, Wallet, PlusCircle, Trash2, RefreshCw, AlertCircle, ShieldCheck,
-  Download, List
+  Download, List, Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   carregarAdminMetrics, listarPagamentos, registrarPagamento, excluirPagamento,
@@ -198,42 +198,7 @@ export default function TabAdmin() {
       </div>
 
       {/* Lista de usuários */}
-      <div style={cardBox}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <List size={16} color="var(--ui-info)" />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-text)" }}>Usuários ({usuarios.length})</span>
-        </div>
-        {usuarios.length === 0 ? (
-          <div style={{ fontSize: 12, color: "var(--ui-text-faint)" }}>Nenhum usuário.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ textAlign: "left", color: "var(--ui-text-disabled)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase" }}>
-                  <th style={th}>Nome</th>
-                  <th style={th}>E-mail</th>
-                  <th style={th}>Plano</th>
-                  <th style={th}>Idade</th>
-                  <th style={th}>Cadastro</th>
-                  <th style={th}>Último acesso</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((u, i) => (
-                  <tr key={u.email + i} style={{ borderTop: "1px solid var(--ui-border-soft)" }}>
-                    <td style={td}>{u.nome || "—"}</td>
-                    <td style={{ ...td, color: "var(--ui-text-muted)" }}>{u.email}</td>
-                    <td style={td}><PlanoBadge plano={u.plano} /></td>
-                    <td style={td}>{u.idade ?? "—"}</td>
-                    <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.created_at)}</td>
-                    <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.last_sign_in_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <UsuariosTabela usuarios={usuarios} />
 
       {/* Registrar pagamento */}
       <div style={cardBox}>
@@ -320,6 +285,125 @@ const btnPrim = { background: "var(--ui-accent)", border: "none", borderRadius: 
 const inp = { width: "100%", background: "var(--ui-bg-input)", border: "1px solid var(--ui-border)", borderRadius: 6, padding: "8px 10px", color: "var(--ui-text)", fontSize: 12 };
 const th = { padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" };
 const td = { padding: "8px 10px", color: "var(--ui-text-secondary)", whiteSpace: "nowrap" };
+
+// Vencimento por usuário: vitalício nunca; pagos pelo plano_expira_em; trial pelo trial_fim.
+function vencimentoInfo(u) {
+  if (u.plano === "vitalicio") return { txt: "nunca", cor: "var(--ui-text-faint)" };
+  const d = (u.plano === "mensal" || u.plano === "anual") ? u.plano_expira_em : u.trial_fim;
+  if (!d) return { txt: "—", cor: "var(--ui-text-faint)" };
+  const data = new Date(d);
+  const dias = Math.ceil((data - new Date()) / 86400000);
+  let cor = "var(--ui-text-secondary)";
+  if (dias < 0) cor = "var(--ui-danger)";
+  else if (dias <= 7) cor = "var(--ui-warning)";
+  const sufixo = dias < 0 ? " (vencido)" : dias === 0 ? " (hoje)" : dias <= 7 ? ` (${dias}d)` : "";
+  return { txt: data.toLocaleDateString("pt-BR") + sufixo, cor };
+}
+
+const USUARIOS_POR_PAGINA = 10;
+
+function UsuariosTabela({ usuarios }) {
+  const [busca, setBusca] = useState("");
+  const [planoFiltro, setPlanoFiltro] = useState("todos");
+  const [pagina, setPagina] = useState(0);
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return usuarios.filter((u) => {
+      if (planoFiltro !== "todos" && u.plano !== planoFiltro) return false;
+      if (!q) return true;
+      return (u.email || "").toLowerCase().includes(q) || (u.nome || "").toLowerCase().includes(q);
+    });
+  }, [usuarios, busca, planoFiltro]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / USUARIOS_POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas - 1);
+  const inicio = paginaAtual * USUARIOS_POR_PAGINA;
+  const visiveis = filtrados.slice(inicio, inicio + USUARIOS_POR_PAGINA);
+
+  const mudarFiltro = (fn) => { fn(); setPagina(0); };
+
+  return (
+    <div style={cardBox}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <List size={16} color="var(--ui-info)" />
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-text)" }}>Usuários ({filtrados.length})</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--ui-bg-input)", border: "1px solid var(--ui-border)", borderRadius: 8, padding: "6px 10px" }}>
+            <Search size={13} color="var(--ui-text-faint)" />
+            <input
+              value={busca}
+              onChange={(e) => mudarFiltro(() => setBusca(e.target.value))}
+              placeholder="Buscar nome ou e-mail..."
+              style={{ background: "transparent", border: "none", outline: "none", color: "var(--ui-text)", fontSize: 12, width: 180 }}
+            />
+          </div>
+          <select value={planoFiltro} onChange={(e) => mudarFiltro(() => setPlanoFiltro(e.target.value))} style={{ ...inp, width: "auto" }}>
+            <option value="todos">Todos os planos</option>
+            <option value="trial">Trial</option>
+            <option value="mensal">Mensal</option>
+            <option value="anual">Anual</option>
+            <option value="vitalicio">Vitalício</option>
+          </select>
+        </div>
+      </div>
+
+      {filtrados.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--ui-text-faint)", padding: "8px 0" }}>Nenhum usuário encontrado.</div>
+      ) : (
+        <>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--ui-text-disabled)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  <th style={th}>Nome</th>
+                  <th style={th}>E-mail</th>
+                  <th style={th}>Plano</th>
+                  <th style={th}>Vencimento</th>
+                  <th style={th}>Idade</th>
+                  <th style={th}>Cadastro</th>
+                  <th style={th}>Último acesso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map((u, i) => {
+                  const venc = vencimentoInfo(u);
+                  return (
+                    <tr key={u.email + i} style={{ borderTop: "1px solid var(--ui-border-soft)" }}>
+                      <td style={td}>{u.nome || "—"}</td>
+                      <td style={{ ...td, color: "var(--ui-text-muted)" }}>{u.email}</td>
+                      <td style={td}><PlanoBadge plano={u.plano} /></td>
+                      <td style={{ ...td, color: venc.cor, fontWeight: 600 }}>{venc.txt}</td>
+                      <td style={td}>{u.idade ?? "—"}</td>
+                      <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.created_at)}</td>
+                      <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.last_sign_in_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPaginas > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+              <span style={{ fontSize: 11, color: "var(--ui-text-faint)" }}>
+                Página {paginaAtual + 1} de {totalPaginas}
+              </span>
+              <button onClick={() => setPagina(Math.max(0, paginaAtual - 1))} disabled={paginaAtual === 0}
+                style={{ ...btnSec, opacity: paginaAtual === 0 ? 0.5 : 1, cursor: paginaAtual === 0 ? "not-allowed" : "pointer", padding: "6px 10px" }}>
+                <ChevronLeft size={14} />
+              </button>
+              <button onClick={() => setPagina(Math.min(totalPaginas - 1, paginaAtual + 1))} disabled={paginaAtual >= totalPaginas - 1}
+                style={{ ...btnSec, opacity: paginaAtual >= totalPaginas - 1 ? 0.5 : 1, cursor: paginaAtual >= totalPaginas - 1 ? "not-allowed" : "pointer", padding: "6px 10px" }}>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 const PLANO_COR = {
   trial: "var(--ui-info)", mensal: "var(--ui-success)", anual: "var(--ui-success)",
