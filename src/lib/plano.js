@@ -114,19 +114,37 @@ export async function carregarPerfilPlano(userId) {
 }
 
 /**
- * Inicia o checkout de um plano. Ordem de tentativa:
- *   1. Link estático configurado (VITE_CHECKOUT_URL_*), se houver.
- *   2. Mercado Pago (Checkout Pro) via /api/mp-criar-pagamento — auto-ativa o
- *      plano por webhook após o pagamento.
+ * Inicia o checkout de um plano. EXIGE conta logada — a compra precisa estar
+ * sempre atrelada a um usuário (senão o pagamento não casa com nenhuma conta).
+ * Lança Error("login_required") se não houver sessão.
+ *
+ * Ordem de tentativa:
+ *   1. Link estático configurado (VITE_CHECKOUT_URL_*) — atrela email/ref da conta.
+ *   2. Mercado Pago (Checkout Pro) via /api/mp-criar-pagamento — JWT obrigatório,
+ *      external_reference = "<userId>:<plano>"; auto-ativa por webhook.
  *   3. Fallback: contato por email (enquanto pagamento não está configurado).
  */
 export async function iniciarCheckout(plano, email) {
+  // Sessão é autoritativa: a compra só acontece com usuário cadastrado/logado.
+  let session = null;
+  try { ({ data: { session } } = await supabase.auth.getSession()); } catch (_) { /* sem sessão */ }
+  const conta = session?.user?.email || email || null;
+  const userId = session?.user?.id || null;
+  if (!conta) throw new Error("login_required");
+
+  // 1. Link estático: anexa email/ref da conta para reconciliar quem pagou.
   if (plano.checkoutUrl) {
-    window.open(plano.checkoutUrl, "_blank", "noopener");
+    let url = plano.checkoutUrl;
+    try {
+      const u = new URL(plano.checkoutUrl);
+      u.searchParams.set("email", conta);
+      if (userId) u.searchParams.set("ref", userId);
+      url = u.toString();
+    } catch (_) { /* URL malformada: abre como veio */ }
+    window.open(url, "_blank", "noopener");
     return;
   }
   try {
-    const { data: { session } } = await supabase.auth.getSession();
     const r = await fetch("/api/mp-criar-pagamento", {
       method: "POST",
       headers: {
@@ -145,7 +163,7 @@ export async function iniciarCheckout(plano, email) {
   // Fallback: email com o pedido pré-preenchido.
   const assunto = encodeURIComponent(`Assinatura ${BRAND.full} — plano ${plano.nome}`);
   const corpo = encodeURIComponent(
-    `Olá! Quero assinar o plano ${plano.nome} do ${BRAND.full}.\n\nMinha conta: ${email || "(informe o email da sua conta)"}`
+    `Olá! Quero assinar o plano ${plano.nome} do ${BRAND.full}.\n\nMinha conta: ${conta}`
   );
   window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
 }

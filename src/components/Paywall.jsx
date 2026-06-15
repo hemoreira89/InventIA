@@ -16,7 +16,15 @@ function fmtPreco(v) {
 
 function abrirCheckout(plano, email) {
   track("plan_clicked", { plano: plano.id });
-  iniciarCheckout(plano, email);
+  iniciarCheckout(plano, email).catch((err) => {
+    if (err?.message === "login_required") {
+      // Defensivo: o Paywall só aparece logado, mas se a sessão caiu, recarrega
+      // para o app reavaliar a autenticação (cai no Login/Landing).
+      window.location.reload();
+    } else {
+      console.error("[paywall] checkout:", err);
+    }
+  });
 }
 
 export default function Paywall({ email, status, onLogout, onClose }) {
