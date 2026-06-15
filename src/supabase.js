@@ -65,6 +65,12 @@ export async function carregarAdminMetrics() {
   return data;
 }
 
+export async function carregarAdminUsuarios(limite = 200) {
+  const { data, error } = await supabase.rpc('admin_usuarios', { p_limite: limite });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function listarPagamentos(limite = 100) {
   const { data, error } = await supabase
     .from('pagamentos')

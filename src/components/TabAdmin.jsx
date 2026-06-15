@@ -1,14 +1,41 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Users, UserCheck, UserX, UserPlus, Crown, TrendingUp,
-  DollarSign, Wallet, PlusCircle, Trash2, RefreshCw, AlertCircle, ShieldCheck
+  DollarSign, Wallet, PlusCircle, Trash2, RefreshCw, AlertCircle, ShieldCheck,
+  Download, List
 } from "lucide-react";
 import {
-  carregarAdminMetrics, listarPagamentos, registrarPagamento, excluirPagamento
+  carregarAdminMetrics, listarPagamentos, registrarPagamento, excluirPagamento,
+  carregarAdminUsuarios
 } from "../supabase";
 import { showToast } from "../App";
 
 const BRL = (v) => (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const dataBR = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
+
+// Exporta os pagamentos em CSV (separador ";" + BOM, amigável ao Excel BR).
+function exportarPagamentosCSV(pagamentos) {
+  const header = ["data", "email", "plano", "valor", "metodo", "referencia"];
+  const esc = (c) => `"${String(c ?? "").replace(/"/g, '""')}"`;
+  const linhas = pagamentos.map((p) => [
+    p.pago_em ? new Date(p.pago_em).toISOString().slice(0, 10) : "",
+    p.email || "",
+    p.plano || "",
+    String(p.valor ?? "").replace(".", ","),
+    p.metodo || "",
+    (p.referencia || "").replace(/[\r\n]+/g, " "),
+  ]);
+  const csv = [header, ...linhas].map((r) => r.map(esc).join(";")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pagamentos-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 const PLANO_LABEL = { trial: "Trial", mensal: "Mensal", anual: "Anual", vitalicio: "Vitalício", outro: "Outro" };
 const FAIXA_LABEL = { "<25": "< 25", "25-34": "25–34", "35-44": "35–44", "45-54": "45–54", "55+": "55+", nao_informado: "Não informado" };
@@ -16,6 +43,7 @@ const FAIXA_LABEL = { "<25": "< 25", "25-34": "25–34", "35-44": "35–44", "45
 export default function TabAdmin() {
   const [metrics, setMetrics] = useState(null);
   const [pagamentos, setPagamentos] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -25,8 +53,8 @@ export default function TabAdmin() {
   const carregar = useCallback(async () => {
     setLoading(true); setErro(null);
     try {
-      const [m, p] = await Promise.all([carregarAdminMetrics(), listarPagamentos()]);
-      setMetrics(m); setPagamentos(p);
+      const [m, p, us] = await Promise.all([carregarAdminMetrics(), listarPagamentos(), carregarAdminUsuarios()]);
+      setMetrics(m); setPagamentos(p); setUsuarios(us);
     } catch (e) {
       setErro(e.message || "Erro ao carregar métricas");
     } finally {
@@ -96,6 +124,12 @@ export default function TabAdmin() {
   const pctTeto = Math.min(100, (receitaMes / teto) * 100);
   const restante = Math.max(0, teto - receitaMes);
   const perto = pctTeto >= 80;
+  // Projeção: extrapola a receita do mês no ritmo atual até o fim do mês
+  const agora = new Date();
+  const diaHoje = agora.getDate();
+  const diasNoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
+  const projecaoMes = receitaMes > 0 ? (receitaMes / diaHoje) * diasNoMes : 0;
+  const projecaoFuraTeto = projecaoMes > teto;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -144,6 +178,12 @@ export default function TabAdmin() {
         <div style={{ marginTop: 10, fontSize: 12, color: "var(--ui-text-muted)" }}>
           Receita últimos 12 meses: <b style={{ color: "var(--ui-text)" }}>{BRL(m.receita_12m)}</b>
         </div>
+        {projecaoMes > 0 && (
+          <div style={{ marginTop: 6, fontSize: 12, color: projecaoFuraTeto ? "var(--ui-warning)" : "var(--ui-text-muted)" }}>
+            Projeção neste ritmo (dia {diaHoje}/{diasNoMes}): <b style={{ color: projecaoFuraTeto ? "var(--ui-warning)" : "var(--ui-text)" }}>{BRL(projecaoMes)}</b> até o fim do mês
+            {projecaoFuraTeto && " — no ritmo atual, o teto de R$ 5.000 será ultrapassado"}
+          </div>
+        )}
       </div>
 
       {/* Distribuições */}
@@ -155,6 +195,44 @@ export default function TabAdmin() {
           <LinhaKV k="Em teste (ativos)" v={m.trial_ativos} cor="var(--ui-info)" />
           <LinhaKV k="Trial expirado" v={m.trial_expirados} cor="var(--ui-text-muted)" />
         </div>
+      </div>
+
+      {/* Lista de usuários */}
+      <div style={cardBox}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <List size={16} color="var(--ui-info)" />
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-text)" }}>Usuários ({usuarios.length})</span>
+        </div>
+        {usuarios.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--ui-text-faint)" }}>Nenhum usuário.</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--ui-text-disabled)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  <th style={th}>Nome</th>
+                  <th style={th}>E-mail</th>
+                  <th style={th}>Plano</th>
+                  <th style={th}>Idade</th>
+                  <th style={th}>Cadastro</th>
+                  <th style={th}>Último acesso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuarios.map((u, i) => (
+                  <tr key={u.email + i} style={{ borderTop: "1px solid var(--ui-border-soft)" }}>
+                    <td style={td}>{u.nome || "—"}</td>
+                    <td style={{ ...td, color: "var(--ui-text-muted)" }}>{u.email}</td>
+                    <td style={td}><PlanoBadge plano={u.plano} /></td>
+                    <td style={td}>{u.idade ?? "—"}</td>
+                    <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.created_at)}</td>
+                    <td style={{ ...td, color: "var(--ui-text-faint)" }}>{dataBR(u.last_sign_in_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Registrar pagamento */}
@@ -206,6 +284,13 @@ export default function TabAdmin() {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <DollarSign size={16} color="var(--ui-success)" />
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-text)" }}>Pagamentos registrados ({pagamentos.length})</span>
+          <button
+            onClick={() => exportarPagamentosCSV(pagamentos)}
+            disabled={pagamentos.length === 0}
+            style={{ ...btnSec, marginLeft: "auto", opacity: pagamentos.length === 0 ? 0.5 : 1, cursor: pagamentos.length === 0 ? "not-allowed" : "pointer" }}
+          >
+            <Download size={13} /> Exportar CSV
+          </button>
         </div>
         {pagamentos.length === 0 ? (
           <div style={{ fontSize: 12, color: "var(--ui-text-faint)", padding: "8px 0" }}>Nenhum pagamento registrado ainda.</div>
@@ -233,6 +318,23 @@ const cardBox = { background: "var(--ui-bg-card)", border: "1px solid var(--ui-b
 const btnSec = { background: "var(--ui-bg-elevated)", border: "1px solid var(--ui-border)", borderRadius: 8, padding: "8px 12px", color: "var(--ui-text-secondary)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 };
 const btnPrim = { background: "var(--ui-accent)", border: "none", borderRadius: 8, padding: "10px 18px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 };
 const inp = { width: "100%", background: "var(--ui-bg-input)", border: "1px solid var(--ui-border)", borderRadius: 6, padding: "8px 10px", color: "var(--ui-text)", fontSize: 12 };
+const th = { padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" };
+const td = { padding: "8px 10px", color: "var(--ui-text-secondary)", whiteSpace: "nowrap" };
+
+const PLANO_COR = {
+  trial: "var(--ui-info)", mensal: "var(--ui-success)", anual: "var(--ui-success)",
+  vitalicio: "var(--ui-warning)", outro: "var(--ui-text-muted)",
+};
+function PlanoBadge({ plano }) {
+  const cor = PLANO_COR[plano] || "var(--ui-text-muted)";
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, color: cor,
+      background: "color-mix(in srgb, currentColor 14%, transparent)",
+      padding: "2px 8px", borderRadius: 5,
+    }}>{PLANO_LABEL[plano] || plano || "—"}</span>
+  );
+}
 
 function Card({ icon: Icon, cor, label, valor, small }) {
   return (
