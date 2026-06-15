@@ -75,14 +75,19 @@ export async function listarPagamentos(limite = 100) {
   return data || [];
 }
 
+// Registra o pagamento E ativa/renova o plano do cliente numa transação só
+// (função security definer no banco, guardada pelo e-mail do dono).
 export async function registrarPagamento({ email, plano, valor, metodo, referencia, pago_em }) {
-  const { data, error } = await supabase
-    .from('pagamentos')
-    .insert({ email, plano, valor, metodo, referencia, pago_em })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('admin_registrar_pagamento', {
+    p_email: email,
+    p_plano: plano,
+    p_valor: valor,
+    p_metodo: metodo || null,
+    p_referencia: referencia || null,
+    p_pago_em: pago_em || null,
+  });
   if (error) throw error;
-  return data;
+  return data; // { pagamento, usuario_encontrado, plano_ativado, plano_expira_em }
 }
 
 export async function excluirPagamento(id) {

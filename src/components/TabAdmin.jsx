@@ -39,9 +39,14 @@ export default function TabAdmin() {
   const salvar = async () => {
     const valorNum = parseFloat(String(form.valor).replace(/\./g, "").replace(",", "."));
     if (!valorNum || valorNum <= 0) { showToast("Informe um valor válido", "error"); return; }
+    const planoPago = ["mensal", "anual", "vitalicio"].includes(form.plano);
+    if (planoPago && !form.email.trim()) {
+      showToast("Informe o e-mail do cliente para ativar o plano", "error");
+      return;
+    }
     setSalvando(true);
     try {
-      await registrarPagamento({
+      const res = await registrarPagamento({
         email: form.email.trim() || null,
         plano: form.plano,
         valor: valorNum,
@@ -49,7 +54,13 @@ export default function TabAdmin() {
         referencia: form.referencia.trim() || null,
         pago_em: form.pago_em,
       });
-      showToast("Pagamento registrado", "success");
+      if (res?.plano_ativado) {
+        showToast(`Pagamento registrado e plano ${form.plano} ativado para ${form.email.trim()}`, "success");
+      } else if (planoPago && res && !res.usuario_encontrado) {
+        showToast(`Pagamento registrado, mas nenhum usuário com "${form.email.trim()}" — plano NÃO ativado`, "warning");
+      } else {
+        showToast("Pagamento registrado", "success");
+      }
       setForm({ email: "", plano: "mensal", valor: "", metodo: "pix", pago_em: hoje, referencia: "" });
       await carregar();
     } catch (e) {
@@ -186,7 +197,7 @@ export default function TabAdmin() {
           <PlusCircle size={14} /> {salvando ? "Salvando..." : "Registrar"}
         </button>
         <div style={{ marginTop: 8, fontSize: 11, color: "var(--ui-text-faint)" }}>
-          Lembrete: registrar o pagamento aqui é o caixa real. Ativar o plano do cliente ainda é via SQL (ver CLAUDE.md).
+          Ao registrar um plano pago (mensal/anual/vitalício), o plano do cliente é <b style={{ color: "var(--ui-text-secondary)" }}>ativado/renovado automaticamente</b> pelo e-mail. Mensal soma 1 mês, anual 1 ano (renovação estende a partir do vencimento atual). Excluir um pagamento NÃO reverte o plano.
         </div>
       </div>
 

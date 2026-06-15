@@ -195,7 +195,8 @@ VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
 - **Signup** → trigger `on_auth_user_created` cria linha em `profiles` com `plano='trial'` e `trial_fim = now() + 7 dias` (ver `sql/migrations/2026-06-12_planos_trial.sql`).
 - **Frontend** (`src/lib/plano.js` + `src/components/Paywall.jsx`): pill "Teste grátis · Xd" no header durante o trial; quando expira, o app bloqueia com a tela de planos (Mensal R$ 24,90 / Anual R$ 199).
 - **Backend** (`api/analyze.js`): valida o JWT do usuário contra `profiles` antes de gastar Gemini (HTTP 402 se expirado; fail-open em erro de infra para nunca derrubar usuário pagante por bug).
-- **Ativar plano pago** (manual, até existir webhook de pagamento):
+- **Ativar plano pago** (recomendado): registrar o pagamento no **Painel** (aba `admin`) com o e-mail do cliente — a RPC `admin_registrar_pagamento` grava o caixa e **ativa/renova o plano automaticamente** (mensal +1 mês, anual +1 ano a partir do vencimento atual, vitalício sem expiração).
+- **Ativar plano pago** (alternativa manual via SQL):
   ```sql
   update public.profiles
      set plano = 'mensal',                            -- ou 'anual'
