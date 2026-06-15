@@ -16,7 +16,13 @@ const dataBR = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
 // Exporta os pagamentos em CSV (separador ";" + BOM, amigável ao Excel BR).
 function exportarPagamentosCSV(pagamentos) {
   const header = ["data", "email", "plano", "valor", "metodo", "referencia"];
-  const esc = (c) => `"${String(c ?? "").replace(/"/g, '""')}"`;
+  // Anti CSV-injection: célula que começa com = + - @ (ou TAB/CR) recebe um
+  // apóstrofo na frente para o Excel/Sheets não interpretar como fórmula.
+  const esc = (c) => {
+    let s = String(c ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   const linhas = pagamentos.map((p) => [
     p.pago_em ? new Date(p.pago_em).toISOString().slice(0, 10) : "",
     p.email || "",

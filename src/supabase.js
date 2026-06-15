@@ -429,8 +429,11 @@ export async function carregarUniverso(userId) {
     .eq('user_id', userId)
     .maybeSingle();
   if (error) {
+    // Propaga o erro: quem chama distingue "sem universo" (data null) de "falha
+    // ao carregar". Isso evita forçar o onboarding bloqueante por erro transitório
+    // (e o risco de sobrescrever um universo já salvo).
     console.error('Erro ao carregar universo:', error);
-    return null;
+    throw error;
   }
   return data;
 }
