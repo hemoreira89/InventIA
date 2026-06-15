@@ -12,6 +12,7 @@ import { carregarUniverso, salvarUniverso } from "../supabase";
 import { tickerValido } from "../lib/calc";
 import { showToast } from "../App";
 import UniversoOnboarding from "./UniversoOnboarding";
+import TickerAutocomplete from "./TickerAutocomplete";
 
 // Mapa de string → componente Lucide (catalogoB3.js só tem strings, serializável)
 const ICON_MAP = {
@@ -100,8 +101,8 @@ export default function TabUniverso({ userId }) {
     setDirty(true);
   };
 
-  const adicionarCustom = () => {
-    const t = novoTicker.toUpperCase().trim();
+  const adicionarCustom = (tickerArg) => {
+    const t = (typeof tickerArg === "string" ? tickerArg : novoTicker).toUpperCase().trim();
     if (!t) return;
     if (!tickerValido(t)) {
       showToast("Ticker inválido. Formato esperado: PETR4, MXRF11", "error");
@@ -336,24 +337,15 @@ export default function TabUniverso({ userId }) {
         <span style={{fontSize: 12, color: "var(--ui-text-muted)", fontWeight: 600}}>
           Adicionar ticker fora do catálogo:
         </span>
-        <input
-          type="text"
+        <TickerAutocomplete
           value={novoTicker}
           onChange={e => setNovoTicker(e.target.value.toUpperCase())}
-          onKeyDown={e => e.key === "Enter" && adicionarCustom()}
+          onSelect={t => adicionarCustom(t)}
+          onKeyDown={e => { if (e.key === "Enter") adicionarCustom(); }}
           placeholder="Ex: BBSE3, KLBN11"
-          style={{
-            flex: 1, maxWidth: 240,
-            background: "var(--ui-bg-input)",
-            border: "1px solid var(--ui-border)",
-            borderRadius: 6,
-            padding: "8px 12px",
-            color: "var(--ui-text)",
-            fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace", letterSpacing: 1
-          }}
+          style={{ flex: 1, maxWidth: 240 }}
         />
-        <button onClick={adicionarCustom} style={{
+        <button onClick={() => adicionarCustom()} style={{
           background: "rgba(91,61,245,0.10)",
           border: "1px solid rgba(91,61,245,0.30)",
           borderRadius: 6, padding: "7px 14px",
