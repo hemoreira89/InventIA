@@ -5453,6 +5453,11 @@ const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
 
 // E-mail do dono — única conta com acesso ao painel estratégico
 const OWNER_EMAIL = "hemoreira@outlook.com.br";
+
+// Preferências (foco/perfil) são por usuário — evita herança entre contas no
+// mesmo navegador.
+const focoKeyFor = (uid) => `cauril_foco_${uid || "anon"}`;
+const perfilKeyFor = (uid) => `cauril_perfil_${uid || "anon"}`;
 const GRUPOS_NAV = [
   { k:"solo",      tabs:["carteira"] },
   { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",     tabs:["analise","ticker","comparador","oportunidades","risco"] },
@@ -5470,10 +5475,10 @@ export default function App({ session, onLogout }) {
   const [watchlist, setWatchlist] = useState([]);
   const [aporte, setAporte] = useState("");
   const [foco, setFoco] = useState(() => {
-    try { return localStorage.getItem("cauril_foco") || "misto"; } catch { return "misto"; }
+    try { return localStorage.getItem(focoKeyFor(session?.user?.id)) || "misto"; } catch { return "misto"; }
   });
   const [perfil, setPerfil] = useState(() => {
-    try { return localStorage.getItem("cauril_perfil") || "moderado"; } catch { return "moderado"; }
+    try { return localStorage.getItem(perfilKeyFor(session?.user?.id)) || "moderado"; } catch { return "moderado"; }
   });
   const [loading, setLoading] = useState(false);
   const [fase, setFase] = useState("");
@@ -5763,8 +5768,8 @@ export default function App({ session, onLogout }) {
   const confirmarUniverso = useCallback(async ({ tickers, foco: fc, perfil: pf }) => {
     const lista = tickers?.length > 0 ? tickers : getDefaultUniverso();
     setUniversoTickers(lista);
-    if (fc) { setFoco(fc); try { localStorage.setItem("cauril_foco", fc); } catch {} }
-    if (pf) { setPerfil(pf); try { localStorage.setItem("cauril_perfil", pf); } catch {} }
+    if (fc) { setFoco(fc); try { localStorage.setItem(focoKeyFor(userId), fc); } catch {} }
+    if (pf) { setPerfil(pf); try { localStorage.setItem(perfilKeyFor(userId), pf); } catch {} }
     setPrecisaUniverso(false);
     try { await salvarUniverso(userId, lista); } catch (e) { console.error(e); }
   }, [userId]);
