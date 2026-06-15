@@ -5452,7 +5452,7 @@ const TABS = [
 const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
 
 // E-mail do dono — única conta com acesso ao painel estratégico
-const OWNER_EMAIL = "hemoreira89@gmail.com";
+const OWNER_EMAIL = "hemoreira@outlook.com.br";
 const GRUPOS_NAV = [
   { k:"solo",      tabs:["carteira"] },
   { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",     tabs:["analise","ticker","comparador","oportunidades","risco"] },

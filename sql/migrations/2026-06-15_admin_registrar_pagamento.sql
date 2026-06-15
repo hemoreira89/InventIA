@@ -20,7 +20,7 @@ security definer
 set search_path = public
 as $$
 declare
-  owner_email constant text := 'hemoreira89@gmail.com';
+  owner_email constant text := 'hemoreira@outlook.com.br';
   v_user_id uuid;
   v_cur_expira timestamptz;
   v_expira timestamptz;

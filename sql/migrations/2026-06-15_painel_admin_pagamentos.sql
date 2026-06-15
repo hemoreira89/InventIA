@@ -51,8 +51,8 @@ alter table public.pagamentos enable row level security;
 drop policy if exists "pagamentos: dono total" on public.pagamentos;
 create policy "pagamentos: dono total" on public.pagamentos
   for all
-  using ((select coalesce(auth.jwt() ->> 'email','')) = 'hemoreira89@gmail.com')
-  with check ((select coalesce(auth.jwt() ->> 'email','')) = 'hemoreira89@gmail.com');
+  using ((select coalesce(auth.jwt() ->> 'email','')) = 'hemoreira@outlook.com.br')
+  with check ((select coalesce(auth.jwt() ->> 'email','')) = 'hemoreira@outlook.com.br');
 
 create index if not exists pagamentos_pago_em_idx on public.pagamentos (pago_em);
 
@@ -66,7 +66,7 @@ security definer
 set search_path = public
 as $$
 declare
-  owner_email constant text := 'hemoreira89@gmail.com';
+  owner_email constant text := 'hemoreira@outlook.com.br';
   mes_inicio timestamptz := date_trunc('month', now());
   result jsonb;
 begin
