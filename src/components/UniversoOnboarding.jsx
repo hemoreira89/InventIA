@@ -170,13 +170,19 @@ export default function UniversoOnboarding({ onConfirm, onSkip, onClose, bloquea
           borderTop: "1px solid var(--ui-border-soft)",
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
         }}>
-          <button onClick={onSkip} style={{
-            background: "transparent", border: "none",
-            color: "var(--ui-text-muted)", fontSize: 12.5, fontWeight: 600,
-            cursor: "pointer", padding: "10px 4px"
-          }}>
-            {bloqueante ? "Usar conjunto padrão (maior liquidez)" : "Pular — usar conjunto padrão"}
-          </button>
+          {bloqueante ? (
+            <span style={{fontSize: 12, color: "var(--ui-text-faint)", padding: "10px 4px"}}>
+              Escolha ao menos 1 setor para começar
+            </span>
+          ) : (
+            <button onClick={onSkip} style={{
+              background: "transparent", border: "none",
+              color: "var(--ui-text-muted)", fontSize: 12.5, fontWeight: 600,
+              cursor: "pointer", padding: "10px 4px"
+            }}>
+              Pular — usar conjunto padrão
+            </button>
+          )}
           <div style={{marginLeft: "auto", display: "flex", alignItems: "center", gap: 14}}>
             <span style={{fontSize: 11.5, color: "var(--ui-text-faint)"}}>
               {selecionadas.size > 0

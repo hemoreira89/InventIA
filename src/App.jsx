@@ -5759,14 +5759,6 @@ export default function App({ session, onLogout }) {
     try { await salvarUniverso(userId, lista); } catch (e) { console.error(e); }
   }, [userId]);
 
-  // Usuário optou pelo conjunto-padrão (maior liquidez) — também salva e libera
-  const usarUniversoPadrao = useCallback(async () => {
-    const padrao = getDefaultUniverso();
-    setUniversoTickers(padrao);
-    setPrecisaUniverso(false);
-    try { await salvarUniverso(userId, padrao); } catch (e) { console.error(e); }
-  }, [userId]);
-
   const aporteNum = () => parseFloat((aporte||"").replace(/[R$\s.]/g,"").replace(",",".")) || 0;
   const handleAporte = e => {
     const raw = e.target.value.replace(/\D/g,"");
@@ -6187,7 +6179,6 @@ Regras:
         <UniversoOnboarding
           bloqueante
           onConfirm={confirmarUniverso}
-          onSkip={usarUniversoPadrao}
         />
       )}
       {planoStatus?.expirado && (
