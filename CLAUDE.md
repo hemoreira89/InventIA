@@ -102,7 +102,7 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 
 | Tabela | Descrição |
 |--------|-----------|
-| `profiles` | Perfil do usuário (criado via trigger na auth) — `plano` ('trial'\|'mensal'\|'anual'\|'vitalicio'), `trial_fim` (signup + 7 dias), `plano_expira_em`. Somente leitura para o cliente (mudança de plano = SQL/service role) |
+| `profiles` | Perfil do usuário (criado via trigger na auth) — `plano` ('trial'\|'mensal'\|'anual'\|'vitalicio'), `trial_fim` (signup + 7 dias), `plano_expira_em`, `nome`, `data_nascimento` (capturados no signup). Somente leitura para o cliente (mudança de plano = SQL/service role) |
 | `carteiras` | Portfólios (1+ por usuário; `nome`, `user_id`) |
 | `ativos` | Ativos da carteira (`ticker`, `qtd`, `pm`, `peso_alvo`, `carteira_id`) |
 | `compras` | Histórico imutável de compras |
@@ -113,6 +113,7 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 | `universo_usuario` | Universo customizável de tickers para a IA |
 | `screening_catalogo` | ~1430 tickers B3 (atualizado diariamente) |
 | `screening_fundamentos` | Fundamentos cacheados semanalmente (bolsai) |
+| `pagamentos` | Caixa real recebido (controle do teto de R$5k do CPF). RLS libera só o dono. Lido/escrito pelo Painel (aba `admin`) |
 
 ---
 
@@ -136,6 +137,7 @@ Todas as tabelas têm RLS habilitado. Usuário só acessa os próprios dados.
 | `ir` | TabIR | Calculadora de IR sobre vendas |
 | `meta` | TabMeta | Simulador do 1º Milhão |
 | `cenarios` | TabCenarios | Cenários de rentabilidade futura |
+| `admin` | TabAdmin | **Painel estratégico — só o dono** (`OWNER_EMAIL`). Usuários ativos/inativos, planos, faixa etária, MRR e receita do mês vs. teto R$5k. Dados via RPC `admin_metrics()` (security definer guardado pelo e-mail). Registra pagamentos na tabela `pagamentos` |
 
 ---
 

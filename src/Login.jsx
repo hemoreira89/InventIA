@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Lock, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, AlertCircle, Loader2, ArrowRight, User, Calendar } from "lucide-react";
 import { signIn, signUp, resetPassword } from "./supabase";
 import { track } from "./lib/track";
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
@@ -15,6 +15,8 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
   const [modo, setModo] = useState(SIGNUP_ENABLED ? modoInicial : "login"); // login | signup
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
+  const [nascimento, setNascimento] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [sucessoSignup, setSucessoSignup] = useState(false);
@@ -48,6 +50,21 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
       setErro("Preencha email e senha");
       return;
     }
+    if (modo === "signup") {
+      if (!nome.trim() || nome.trim().length < 3) {
+        setErro("Informe seu nome completo");
+        return;
+      }
+      if (!nascimento) {
+        setErro("Informe sua data de nascimento");
+        return;
+      }
+      const idade = (Date.now() - new Date(nascimento).getTime()) / (365.25 * 24 * 3600 * 1000);
+      if (isNaN(idade) || idade < 18 || idade > 120) {
+        setErro("Data de nascimento inválida (é preciso ter 18 anos ou mais)");
+        return;
+      }
+    }
     if (senha.length < 6) {
       setErro("Senha precisa ter no mínimo 6 caracteres");
       return;
@@ -61,7 +78,7 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
         track("login_success");
         onAuth(data.session);
       } else {
-        const data = await signUp(email, senha);
+        const data = await signUp(email, senha, { nome: nome.trim(), dataNascimento: nascimento });
         track("signup_success");
         if (data.session) {
           onAuth(data.session);
@@ -190,6 +207,39 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
               </p>
             </div>
 
+            {/* Nome (somente cadastro) */}
+            {modo === "signup" && (
+              <div style={{ marginBottom: 14 }}>
+                <label htmlFor="login-nome" style={{
+                  display: "block", fontSize: 11, color: "var(--ui-text-faint)",
+                  fontWeight: 700, letterSpacing: 1, marginBottom: 6
+                }}>NOME COMPLETO</label>
+                <div style={{ position: "relative" }}>
+                  <User aria-hidden="true" size={16} style={{
+                    position: "absolute", left: 14, top: "50%",
+                    transform: "translateY(-50%)", color: "var(--ui-text-faint)"
+                  }}/>
+                  <input
+                    id="login-nome"
+                    type="text"
+                    value={nome}
+                    onChange={e => setNome(e.target.value)}
+                    placeholder="Seu nome"
+                    autoComplete="name"
+                    style={{
+                      width: "100%",
+                      background: "var(--ui-bg)",
+                      border: "1px solid var(--ui-border)",
+                      borderRadius: 8,
+                      padding: "12px 14px 12px 42px",
+                      fontSize: 14,
+                      color: "var(--ui-text)"
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Email */}
             <div style={{ marginBottom: 14 }}>
               <label htmlFor="login-email" style={{
@@ -271,6 +321,39 @@ export default function Login({ onAuth, modoInicial = "login", onVoltar }) {
                 </div>
               )}
             </div>
+
+            {/* Data de nascimento (somente cadastro) */}
+            {modo === "signup" && (
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="login-nascimento" style={{
+                  display: "block", fontSize: 11, color: "var(--ui-text-faint)",
+                  fontWeight: 700, letterSpacing: 1, marginBottom: 6
+                }}>DATA DE NASCIMENTO</label>
+                <div style={{ position: "relative" }}>
+                  <Calendar aria-hidden="true" size={16} style={{
+                    position: "absolute", left: 14, top: "50%",
+                    transform: "translateY(-50%)", color: "var(--ui-text-faint)"
+                  }}/>
+                  <input
+                    id="login-nascimento"
+                    type="date"
+                    value={nascimento}
+                    onChange={e => setNascimento(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                    autoComplete="bday"
+                    style={{
+                      width: "100%",
+                      background: "var(--ui-bg)",
+                      border: "1px solid var(--ui-border)",
+                      borderRadius: 8,
+                      padding: "12px 14px 12px 42px",
+                      fontSize: 14,
+                      color: "var(--ui-text)"
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {erro && (
               <div style={{

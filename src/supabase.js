@@ -21,10 +21,16 @@ export async function getSession() {
   return session;
 }
 
-export async function signUp(email, password) {
+export async function signUp(email, password, extra = {}) {
+  const data_user = {};
+  if (extra.nome) data_user.nome = extra.nome;
+  if (extra.dataNascimento) data_user.data_nascimento = extra.dataNascimento;
   const { data, error } = await supabase.auth.signUp({
     email, password,
-    options: { emailRedirectTo: window.location.origin }
+    options: {
+      emailRedirectTo: window.location.origin,
+      data: data_user,
+    }
   });
   if (error) throw error;
   return data;
@@ -46,6 +52,41 @@ export async function signOut() {
 export async function resetPassword(email) {
   const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+// ─── Painel estratégico (somente o dono) ───────────────────────────────────────
+// As métricas vêm de uma função security definer no banco que valida o e-mail do
+// JWT contra o dono — se não for o dono, o RPC lança erro.
+
+export async function carregarAdminMetrics() {
+  const { data, error } = await supabase.rpc('admin_metrics');
+  if (error) throw error;
+  return data;
+}
+
+export async function listarPagamentos(limite = 100) {
+  const { data, error } = await supabase
+    .from('pagamentos')
+    .select('*')
+    .order('pago_em', { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function registrarPagamento({ email, plano, valor, metodo, referencia, pago_em }) {
+  const { data, error } = await supabase
+    .from('pagamentos')
+    .insert({ email, plano, valor, metodo, referencia, pago_em })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirPagamento(id) {
+  const { error } = await supabase.from('pagamentos').delete().eq('id', id);
   if (error) throw error;
 }
 

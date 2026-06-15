@@ -10,7 +10,7 @@ import {
   Briefcase, BarChart3, Brain, Target, TrendingUp, Eye, Receipt,
   Sparkles, Save, Plus, X, Trash2, Calendar, AlertTriangle,
   CheckCircle2, AlertCircle, Activity, DollarSign, PieChart as PieIcon,
-  ArrowUp, ArrowDown, Shield, Rocket, ChevronRight, ChevronDown, Loader2,
+  ArrowUp, ArrowDown, Shield, ShieldCheck, Rocket, ChevronRight, ChevronDown, Loader2,
   Building2, Factory, LogOut, User, History, Coins, GitCompare,
   FileSearch, Download, ExternalLink, Clock, Lightbulb,
   FileUp, TrendingDown, Award, Globe, Undo2, Command, Crown, Scale,
@@ -47,6 +47,7 @@ const PrivacyContext = createContext({ hidden: false, masked: (v) => v });
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
 import UniversoOnboarding from "./components/UniversoOnboarding";
+import TabAdmin from "./components/TabAdmin";
 import TickerAutocomplete from "./components/TickerAutocomplete";
 import TelegramModal from "./components/TelegramModal";
 import { carregarUniverso, salvarUniverso, supabase } from "./supabase";
@@ -5449,6 +5450,9 @@ const TABS = [
   {k:"planejamento",icon:Target,label:"Planejamento",cor:"var(--ui-info)",grupo:"planning"},
 ];
 const TAB_MAP = Object.fromEntries(TABS.map(t => [t.k, t]));
+
+// E-mail do dono — única conta com acesso ao painel estratégico
+const OWNER_EMAIL = "hemoreira89@gmail.com";
 const GRUPOS_NAV = [
   { k:"solo",      tabs:["carteira"] },
   { k:"analise",   label:"Análise",   cor:"var(--ui-accent)",     tabs:["analise","ticker","comparador","oportunidades","risco"] },
@@ -6634,6 +6638,23 @@ Regras:
               </div>
             );
           })}
+
+          {userEmail === OWNER_EMAIL && (
+            <>
+              <div style={{width:1,height:18,background:"var(--ui-border)",margin:"0 4px"}}/>
+              <button onClick={()=>setTab("admin")} className="tab-btn"
+                style={{
+                  background:"transparent",border:"none",cursor:"pointer",
+                  padding:"12px 14px",fontSize:13,fontWeight:600,
+                  color:tab==="admin"?"var(--ui-text)":"var(--ui-text-muted)",
+                  borderBottom:`2px solid ${tab==="admin"?"var(--ui-accent)":"transparent"}`,
+                  display:"flex",alignItems:"center",gap:7,whiteSpace:"nowrap"
+                }}>
+                <ShieldCheck size={14} strokeWidth={2} color={tab==="admin"?"var(--ui-accent)":undefined}/>
+                <span>Painel</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -6759,6 +6780,7 @@ Regras:
           {tab==="planejamento" && <TabPlanejamento dados={dados} sub={planejSub} setSub={setPlanejSub}/>}
           {tab==="watchlist" && <TabWatchlist watchlist={watchlist} setWatchlist={setWatchlist} dados={dados} onSave={salvar} userId={userId} pedirConfirmacao={pedirConfirmacao}/>}
           {tab==="universo" && <TabUniverso userId={userId}/>}
+          {tab==="admin" && userEmail===OWNER_EMAIL && <TabAdmin/>}
           {tab==="ir" && <TabIR dados={dados}/>}
          </ErrorBoundary>
         </div>
