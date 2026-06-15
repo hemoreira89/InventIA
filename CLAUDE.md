@@ -214,6 +214,10 @@ VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
 1. **Reabrir signups:** Authentication → Sign In/Up → habilitar "Allow new users to sign up" (foi desligado quando o app era de uso pessoal). Sem isso, ninguém consegue criar conta mesmo com o formulário aberto.
 2. **Ativar Leaked Password Protection:** Authentication → Policies (recomendação do security advisor).
 
+### 💡 Backlog / ideias futuras
+
+- **Rastreador de consumo de IA no Painel:** capturar `usageMetadata` (tokens) de cada resposta do Gemini em `api/analyze.js` e gravar numa tabela `uso_ia` (log fire-and-forget, à prova de falha). No Painel: chamadas/tokens/custo estimado do mês (preço por 1M tokens configurável) e, opcionalmente, ranking de quem mais consome. Obs.: "saldo/créditos" do Gemini **não** é exposto via API (fica no Google Cloud Billing).
+
 ---
 
 ## Decisões de design
