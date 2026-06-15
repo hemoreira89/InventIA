@@ -54,7 +54,7 @@ import Paywall from "./components/Paywall";
 import { carregarPerfilPlano, statusPlano } from "./lib/plano";
 import { track } from "./lib/track";
 import { BRAND } from "./lib/brand";
-import { getDefaultUniverso, getSetorPorTicker } from "./lib/catalogoB3";
+import { getDefaultUniverso, getSetorPorTicker, amostrarUniversoBalanceado } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
 import { buscarCotacoes, buscarCotacao } from "./lib/cotacoes";
 import { buscarFundamentos, buscarFundamento } from "./lib/fundamentos";
@@ -5843,7 +5843,7 @@ Liste ativos do universo que ATENDEM aos critérios objetivos abaixo, para o usu
   : `Liste ${focoDesc} que ATENDEM aos critérios objetivos abaixo, para o usuário ESTUDAR (R$ ${v.toFixed(2)}, perfil ${perfil}). NÃO prescreva comprar nem alocar — apenas analise de forma educacional.`}
 ${contextoRisco}
 
-Use APENAS estes tickers: ${universoFiltrado.slice(0, 20).join(", ")}.
+Use APENAS estes tickers: ${amostrarUniversoBalanceado(universoFiltrado, 20).join(", ")}.
 
 CRITÉRIOS FUNDAMENTALISTAS — busque e retorne TODOS os indicadores possíveis:
 - AÇÕES: ROE (preferir ≥15%), Dívida Líquida/EBITDA (preferir ≤3), Margem Líquida (preferir ≥5%), DY, P/L, P/VP

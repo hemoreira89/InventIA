@@ -309,6 +309,50 @@ export function getCategoriasResumo() {
   }));
 }
 
+// Mapa ticker → categoria (memoizado) para amostragem balanceada
+let _tickerCategoria = null;
+function mapaTickerCategoria() {
+  if (_tickerCategoria) return _tickerCategoria;
+  _tickerCategoria = {};
+  for (const cat of CATEGORIAS) {
+    for (const a of cat.ativos) _tickerCategoria[a.ticker] = cat.id;
+  }
+  return _tickerCategoria;
+}
+
+// Amostra balanceada do universo para a IA (limite de tokens).
+// Distribui o `limite` entre os setores presentes (round-robin), preservando a
+// ordem original (liquidez) dentro de cada setor. Evita o viés de "sempre os
+// primeiros do catálogo" quando o usuário escolhe muitos setores — assim todos
+// os setores escolhidos têm representação, inclusive os do fim (FIIs).
+// Tickers fora do catálogo (customizados) entram num grupo próprio.
+export function amostrarUniversoBalanceado(tickers, limite = 20) {
+  if (!Array.isArray(tickers) || tickers.length <= limite) return tickers || [];
+  const mapa = mapaTickerCategoria();
+  const grupos = new Map(); // catId → [tickers] (preserva ordem de chegada)
+  for (const t of tickers) {
+    const cat = mapa[t] || "__custom__";
+    if (!grupos.has(cat)) grupos.set(cat, []);
+    grupos.get(cat).push(t);
+  }
+  const filas = Array.from(grupos.values());
+  const out = [];
+  let i = 0;
+  while (out.length < limite) {
+    let avancou = false;
+    for (const fila of filas) {
+      if (i < fila.length) {
+        out.push(fila[i]);
+        avancou = true;
+        if (out.length >= limite) break;
+      }
+    }
+    if (!avancou) break;
+    i++;
+  }
+  return out;
+}
+
 // Busca um ativo pelo ticker (retorna info da categoria também)
 export function findAtivo(ticker) {
   for (const cat of CATEGORIAS) {
