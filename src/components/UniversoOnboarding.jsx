@@ -25,7 +25,7 @@ const ICON_MAP = {
  *  - onSkip()                      → usuário preferiu o padrão operacional
  *  - onClose()                     → fechar sem alterar (opcional)
  */
-export default function UniversoOnboarding({ onConfirm, onSkip, onClose }) {
+export default function UniversoOnboarding({ onConfirm, onSkip, onClose, bloqueante = false }) {
   const categorias = useMemo(() => getCategoriasResumo(), []);
   const [selecionadas, setSelecionadas] = useState(new Set());
   const [filtroTipo, setFiltroTipo] = useState("todos");
@@ -86,7 +86,7 @@ export default function UniversoOnboarding({ onConfirm, onSkip, onClose }) {
           }}>
             <Sparkles size={13} color="var(--ui-accent)"/>
             <span style={{fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, letterSpacing: 1.5}}>
-              SEU PERFIL DE INVESTIDOR
+              {bloqueante ? "PRIMEIRO PASSO · SEU PERFIL" : "SEU PERFIL DE INVESTIDOR"}
             </span>
           </div>
           <h2 style={{fontSize: 22, fontWeight: 800, color: "var(--ui-text)", margin: "0 0 8px", letterSpacing: -0.3}}>
@@ -175,7 +175,7 @@ export default function UniversoOnboarding({ onConfirm, onSkip, onClose }) {
             color: "var(--ui-text-muted)", fontSize: 12.5, fontWeight: 600,
             cursor: "pointer", padding: "10px 4px"
           }}>
-            Pular — usar conjunto padrão
+            {bloqueante ? "Usar conjunto padrão (maior liquidez)" : "Pular — usar conjunto padrão"}
           </button>
           <div style={{marginLeft: "auto", display: "flex", alignItems: "center", gap: 14}}>
             <span style={{fontSize: 11.5, color: "var(--ui-text-faint)"}}>

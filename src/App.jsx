@@ -46,9 +46,10 @@ import { usePrivacyMode, PrivacyToggle } from "./components/PrivacyMode";
 const PrivacyContext = createContext({ hidden: false, masked: (v) => v });
 import { useTheme, ThemeToggle, THEME_CSS } from "./components/ThemeToggle";
 import TabUniverso from "./components/TabUniverso";
+import UniversoOnboarding from "./components/UniversoOnboarding";
 import TickerAutocomplete from "./components/TickerAutocomplete";
 import TelegramModal from "./components/TelegramModal";
-import { carregarUniverso, supabase } from "./supabase";
+import { carregarUniverso, salvarUniverso, supabase } from "./supabase";
 import Paywall from "./components/Paywall";
 import { carregarPerfilPlano, statusPlano } from "./lib/plano";
 import { track } from "./lib/track";
@@ -5735,13 +5736,35 @@ export default function App({ session, onLogout }) {
   // ele como dependência. Caso contrário o esbuild minifica e gera TDZ
   // (Cannot access 'universoTickers' before initialization).
   const [universoTickers, setUniversoTickers] = useState(getDefaultUniverso());
+  // Primeiro login: usuário ainda não definiu o universo → onboarding obrigatório.
+  // O sistema depende do universo pra alimentar a IA, então é bloqueante.
+  const [precisaUniverso, setPrecisaUniverso] = useState(false);
   useEffect(() => {
     if (!userId) return;
     carregarUniverso(userId).then(u => {
       if (u?.tickers?.length > 0) {
         setUniversoTickers(u.tickers);
+        setPrecisaUniverso(false);
+      } else {
+        setPrecisaUniverso(true);
       }
     }).catch(() => {});
+  }, [userId]);
+
+  // Onboarding obrigatório: usuário escolheu os setores → salva e libera o app
+  const confirmarUniverso = useCallback(async (tickers) => {
+    const lista = tickers?.length > 0 ? tickers : getDefaultUniverso();
+    setUniversoTickers(lista);
+    setPrecisaUniverso(false);
+    try { await salvarUniverso(userId, lista); } catch (e) { console.error(e); }
+  }, [userId]);
+
+  // Usuário optou pelo conjunto-padrão (maior liquidez) — também salva e libera
+  const usarUniversoPadrao = useCallback(async () => {
+    const padrao = getDefaultUniverso();
+    setUniversoTickers(padrao);
+    setPrecisaUniverso(false);
+    try { await salvarUniverso(userId, padrao); } catch (e) { console.error(e); }
   }, [userId]);
 
   const aporteNum = () => parseFloat((aporte||"").replace(/[R$\s.]/g,"").replace(",",".")) || 0;
@@ -6160,6 +6183,13 @@ Regras:
    <PrivacyContext.Provider value={privacy}>
     <div style={{minHeight:"100vh",background:"var(--ui-bg)",fontFamily:"'Inter','Segoe UI',sans-serif",color:"var(--ui-text)"}}>
       <style>{THEME_CSS}</style>
+      {precisaUniverso && userId && (
+        <UniversoOnboarding
+          bloqueante
+          onConfirm={confirmarUniverso}
+          onSkip={usarUniversoPadrao}
+        />
+      )}
       {planoStatus?.expirado && (
         <div style={{
           background:"linear-gradient(90deg,var(--ui-accent),#5540dd)", color:"#fff",
