@@ -6290,9 +6290,10 @@ Regras:
           /* Nav: continua quebrando linha (NÃO usar overflow aqui — recorta os
              dropdowns absolutos). Só deixa os botões mais compactos pra caber. */
           .topbar-nav { padding: 0 4px !important; }
-          .topbar-nav .tab-btn { padding: 9px 9px !important; font-size: 12px !important; gap: 5px !important; }
-          /* Métricas: tira o sublinhado/scroll e só compacta o espaçamento. */
-          .topbar-metrics { gap: 10px 16px !important; flex: 1 1 100% !important; }
+          .topbar-nav .tab-btn { padding: 10px 10px !important; font-size: 12.5px !important; gap: 6px !important; }
+          /* Métricas: redundantes no celular (cada uma tem aba própria) — escondidas
+             pra deixar o cabeçalho limpo e dar espaço ao conteúdo. */
+          .topbar-metrics { display: none !important; }
         }
       `}</style>
 
@@ -6492,8 +6493,8 @@ Regras:
             <PrivacyToggle hidden={privacy.hidden} toggle={privacy.toggle}/>
             <ThemeToggle theme={themeApi.theme} toggle={themeApi.toggle}/>
 
-            {/* User badge */}
-            <div style={{
+            {/* User badge — escondido no celular (redundante; logout fica ao lado) */}
+            <div className="hide-mobile" style={{
               display:"flex",alignItems:"center",gap:8,
               background:"var(--ui-bg-secondary)",
               border:"1px solid var(--ui-border)",
