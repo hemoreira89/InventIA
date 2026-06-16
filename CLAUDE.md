@@ -177,6 +177,8 @@ BOLSAI_TOKEN=...
 CRON_SECRET=...
 MERCADOPAGO_ACCESS_TOKEN=...   # assinatura recorrente (preapproval) + webhook
 SUPABASE_SERVICE_ROLE=...      # usado pelo webhook/cancelamento p/ ativar plano
+META_PIXEL_ID=...              # (opcional) Conversions API server-side no webhook
+META_CAPI_TOKEN=...            # (opcional) token do CAPI; sem ele o CAPI é no-op
 
 # Supabase (embutidas no frontend — anon key pública)
 VITE_SUPABASE_URL=...
@@ -191,7 +193,9 @@ VITE_CONTATO_EMAIL=...         # default: contato@cauril.com.br
 VITE_META_PIXEL_ID=...         # ID do Pixel do Meta (Gerenciador de Anúncios)
 ```
 
-> **Tráfego pago / Meta Pixel:** com `VITE_META_PIXEL_ID` setado, o app carrega o Pixel e espelha o funil em eventos padrão do Meta para otimização: `signup_started→Lead`, `signup_success→CompleteRegistration`, `plan_clicked→InitiateCheckout` (com `value`/`currency`), e `purchase_success→Purchase` na volta do MP (`?assinatura=ok`/`?pagamento=ok`, valor da intenção salva em `cauril_checkout_intent`). A **atribuição first-touch** (utm_*, fbclid, gclid) é capturada na 1ª visita em `localStorage` (`cauril_attrib`) e a origem (source/campaign) é anexada aos eventos do Vercel Analytics. Tudo em `src/lib/track.js` (`initAnalytics` chamado no boot em `main.jsx`). Sem o Pixel ID, vira no-op. *Próxima fase (quando houver campanhas): persistir UTM no `profiles` + Conversions API server-side no `mp-webhook` + CAC por origem no Painel.*
+> **Tráfego pago / Meta Pixel:** com `VITE_META_PIXEL_ID` setado, o app carrega o Pixel e espelha o funil em eventos padrão do Meta para otimização: `signup_started→Lead`, `signup_success→CompleteRegistration`, `plan_clicked→InitiateCheckout` (com `value`/`currency`), e `purchase_success→Purchase` na volta do MP (`?assinatura=ok`/`?pagamento=ok`, valor da intenção salva em `cauril_checkout_intent`). A **atribuição first-touch** (utm_*, fbclid, gclid) é capturada na 1ª visita em `localStorage` (`cauril_attrib`) e a origem (source/campaign) é anexada aos eventos do Vercel Analytics. Tudo em `src/lib/track.js` (`initAnalytics` chamado no boot em `main.jsx`). Sem o Pixel ID, vira no-op.
+
+> **Atribuição persistida + CAPI (fase 2, feita):** o `signUp` manda as UTM no metadata e o trigger `handle_new_user` grava `utm_*` no `profiles` (migração `2026-06-16_atribuicao_marketing.sql`). O Painel mostra **Origem dos cadastros** (cadastros/pagantes/conversão por `utm_source`, via `admin_metrics().origens`); CAC = gasto do anúncio ÷ pagantes. **Conversions API server-side:** no checkout o client gera um `event_id`, salvo no `profiles.checkout_event_id` (via `/api/mp`); quando o pagamento confirma, o `mp-webhook` dispara um `Purchase` no CAPI com o **mesmo `event_id`** — o Meta deduplica contra o `Purchase` do Pixel do navegador (que já carrega `fbp/fbc`), juntando os sinais. Gated por `META_PIXEL_ID` + `META_CAPI_TOKEN` (sem eles, no-op).
 
 > A anon key é pública (protegida por RLS). A chave do Gemini e a SERVICE_ROLE ficam apenas no servidor (Vercel).
 >

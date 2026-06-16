@@ -20,10 +20,15 @@ export const CONTATO_EMAIL = import.meta.env?.VITE_CONTATO_EMAIL || "contato@cau
 
 // Guarda a intenção de compra antes de sair pro Mercado Pago, pra na volta
 // (?assinatura=ok / ?pagamento=ok) sabermos plano/valor e disparar o Purchase.
+// Gera um `event_id` (dedup do Pixel x Conversions API) e o devolve pra ir
+// também ao backend (que o guarda no profile p/ o webhook usar no CAPI).
 function salvarIntencaoCheckout(plano, tipo) {
+  let eventId;
   try {
-    localStorage.setItem("cauril_checkout_intent", JSON.stringify({ plano: plano.id, valor: plano.preco, tipo }));
-  } catch { /* sem localStorage: ignora */ }
+    eventId = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    localStorage.setItem("cauril_checkout_intent", JSON.stringify({ plano: plano.id, valor: plano.preco, tipo, event_id: eventId }));
+  } catch { /* sem localStorage/crypto: segue sem dedup */ }
+  return eventId;
 }
 
 export const PLANOS = [
@@ -139,7 +144,7 @@ export async function iniciarCheckout(plano, email) {
   const conta = session?.user?.email || email || null;
   const userId = session?.user?.id || null;
   if (!conta) throw new Error("login_required");
-  salvarIntencaoCheckout(plano, "assinatura");
+  const eventId = salvarIntencaoCheckout(plano, "assinatura");
 
   // 1. Link estático: anexa email/ref da conta para reconciliar quem pagou.
   if (plano.checkoutUrl) {
@@ -161,7 +166,7 @@ export async function iniciarCheckout(plano, email) {
         "Content-Type": "application/json",
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ action: "assinar", plano: plano.id }),
+      body: JSON.stringify({ action: "assinar", plano: plano.id, event_id: eventId }),
     });
     if (r.ok) {
       const { init_point } = await r.json();
@@ -188,7 +193,7 @@ export async function iniciarPagamentoAvulso(plano, email) {
   try { ({ data: { session } } = await supabase.auth.getSession()); } catch (_) { /* sem sessão */ }
   const conta = session?.user?.email || email || null;
   if (!conta) throw new Error("login_required");
-  salvarIntencaoCheckout(plano, "avulso");
+  const eventId = salvarIntencaoCheckout(plano, "avulso");
 
   try {
     const r = await fetch("/api/mp", {
@@ -197,7 +202,7 @@ export async function iniciarPagamentoAvulso(plano, email) {
         "Content-Type": "application/json",
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ action: "pagar_avulso", plano: plano.id }),
+      body: JSON.stringify({ action: "pagar_avulso", plano: plano.id, event_id: eventId }),
     });
     if (r.ok) {
       const { init_point } = await r.json();

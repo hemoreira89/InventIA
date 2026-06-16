@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getAttribution } from './lib/track';
 
 // A anon key é pública (protegida por RLS). Lê das env vars do Vite quando
 // disponíveis (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) e cai no valor
@@ -25,6 +26,14 @@ export async function signUp(email, password, extra = {}) {
   const data_user = {};
   if (extra.nome) data_user.nome = extra.nome;
   if (extra.dataNascimento) data_user.data_nascimento = extra.dataNascimento;
+  // Atribuição first-touch (tráfego pago): vai no metadata e o trigger grava no
+  // profile, pra sabermos a origem de cada cadastro/assinante no Painel.
+  const attrib = getAttribution();
+  if (attrib) {
+    for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+      if (attrib[k]) data_user[k] = attrib[k];
+    }
+  }
   const { data, error } = await supabase.auth.signUp({
     email, password,
     options: {

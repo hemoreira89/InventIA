@@ -74,9 +74,13 @@ function loadMetaPixel() {
   catch { /* ignora */ }
 }
 
-function metaTrack(name, params) {
-  try { if (typeof window !== "undefined" && window.fbq) window.fbq("track", name, params); }
-  catch { /* ignora */ }
+function metaTrack(name, params, opts) {
+  try {
+    if (typeof window !== "undefined" && window.fbq) {
+      if (opts?.eventID) window.fbq("track", name, params, { eventID: opts.eventID });
+      else window.fbq("track", name, params);
+    }
+  } catch { /* ignora */ }
 }
 
 /** Inicializa analytics no boot do app: captura atribuição + carrega Pixel. */
@@ -115,9 +119,14 @@ export function track(evento, props = {}) {
   if (import.meta.env?.DEV) console.debug("[track]", evento, enriched);
 }
 
-/** Compra confirmada (volta do Mercado Pago). Dispara Purchase no Meta. */
-export function trackPurchase({ plano, valor, tipo } = {}) {
+/**
+ * Compra confirmada (volta do Mercado Pago). Dispara Purchase no Meta.
+ * `event_id` (gerado no checkout) é passado como eventID pra o Meta deduplicar
+ * contra o Purchase server-side (Conversions API) com o mesmo id.
+ */
+export function trackPurchase({ plano, valor, tipo, event_id } = {}) {
   const value = Number(valor) || PRECOS[plano] || 0;
   track("purchase_success", { plano, tipo, valor: value });
-  metaTrack("Purchase", { value, currency: "BRL", ...(plano ? { content_name: plano } : {}) });
+  metaTrack("Purchase", { value, currency: "BRL", ...(plano ? { content_name: plano } : {}) },
+    event_id ? { eventID: event_id } : undefined);
 }

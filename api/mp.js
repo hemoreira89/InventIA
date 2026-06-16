@@ -61,14 +61,30 @@ async function criarAssinatura(req, res, token, user) {
   // webhook mapear de forma confiável (sem depender de e-mail do pagador).
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (key && data.id) {
+    const patch = { mp_preapproval_id: String(data.id), updated_at: new Date().toISOString() };
+    // event_id do checkout → o webhook usa no Purchase do CAPI (dedup c/ o Pixel).
+    if (req.body?.event_id) patch.checkout_event_id = String(req.body.event_id).slice(0, 80);
     fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${user.id}`, {
       method: "PATCH",
       headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ mp_preapproval_id: String(data.id), updated_at: new Date().toISOString() }),
+      body: JSON.stringify(patch),
       signal: AbortSignal.timeout(6000),
     }).catch(() => {});
   }
   return res.status(200).json({ init_point: data.init_point, id: data.id });
+}
+
+// Guarda o event_id do checkout no profile (fire-and-forget) — usado pelo
+// webhook pra deduplicar o Purchase do CAPI contra o do Pixel.
+function guardarEventId(user, eventId) {
+  const key = process.env.SUPABASE_SERVICE_ROLE;
+  if (!key || !eventId) return;
+  fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${user.id}`, {
+    method: "PATCH",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ checkout_event_id: String(eventId).slice(0, 80), updated_at: new Date().toISOString() }),
+    signal: AbortSignal.timeout(6000),
+  }).catch(() => {});
 }
 
 // ── Pagamento avulso (Checkout Pro) ──────────────────────────────────────────
@@ -96,6 +112,7 @@ async function criarPagamento(req, res, token, user) {
   });
   const data = await r.json();
   if (!r.ok) { console.error("[mp] preferência:", data); return res.status(502).json({ error: "falha ao criar pagamento" }); }
+  guardarEventId(user, req.body?.event_id);
   return res.status(200).json({ init_point: data.init_point, id: data.id });
 }
 

@@ -13,12 +13,40 @@
 //
 // Gated: sem MERCADOPAGO_ACCESS_TOKEN, responde 200 (no-op).
 // ENV: MERCADOPAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE (precisa de DML em public).
+import crypto from "node:crypto";
+
 export const config = { maxDuration: 15 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
+const APP_URL = "https://cauril.com.br";
 const MESES = { mensal: 1, anual: 12 };
 
 const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
+
+// ── Meta Conversions API (server-side Purchase) ──────────────────────────────
+// Gated: sem META_PIXEL_ID + META_CAPI_TOKEN, vira no-op. O event_id casa com o
+// Purchase do Pixel do navegador (mesmo id gerado no checkout) pra o Meta dedup.
+const sha256 = (s) => crypto.createHash("sha256").update(String(s).trim().toLowerCase()).digest("hex");
+
+async function sendCapiPurchase({ email, value, plano, eventId }) {
+  const pixel = process.env.META_PIXEL_ID, capiToken = process.env.META_CAPI_TOKEN;
+  if (!pixel || !capiToken) return;
+  try {
+    const body = { data: [{
+      event_name: "Purchase",
+      event_time: Math.floor(Date.now() / 1000),
+      action_source: "website",
+      event_source_url: APP_URL,
+      ...(eventId ? { event_id: String(eventId) } : {}),
+      user_data: email ? { em: [sha256(email)] } : {},
+      custom_data: { currency: "BRL", value: Number(value) || 0, ...(plano ? { content_name: plano } : {}) },
+    }] };
+    await fetch(`https://graph.facebook.com/v19.0/${pixel}/events?access_token=${encodeURIComponent(capiToken)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(6000),
+    });
+  } catch (e) { console.error("[MP] capi:", e.message); }
+}
 
 async function mpGet(path, token) {
   return fetch(`https://api.mercadopago.com${path}`, {
@@ -28,7 +56,7 @@ async function mpGet(path, token) {
 }
 
 async function getProfile(key, userId) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=email,plano_expira_em&user_id=eq.${userId}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=email,plano_expira_em,checkout_event_id&user_id=eq.${userId}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
   const a = await r.json().catch(() => []);
   return a?.[0] || null;
 }
@@ -148,6 +176,9 @@ export default async function handler(req, res) {
 
       const up = await extendPlan(key, userId, plano, meses, prof?.plano_expira_em);
       if (!up.ok) return res.status(500).json({ retry: `update ${up.status}` });
+      // Conversão server-side (CAPI) — só no 1º registro (após o 409). event_id
+      // casa com o Purchase do Pixel pra deduplicar; se faltar, usa o id do pagamento.
+      await sendCapiPurchase({ email, value: valor, plano, eventId: prof?.checkout_event_id || refId });
       console.log(`[MP] ${tipo}: ${plano} p/ ${userId} até ${up.expira}`);
       return res.status(200).json({ ok: true });
     }

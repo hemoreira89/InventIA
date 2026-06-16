@@ -203,6 +203,9 @@ export default function TabAdmin() {
         </div>
       </div>
 
+      {/* Origem dos cadastros (tráfego pago) */}
+      <OrigensTabela origens={m.origens} />
+
       {/* Lista de usuários */}
       <UsuariosTabela usuarios={usuarios} />
 
@@ -434,6 +437,45 @@ function Card({ icon: Icon, cor, label, valor, small }) {
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-text-disabled)", letterSpacing: 1, textTransform: "uppercase" }}>{label}</span>
       </div>
       <div style={{ fontSize: small ? 18 : 24, fontWeight: 800, color: "var(--ui-text)", fontFamily: "'JetBrains Mono', monospace" }}>{valor ?? 0}</div>
+    </div>
+  );
+}
+
+// Origem dos cadastros (UTM source) com taxa de conversão p/ pagante.
+// CAC = (gasto da campanha) / pagantes — o gasto vem do gerenciador de anúncios.
+function OrigensTabela({ origens }) {
+  const linhas = Array.isArray(origens) ? origens : [];
+  return (
+    <div style={cardBox}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ui-text)" }}>Origem dos cadastros</span>
+        <span style={{ fontSize: 11, color: "var(--ui-text-faint)" }}>· por utm_source (tráfego pago)</span>
+      </div>
+      {linhas.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--ui-text-faint)", padding: "8px 0" }}>
+          Sem dados de origem ainda. Use links com <code>?utm_source=...&utm_campaign=...</code> nos anúncios.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 12, padding: "0 12px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "var(--ui-text-faint)", textTransform: "uppercase" }}>
+            <span style={{ flex: 1 }}>Origem</span>
+            <span style={{ minWidth: 70, textAlign: "right" }}>Cadastros</span>
+            <span style={{ minWidth: 70, textAlign: "right" }}>Pagantes</span>
+            <span style={{ minWidth: 60, textAlign: "right" }}>Conv.</span>
+          </div>
+          {linhas.map((o, i) => {
+            const conv = o.cadastros > 0 ? Math.round((o.pagantes / o.cadastros) * 100) : 0;
+            return (
+              <div key={o.source || i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", background: "var(--ui-bg-secondary)", borderRadius: 8, fontSize: 12 }}>
+                <span style={{ flex: 1, color: "var(--ui-text-secondary)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.source}</span>
+                <span style={{ minWidth: 70, textAlign: "right", color: "var(--ui-text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{o.cadastros}</span>
+                <span style={{ minWidth: 70, textAlign: "right", color: "var(--ui-success)", fontFamily: "'JetBrains Mono', monospace" }}>{o.pagantes}</span>
+                <span style={{ minWidth: 60, textAlign: "right", color: conv > 0 ? "var(--ui-accent)" : "var(--ui-text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>{conv}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
