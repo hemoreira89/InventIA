@@ -51,6 +51,14 @@ async function getProfileByEmail(key, email) {
   return a?.[0] || null;
 }
 
+// Mapeamento CONFIÁVEL: acha o usuário pelo vínculo preapproval_id guardado na
+// criação da assinatura (não depende de e-mail nem de external_reference no pagamento).
+async function getProfileByPreapproval(key, preId) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=user_id,plano_expira_em&mp_preapproval_id=eq.${encodeURIComponent(preId)}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
+  const a = await r.json().catch(() => []);
+  return a?.[0] || null;
+}
+
 // Registra a receita (idempotente). Retorna o status HTTP do insert.
 async function recordPagamento(key, row) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos`, {
@@ -130,12 +138,11 @@ export default async function handler(req, res) {
           }
         }
       } else {
-        // Cobrança recorrente: busca o authorized_payment e o preapproval pai (p/ ref).
+        // Cobrança recorrente: authorized_payment + preapproval pai (ref confiável).
         const ar = await mpGet(`/authorized_payments/${objId}`, token);
-        if (!ar.ok) return res.status(500).json({ retry: `authpay ${ar.status}` });
+        if (!ar.ok) { dbg(key, { tipo, obj_id: String(objId), fetch_status: ar.status, extra: "AUTHPAY_FAIL" }); return res.status(500).json({ retry: `authpay ${ar.status}` }); }
         const ap = await ar.json();
         const aprovado = ap?.payment?.status === "approved" || ap?.status === "processed";
-        if (!aprovado) return res.status(200).json({ ignored: ap?.status || "nao aprovado" });
         const preId = ap.preapproval_id;
         const pre = preId ? await (await mpGet(`/preapproval/${preId}`, token)).json().catch(() => ({})) : {};
         [userId, plano] = String(pre.external_reference || "").split(":");
@@ -143,6 +150,13 @@ export default async function handler(req, res) {
         refId = String(ap.payment?.id || ap.id || objId);
         pagoEm = ap.date_created || new Date().toISOString();
         email = pre.payer_email || null;
+        // Backup confiável: vínculo guardado por preapproval_id (independe de e-mail).
+        if (!userId && preId) {
+          const pf = await getProfileByPreapproval(key, preId);
+          if (pf?.user_id) { userId = pf.user_id; if (!plano) plano = valor >= 100 ? "anual" : "mensal"; }
+        }
+        dbg(key, { tipo, obj_id: String(objId), pay_status: (ap?.payment?.status || ap?.status), external_reference: pre.external_reference ?? null, extra: ("preId=" + preId + " aprovado=" + aprovado).slice(0, 400) });
+        if (!aprovado) return res.status(200).json({ ignored: ap?.status || "nao aprovado" });
       }
 
       const meses = MESES[plano];

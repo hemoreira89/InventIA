@@ -57,6 +57,17 @@ async function criarAssinatura(req, res, token, user) {
   });
   const data = await r.json();
   if (!r.ok) { console.error("[mp] preapproval:", data); return res.status(502).json({ error: "falha ao criar assinatura" }); }
+  // Vincula preapproval_id -> usuário JÁ na criação (via service role), pra o
+  // webhook mapear de forma confiável (sem depender de e-mail do pagador).
+  const key = process.env.SUPABASE_SERVICE_ROLE;
+  if (key && data.id) {
+    fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${user.id}`, {
+      method: "PATCH",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ mp_preapproval_id: String(data.id), updated_at: new Date().toISOString() }),
+      signal: AbortSignal.timeout(6000),
+    }).catch(() => {});
+  }
   return res.status(200).json({ init_point: data.init_point, id: data.id });
 }
 
