@@ -11,7 +11,7 @@
 //
 // Gated: sem MERCADOPAGO_ACCESS_TOKEN, responde 200 (no-op).
 // ENV: MERCADOPAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE
-export const config = { maxDuration: 15 };
+export const config = { maxDuration: 15 }; // redeploy p/ nova service role
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const MESES = { mensal: 1, anual: 12 };
