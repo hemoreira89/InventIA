@@ -43,6 +43,14 @@ async function getProfile(key, userId) {
   return a?.[0] || null;
 }
 
+// Fallback de mapeamento: acha o usuário pelo e-mail (quando o pagamento da
+// assinatura não traz external_reference).
+async function getProfileByEmail(key, email) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=user_id,plano_expira_em&email=ilike.${encodeURIComponent(email)}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
+  const a = await r.json().catch(() => []);
+  return a?.[0] || null;
+}
+
 // Registra a receita (idempotente). Retorna o status HTTP do insert.
 async function recordPagamento(key, row) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos`, {
@@ -105,13 +113,22 @@ export default async function handler(req, res) {
           return res.status(500).json({ retry: `payment ${pr.status}` });
         }
         const pay = await pr.json();
-        dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("meta=" + JSON.stringify(pay.metadata || {}) + " desc=" + (pay.description || "")).slice(0, 400) });
+        email = pay.payer?.email || null;
+        dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("payer=" + (email || "") + " meta=" + JSON.stringify(pay.metadata || {})).slice(0, 400) });
         if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
-        [userId, plano] = String(pay.external_reference || "").split(":");
         valor = pay.transaction_amount ?? 0;
         refId = String(pay.id || objId);
         pagoEm = pay.date_approved || new Date().toISOString();
-        email = pay.payer?.email || null;
+        [userId, plano] = String(pay.external_reference || "").split(":");
+        // Fallback: pagamento de assinatura às vezes não traz external_reference.
+        // Mapeia pelo e-mail do pagador e infere o plano pelo valor (24,90 / 199).
+        if (!userId && email) {
+          const pf = await getProfileByEmail(key, email);
+          if (pf?.user_id) {
+            userId = pf.user_id;
+            if (!plano) plano = valor >= 100 ? "anual" : "mensal";
+          }
+        }
       } else {
         // Cobrança recorrente: busca o authorized_payment e o preapproval pai (p/ ref).
         const ar = await mpGet(`/authorized_payments/${objId}`, token);
