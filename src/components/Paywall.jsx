@@ -6,7 +6,7 @@
 
 import { useEffect } from "react";
 import { Check, Crown, LogOut, X, Sparkles, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
-import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS, iniciarCheckout } from "../lib/plano";
+import { PLANOS, BENEFICIOS, CONTATO_EMAIL, TRIAL_DIAS, iniciarCheckout, iniciarPagamentoAvulso } from "../lib/plano";
 import { track } from "../lib/track";
 import { BRAND } from "../lib/brand";
 
@@ -15,7 +15,7 @@ function fmtPreco(v) {
 }
 
 function abrirCheckout(plano, email) {
-  track("plan_clicked", { plano: plano.id });
+  track("plan_clicked", { plano: plano.id, tipo: "assinatura" });
   iniciarCheckout(plano, email).catch((err) => {
     if (err?.message === "login_required") {
       // Defensivo: o Paywall só aparece logado, mas se a sessão caiu, recarrega
@@ -24,6 +24,14 @@ function abrirCheckout(plano, email) {
     } else {
       console.error("[paywall] checkout:", err);
     }
+  });
+}
+
+function abrirAvulso(plano, email) {
+  track("plan_clicked", { plano: plano.id, tipo: "avulso" });
+  iniciarPagamentoAvulso(plano, email).catch((err) => {
+    if (err?.message === "login_required") window.location.reload();
+    else console.error("[paywall] avulso:", err);
   });
 }
 
@@ -137,10 +145,18 @@ export default function Paywall({ email, status, onLogout, onClose }) {
                 fontWeight: 800, fontSize: 14, cursor: "pointer",
                 boxShadow: p.destaque ? "0 4px 14px rgba(123,97,255,0.35)" : "none"
               }}>
-                Assinar {p.nome}
+                Assinar {p.nome} · renova automático
               </button>
-              <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: "var(--ui-text-faint)" }}>
-                Cancele quando quiser · sem fidelidade
+              <button onClick={() => abrirAvulso(p, email)} style={{
+                width: "100%", marginTop: 8,
+                background: "transparent", border: "none",
+                color: "var(--ui-text-muted)", fontWeight: 600, fontSize: 12,
+                cursor: "pointer", textDecoration: "underline"
+              }}>
+                ou pagar avulso (Pix/boleto) — sem renovação
+              </button>
+              <div style={{ textAlign: "center", marginTop: 8, fontSize: 11, color: "var(--ui-text-faint)" }}>
+                Cartão: renova sozinho, cancele quando quiser · Pix/boleto: vale 1 período
               </div>
             </div>
           ))}

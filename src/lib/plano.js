@@ -170,6 +170,40 @@ export async function iniciarCheckout(plano, email) {
 }
 
 /**
+ * Pagamento AVULSO (Checkout Pro): paga um ciclo via Pix/boleto/cartão, SEM
+ * renovação automática. O acesso vale 1 período e depois pausa até pagar de novo.
+ * Também exige conta logada. Lança Error("login_required") sem sessão.
+ */
+export async function iniciarPagamentoAvulso(plano, email) {
+  let session = null;
+  try { ({ data: { session } } = await supabase.auth.getSession()); } catch (_) { /* sem sessão */ }
+  const conta = session?.user?.email || email || null;
+  if (!conta) throw new Error("login_required");
+
+  try {
+    const r = await fetch("/api/mp-criar-pagamento", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ plano: plano.id }),
+    });
+    if (r.ok) {
+      const { init_point } = await r.json();
+      if (init_point) { window.location.href = init_point; return; }
+    }
+  } catch (e) {
+    console.warn("[plano] avulso MP indisponível, usando fallback:", e?.message);
+  }
+  const assunto = encodeURIComponent(`Pagamento avulso ${BRAND.full} — plano ${plano.nome}`);
+  const corpo = encodeURIComponent(
+    `Olá! Quero pagar avulso (Pix/boleto) o plano ${plano.nome} do ${BRAND.full}.\n\nMinha conta: ${conta}`
+  );
+  window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
+}
+
+/**
  * Cancela a assinatura recorrente do usuário logado. O acesso continua até o fim
  * do ciclo já pago (plano_expira_em) e então expira. Lança em erro.
  */
