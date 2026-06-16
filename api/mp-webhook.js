@@ -29,8 +29,8 @@ async function dbg(key, row) {
       body: JSON.stringify(row),
       signal: AbortSignal.timeout(4000),
     });
-    if (!r.ok) console.log("DBGINS " + r.status);
-  } catch (e) { console.log("DBGERR " + (e?.message || "")); }
+    return r.status;
+  } catch (e) { return 0; }
 }
 
 async function mpGet(path, token) {
@@ -106,11 +106,11 @@ export default async function handler(req, res) {
   const tipo = req.body?.type || req.query?.type || req.query?.topic;
   const objId = req.body?.data?.id || req.query?.["data.id"] || req.query?.id;
   if (!objId) return res.status(200).json({ ignored: "sem id" });
-  console.log(`[MP] webhook recebido: tipo=${tipo} id=${objId}`);
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
-  await dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
+  const insSt = await dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
+  console.log("WHKINS " + insSt + " " + String(tipo).slice(0, 12));
 
   try {
     // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
