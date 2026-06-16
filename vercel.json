@@ -29,7 +29,7 @@
     "api/cron-emails.js": {
       "maxDuration": 60
     },
-    "api/mp-criar-pagamento.js": {
+    "api/mp.js": {
       "maxDuration": 15
     },
     "api/mp-webhook.js": {

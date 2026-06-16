@@ -120,8 +120,8 @@ export async function carregarPerfilPlano(userId) {
  *
  * Ordem de tentativa:
  *   1. Link estático configurado (VITE_CHECKOUT_URL_*) — atrela email/ref da conta.
- *   2. Mercado Pago (Checkout Pro) via /api/mp-criar-pagamento — JWT obrigatório,
- *      external_reference = "<userId>:<plano>"; auto-ativa por webhook.
+ *   2. Mercado Pago via /api/mp (action="assinar") — assinatura recorrente,
+ *      JWT obrigatório, external_reference = "<userId>:<plano>"; ativa por webhook.
  *   3. Fallback: contato por email (enquanto pagamento não está configurado).
  */
 export async function iniciarCheckout(plano, email) {
@@ -146,13 +146,13 @@ export async function iniciarCheckout(plano, email) {
   }
   try {
     // Assinatura recorrente (preapproval): cobra automático a cada ciclo até cancelar.
-    const r = await fetch("/api/mp-criar-assinatura", {
+    const r = await fetch("/api/mp", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ plano: plano.id }),
+      body: JSON.stringify({ action: "assinar", plano: plano.id }),
     });
     if (r.ok) {
       const { init_point } = await r.json();
@@ -181,13 +181,13 @@ export async function iniciarPagamentoAvulso(plano, email) {
   if (!conta) throw new Error("login_required");
 
   try {
-    const r = await fetch("/api/mp-criar-pagamento", {
+    const r = await fetch("/api/mp", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ plano: plano.id }),
+      body: JSON.stringify({ action: "pagar_avulso", plano: plano.id }),
     });
     if (r.ok) {
       const { init_point } = await r.json();
@@ -210,9 +210,10 @@ export async function iniciarPagamentoAvulso(plano, email) {
 export async function cancelarAssinatura() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error("login_required");
-  const r = await fetch("/api/mp-cancelar-assinatura", {
+  const r = await fetch("/api/mp", {
     method: "POST",
-    headers: { Authorization: `Bearer ${session.access_token}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: "cancelar" }),
   });
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));

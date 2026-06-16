@@ -190,7 +190,7 @@ VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
 
 > A anon key é pública (protegida por RLS). A chave do Gemini e a SERVICE_ROLE ficam apenas no servidor (Vercel).
 >
-> **Assinatura recorrente (Mercado Pago):** `iniciarCheckout` → `/api/mp-criar-assinatura` cria um *preapproval* (cobra automático a cada ciclo). O `/api/mp-webhook` trata `subscription_authorized_payment` (cada cobrança → ativa/estende plano + grava receita, idempotente) e `subscription_preapproval` (guarda/limpa `profiles.mp_preapproval_id`). Cancelamento: botão no header → `/api/mp-cancelar-assinatura` (acesso mantido até o fim do ciclo pago). **No painel do MP é preciso configurar o webhook** (URL `https://cauril.com.br/api/mp-webhook`, eventos de assinatura). Se `VITE_CHECKOUT_URL_*` estiver setada, o app usa o link estático e pula o MP.
+> **Pagamentos (Mercado Pago):** as ações ficam em **`/api/mp`** (1 function, dispatch por `action` — consolidado por causa do limite de 12 Serverless Functions do plano Hobby): `assinar` (preapproval recorrente), `pagar_avulso` (Checkout Pro avulso), `cancelar`. O `/api/mp-webhook` (separado, URL fixa) trata `payment` (avulso), `subscription_authorized_payment` (cada cobrança recorrente → ativa/estende plano + grava receita, idempotente) e `subscription_preapproval` (guarda/limpa `profiles.mp_preapproval_id`). Paywall oferece assinar (cartão) ou avulso (Pix/boleto); cancelamento via botão no header. **No painel do MP é preciso configurar o webhook** (`https://cauril.com.br/api/mp-webhook`, eventos de pagamento e assinatura). Se `VITE_CHECKOUT_URL_*` estiver setada, o app usa o link estático e pula o MP.
 
 ---
 
