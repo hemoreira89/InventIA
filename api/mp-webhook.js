@@ -87,8 +87,13 @@ export default async function handler(req, res) {
 
       if (tipo === "payment") {
         const pr = await mpGet(`/v1/payments/${objId}`, token);
-        if (!pr.ok) return res.status(500).json({ retry: `payment ${pr.status}` });
+        if (!pr.ok) {
+          const errBody = await pr.text().catch(() => "");
+          console.log(`[MP] payment fetch FALHOU ${pr.status}: ${errBody.slice(0, 300)}`);
+          return res.status(500).json({ retry: `payment ${pr.status}` });
+        }
         const pay = await pr.json();
+        console.log(`[MP] payment ${objId} status=${pay.status} extref=${JSON.stringify(pay.external_reference)} metadata=${JSON.stringify(pay.metadata)}`);
         if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
         [userId, plano] = String(pay.external_reference || "").split(":");
         valor = pay.transaction_amount ?? 0;
