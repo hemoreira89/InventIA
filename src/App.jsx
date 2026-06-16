@@ -6497,13 +6497,15 @@ Regras:
               <button
                 onClick={() => pedirConfirmacao({
                   titulo: "Cancelar assinatura?",
-                  mensagem: "Você continua com acesso até o fim do período já pago. Depois disso, a assinatura não será renovada e o acesso pausa.",
+                  mensagem: "Dentro de 7 dias da compra você recebe reembolso integral automático (direito de arrependimento) e o acesso encerra. Após 7 dias, a renovação é cancelada e o acesso vale até o fim do período já pago.",
                   perigoso: true,
                   onConfirm: async () => {
                     try {
                       const res = await cancelarAssinatura();
                       if (res?.semAssinatura) {
                         showToast("Você não tem uma assinatura recorrente ativa.", "info");
+                      } else if (res?.reembolsado) {
+                        showToast(`Assinatura cancelada e reembolsada (R$ ${(res.valor || 0).toFixed(2).replace(".", ",")}) ✓ — dentro do prazo de 7 dias. O acesso foi encerrado.`, "success");
                       } else {
                         showToast("Assinatura cancelada ✓ — não será mais renovada. Seu acesso vale até o fim do período já pago.", "success");
                       }

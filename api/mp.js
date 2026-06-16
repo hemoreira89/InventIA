@@ -99,17 +99,17 @@ async function criarPagamento(req, res, token, user) {
   return res.status(200).json({ init_point: data.init_point, id: data.id });
 }
 
-// ── Cancelar assinatura recorrente ───────────────────────────────────────────
+// ── Cancelar assinatura recorrente (+ reembolso automático em <=7 dias) ──────
 async function cancelarAssinatura(req, res, token, user) {
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ error: "service role ausente" });
   const supaHeaders = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
 
   const gr = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=mp_preapproval_id&user_id=eq.${user.id}`, { headers: supaHeaders, signal: AbortSignal.timeout(6000) });
-  const arr = await gr.json();
-  const preId = arr?.[0]?.mp_preapproval_id;
+  const preId = (await gr.json())?.[0]?.mp_preapproval_id;
   if (!preId) return res.status(200).json({ ok: true, semAssinatura: true });
 
+  // 1) Cancela a recorrência no Mercado Pago.
   const cr = await fetch(`https://api.mercadopago.com/preapproval/${preId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -117,17 +117,48 @@ async function cancelarAssinatura(req, res, token, user) {
     signal: AbortSignal.timeout(10000),
   });
   if (!cr.ok) {
-    const detail = await cr.json().catch(() => ({}));
-    console.error("[mp] cancelar:", detail);
+    console.error("[mp] cancelar:", await cr.json().catch(() => ({})));
     return res.status(502).json({ error: "falha ao cancelar no Mercado Pago" });
   }
+
+  // 2) Reembolso automático se o último pagamento foi há <= 7 dias (arrependimento, CDC).
+  let reembolsado = false, valor = 0;
+  try {
+    const pg = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos?select=referencia,pago_em,valor&user_id=eq.${user.id}&metodo=eq.mercadopago&reembolsado_em=is.null&order=pago_em.desc&limit=1`, { headers: supaHeaders, signal: AbortSignal.timeout(6000) });
+    const ult = (await pg.json())?.[0];
+    if (ult?.referencia && ult?.pago_em && (Date.now() - new Date(ult.pago_em).getTime()) / 86400000 <= 7) {
+      const rr = await fetch(`https://api.mercadopago.com/v1/payments/${ult.referencia}/refunds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Idempotency-Key": `refund-${ult.referencia}` },
+        body: "{}",
+        signal: AbortSignal.timeout(10000),
+      });
+      if (rr.ok) {
+        reembolsado = true;
+        valor = Number(ult.valor) || 0;
+        await fetch(`${SUPABASE_URL}/rest/v1/pagamentos?referencia=eq.${ult.referencia}&metodo=eq.mercadopago`, {
+          method: "PATCH",
+          headers: { ...supaHeaders, Prefer: "return=minimal" },
+          body: JSON.stringify({ reembolsado_em: new Date().toISOString() }),
+          signal: AbortSignal.timeout(8000),
+        });
+      } else {
+        console.error("[mp] refund:", await rr.text().catch(() => ""));
+      }
+    }
+  } catch (e) { console.error("[mp] refund flow:", e.message); }
+
+  // 3) Atualiza o perfil: limpa a assinatura; se reembolsou, encerra o acesso agora.
+  const patch = { mp_preapproval_id: null, updated_at: new Date().toISOString() };
+  if (reembolsado) patch.plano_expira_em = new Date().toISOString();
   await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${user.id}`, {
     method: "PATCH",
     headers: { ...supaHeaders, Prefer: "return=minimal" },
-    body: JSON.stringify({ mp_preapproval_id: null, updated_at: new Date().toISOString() }),
+    body: JSON.stringify(patch),
     signal: AbortSignal.timeout(8000),
   });
-  return res.status(200).json({ ok: true });
+
+  return res.status(200).json({ ok: true, reembolsado, valor });
 }
 
 export default async function handler(req, res) {

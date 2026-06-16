@@ -191,7 +191,12 @@ export default function Paywall({ email, status, onLogout, onClose }) {
         </div>
 
         <div style={{ textAlign: "center", marginTop: 24, fontSize: 11, color: "var(--ui-text-disabled)", lineHeight: 1.7 }}>
-          Pagamento seguro · Ativação em até algumas horas · Dúvidas: <a href={`mailto:${CONTATO_EMAIL}`} style={{ color: "var(--ui-accent)", fontWeight: 600 }}>{CONTATO_EMAIL}</a>
+          Pagamento seguro · Ativação imediata · Dúvidas: <a href={`mailto:${CONTATO_EMAIL}`} style={{ color: "var(--ui-accent)", fontWeight: 600 }}>{CONTATO_EMAIL}</a>
+          <div style={{ marginTop: 8, maxWidth: 560, margin: "8px auto 0" }}>
+            <b style={{ color: "var(--ui-text-muted)" }}>Cancelamento e reembolso:</b> cancele quando quiser, sem fidelidade.
+            Dentro de <b>7 dias da compra</b> você tem <b>reembolso integral automático</b> (direito de arrependimento, CDC Art. 49).
+            Após 7 dias, o cancelamento encerra a renovação e o acesso vale até o fim do período já pago.
+          </div>
         </div>
       </div>
     </div>
