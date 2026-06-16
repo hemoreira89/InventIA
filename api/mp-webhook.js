@@ -1,44 +1,30 @@
 // ─── /api/mp-webhook — notificações do Mercado Pago ──────────────────────────
 // Trata 3 tipos de evento (NÃO confiamos no corpo: buscamos o recurso na API do
 // MP, que é autoritativa):
-//   • payment                          → pagamento avulso (Checkout Pro legado)
-//   • subscription_authorized_payment  → cada cobrança recorrente da assinatura
+//   • payment                          → pagamento (avulso e cobrança de assinatura)
+//   • subscription_authorized_payment  → cobrança recorrente da assinatura
 //   • subscription_preapproval         → ciclo de vida da assinatura (autorizada/cancelada)
 //
+// Mapeia o usuário por external_reference ("<userId>:<plano>"); como backup, pelo
+// vínculo mp_preapproval_id guardado na criação, ou pelo e-mail do pagador.
 // Idempotência: cada cobrança é gravada em `pagamentos` com referencia = id do
 // pagamento (índice único parcial p/ metodo='mercadopago'); duplicatas → 409 → não
-// reativam. external_reference = "<userId>:<plano>".
+// reativam.
 //
 // Gated: sem MERCADOPAGO_ACCESS_TOKEN, responde 200 (no-op).
-// ENV: MERCADOPAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE
-export const config = { maxDuration: 15 }; // redeploy p/ nova service role
+// ENV: MERCADOPAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE (precisa de DML em public).
+export const config = { maxDuration: 15 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const MESES = { mensal: 1, anual: 12 };
 
 const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
 
-// Diagnóstico: grava o que chega/decide numa tabela legível por SQL (logs do
-// Vercel truncam). AWAIT obrigatório — em serverless, fetch fire-and-forget não
-// completa após o response (a lambda congela). À prova de falha.
-async function dbg(key, row) {
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
-      method: "POST",
-      headers: { ...supaHeaders(key), Prefer: "return=minimal" },
-      body: JSON.stringify(row),
-      signal: AbortSignal.timeout(4000),
-    });
-    return r.status;
-  } catch (e) { return 0; }
-}
-
 async function mpGet(path, token) {
-  const r = await fetch(`https://api.mercadopago.com${path}`, {
+  return fetch(`https://api.mercadopago.com${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(8000),
   });
-  return r;
 }
 
 async function getProfile(key, userId) {
@@ -47,16 +33,14 @@ async function getProfile(key, userId) {
   return a?.[0] || null;
 }
 
-// Fallback de mapeamento: acha o usuário pelo e-mail (quando o pagamento da
-// assinatura não traz external_reference).
+// Backup: acha o usuário pelo e-mail do pagador (caso falte external_reference).
 async function getProfileByEmail(key, email) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=user_id,plano_expira_em&email=ilike.${encodeURIComponent(email)}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
   const a = await r.json().catch(() => []);
   return a?.[0] || null;
 }
 
-// Mapeamento CONFIÁVEL: acha o usuário pelo vínculo preapproval_id guardado na
-// criação da assinatura (não depende de e-mail nem de external_reference no pagamento).
+// Backup confiável: acha o usuário pelo vínculo mp_preapproval_id (guardado na criação).
 async function getProfileByPreapproval(key, preId) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=user_id,plano_expira_em&mp_preapproval_id=eq.${encodeURIComponent(preId)}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
   const a = await r.json().catch(() => []);
@@ -109,10 +93,6 @@ export default async function handler(req, res) {
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
-  let kr = "?";
-  try { kr = JSON.parse(Buffer.from(key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()).role; } catch (_) {}
-  const insSt = await dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
-  console.log("WHKINS " + insSt + " role=" + kr + " len=" + key.length);
 
   try {
     // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
@@ -121,32 +101,21 @@ export default async function handler(req, res) {
 
       if (tipo === "payment") {
         const pr = await mpGet(`/v1/payments/${objId}`, token);
-        if (!pr.ok) {
-          const errBody = await pr.text().catch(() => "");
-          await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: ("FETCH_FAIL " + errBody).slice(0, 400) });
-          return res.status(500).json({ retry: `payment ${pr.status}` });
-        }
+        if (!pr.ok) return res.status(500).json({ retry: `payment ${pr.status}` });
         const pay = await pr.json();
-        email = pay.payer?.email || null;
-        await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("payer=" + (email || "") + " meta=" + JSON.stringify(pay.metadata || {})).slice(0, 400) });
         if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
+        email = pay.payer?.email || null;
         valor = pay.transaction_amount ?? 0;
         refId = String(pay.id || objId);
         pagoEm = pay.date_approved || new Date().toISOString();
         [userId, plano] = String(pay.external_reference || "").split(":");
-        // Fallback: pagamento de assinatura às vezes não traz external_reference.
-        // Mapeia pelo e-mail do pagador e infere o plano pelo valor (24,90 / 199).
         if (!userId && email) {
           const pf = await getProfileByEmail(key, email);
-          if (pf?.user_id) {
-            userId = pf.user_id;
-            if (!plano) plano = valor >= 100 ? "anual" : "mensal";
-          }
+          if (pf?.user_id) { userId = pf.user_id; if (!plano) plano = valor >= 100 ? "anual" : "mensal"; }
         }
       } else {
-        // Cobrança recorrente: authorized_payment + preapproval pai (ref confiável).
         const ar = await mpGet(`/authorized_payments/${objId}`, token);
-        if (!ar.ok) { await dbg(key, { tipo, obj_id: String(objId), fetch_status: ar.status, extra: "AUTHPAY_FAIL" }); return res.status(500).json({ retry: `authpay ${ar.status}` }); }
+        if (!ar.ok) return res.status(500).json({ retry: `authpay ${ar.status}` });
         const ap = await ar.json();
         const aprovado = ap?.payment?.status === "approved" || ap?.status === "processed";
         const preId = ap.preapproval_id;
@@ -156,12 +125,10 @@ export default async function handler(req, res) {
         refId = String(ap.payment?.id || ap.id || objId);
         pagoEm = ap.date_created || new Date().toISOString();
         email = pre.payer_email || null;
-        // Backup confiável: vínculo guardado por preapproval_id (independe de e-mail).
         if (!userId && preId) {
           const pf = await getProfileByPreapproval(key, preId);
           if (pf?.user_id) { userId = pf.user_id; if (!plano) plano = valor >= 100 ? "anual" : "mensal"; }
         }
-        await dbg(key, { tipo, obj_id: String(objId), pay_status: (ap?.payment?.status || ap?.status), external_reference: pre.external_reference ?? null, extra: ("preId=" + preId + " aprovado=" + aprovado).slice(0, 400) });
         if (!aprovado) return res.status(200).json({ ignored: ap?.status || "nao aprovado" });
       }
 
@@ -181,16 +148,15 @@ export default async function handler(req, res) {
 
       const up = await extendPlan(key, userId, plano, meses, prof?.plano_expira_em);
       if (!up.ok) return res.status(500).json({ retry: `update ${up.status}` });
-      console.log(`[MP] ${tipo}: ${plano} p/ ${userId} até ${up.expira} (ref ${refId})`);
+      console.log(`[MP] ${tipo}: ${plano} p/ ${userId} até ${up.expira}`);
       return res.status(200).json({ ok: true });
     }
 
     // ── 2) Ciclo de vida da assinatura → guarda/limpa o id (p/ cancelamento) ──
     if (tipo === "subscription_preapproval" || tipo === "preapproval") {
       const pr = await mpGet(`/preapproval/${objId}`, token);
-      if (!pr.ok) { await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: "PREAPPROVAL_FAIL" }); return res.status(500).json({ retry: `preapproval ${pr.status}` }); }
+      if (!pr.ok) return res.status(500).json({ retry: `preapproval ${pr.status}` });
       const pre = await pr.json();
-      await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pre.status, external_reference: pre.external_reference ?? null, extra: ("payer=" + (pre.payer_email || "")).slice(0, 300) });
       const [userId] = String(pre.external_reference || "").split(":");
       if (!userId) return res.status(200).json({ ignored: "ref inválida" });
       if (pre.status === "authorized") {
