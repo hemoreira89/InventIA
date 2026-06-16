@@ -23,13 +23,14 @@ const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Co
 // completa após o response (a lambda congela). À prova de falha.
 async function dbg(key, row) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
       method: "POST",
       headers: { ...supaHeaders(key), Prefer: "return=minimal" },
       body: JSON.stringify(row),
       signal: AbortSignal.timeout(4000),
     });
-  } catch (_) { /* nunca quebra o fluxo */ }
+    if (!r.ok) console.log("DBGINS " + r.status);
+  } catch (e) { console.log("DBGERR " + (e?.message || "")); }
 }
 
 async function mpGet(path, token) {
