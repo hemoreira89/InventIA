@@ -6,7 +6,7 @@ import Login from './Login.jsx'
 import Landing from './Landing.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { supabase, getSession, signOut } from './supabase.js'
-import { track } from './lib/track.js'
+import { track, initAnalytics } from './lib/track.js'
 
 function Root() {
   const [session, setSession] = useState(null);
@@ -15,6 +15,8 @@ function Root() {
   const [authView, setAuthView] = useState(null);
 
   useEffect(() => {
+    // Captura UTM (first-touch) + carrega o Meta Pixel (se configurado).
+    initAnalytics();
     getSession().then(s => {
       setSession(s);
       setLoading(false);

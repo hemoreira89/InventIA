@@ -18,6 +18,14 @@ const CHECKOUT_MENSAL = import.meta.env?.VITE_CHECKOUT_URL_MENSAL || "";
 const CHECKOUT_ANUAL = import.meta.env?.VITE_CHECKOUT_URL_ANUAL || "";
 export const CONTATO_EMAIL = import.meta.env?.VITE_CONTATO_EMAIL || "contato@cauril.com.br";
 
+// Guarda a intenção de compra antes de sair pro Mercado Pago, pra na volta
+// (?assinatura=ok / ?pagamento=ok) sabermos plano/valor e disparar o Purchase.
+function salvarIntencaoCheckout(plano, tipo) {
+  try {
+    localStorage.setItem("cauril_checkout_intent", JSON.stringify({ plano: plano.id, valor: plano.preco, tipo }));
+  } catch { /* sem localStorage: ignora */ }
+}
+
 export const PLANOS = [
   {
     id: "mensal",
@@ -131,6 +139,7 @@ export async function iniciarCheckout(plano, email) {
   const conta = session?.user?.email || email || null;
   const userId = session?.user?.id || null;
   if (!conta) throw new Error("login_required");
+  salvarIntencaoCheckout(plano, "assinatura");
 
   // 1. Link estático: anexa email/ref da conta para reconciliar quem pagou.
   if (plano.checkoutUrl) {
@@ -179,6 +188,7 @@ export async function iniciarPagamentoAvulso(plano, email) {
   try { ({ data: { session } } = await supabase.auth.getSession()); } catch (_) { /* sem sessão */ }
   const conta = session?.user?.email || email || null;
   if (!conta) throw new Error("login_required");
+  salvarIntencaoCheckout(plano, "avulso");
 
   try {
     const r = await fetch("/api/mp", {

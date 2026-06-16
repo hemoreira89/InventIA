@@ -1,28 +1,123 @@
 // Camada fina de eventos de funil (analytics).
-// Hoje envia para o Vercel Analytics (custom events). É seguro chamar em
-// qualquer lugar: se o analytics não estiver disponível, vira no-op.
+// Envia para o Vercel Analytics (custom events) e, se configurado, para o
+// Meta Pixel (tráfego pago). É seguro chamar em qualquer lugar: sem analytics
+// ou sem Pixel, vira no-op.
 //
 // Eventos de funil padronizados (use estes nomes para montar funis):
 //   landing_cta        { local }      visitante clicou num CTA da landing
-//   signup_started                    abriu/enviou o formulário de cadastro
-//   signup_success                    cadastro concluído (= trial iniciado)
+//   signup_started                    abriu/enviou o formulário de cadastro   → Meta: Lead
+//   signup_success                    cadastro concluído (= trial iniciado)   → Meta: CompleteRegistration
 //   login_success                     login concluído
 //   analyze_clicked    { tipo }       clicou para rodar uma análise de IA
 //   paywall_view       { motivo }     viu a tela de planos (bloqueio/overlay)
-//   plan_clicked       { plano }      clicou em "Assinar" um plano
+//   plan_clicked       { plano,valor} clicou em "Assinar" um plano            → Meta: InitiateCheckout
+//   purchase_success   { plano,valor} pagamento confirmado (volta do MP)      → Meta: Purchase
+//
+// Atribuição (tráfego pago): na 1ª visita capturamos utm_* / fbclid / gclid e
+// guardamos (first-touch) no localStorage. A origem (source/campaign) é
+// anexada automaticamente aos eventos, pra montar funil por campanha.
 //
 // Para funis completos no futuro (free): basta plugar um PostHog key — a
 // função já tenta window.posthog.capture se existir.
 import { track as vercelTrack } from "@vercel/analytics";
 
-export function track(evento, props = {}) {
+// ID do Pixel do Meta — só no .env (Vercel). Sem ele, nada do Meta é carregado.
+const META_PIXEL_ID = import.meta.env?.VITE_META_PIXEL_ID || "";
+
+// Preço por plano (fallback quando o evento não traz `valor`).
+const PRECOS = { mensal: 24.9, anual: 199 };
+
+// Mapa: evento interno → evento padrão do Meta (o resto continua custom).
+const META_STD = {
+  signup_started: "Lead",
+  signup_success: "CompleteRegistration",
+  plan_clicked: "InitiateCheckout",
+};
+
+const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+const ATTRIB_KEY = "cauril_attrib";
+
+// ── Atribuição (UTM/click ids) ───────────────────────────────────────────────
+function captureAttribution() {
   try {
-    vercelTrack(evento, props);
-  } catch { /* analytics indisponível: ignora */ }
+    const p = new URLSearchParams(window.location.search);
+    const attrib = {};
+    UTM_KEYS.forEach(k => { const v = p.get(k); if (v) attrib[k] = v.slice(0, 120); });
+    const fbclid = p.get("fbclid"); if (fbclid) attrib.fbclid = fbclid.slice(0, 255);
+    const gclid = p.get("gclid"); if (gclid) attrib.gclid = gclid.slice(0, 255);
+    if (Object.keys(attrib).length === 0) return;
+    // first-touch: não sobrescreve a primeira origem que trouxe o visitante.
+    if (!localStorage.getItem(ATTRIB_KEY)) {
+      attrib.ts = new Date().toISOString();
+      localStorage.setItem(ATTRIB_KEY, JSON.stringify(attrib));
+    }
+  } catch { /* sem localStorage/URL: ignora */ }
+}
+
+/** Atribuição first-touch guardada (ou null). Útil pra gravar no cadastro. */
+export function getAttribution() {
+  try { return JSON.parse(localStorage.getItem(ATTRIB_KEY) || "null"); }
+  catch { return null; }
+}
+
+// ── Meta Pixel ───────────────────────────────────────────────────────────────
+function loadMetaPixel() {
+  if (!META_PIXEL_ID || typeof window === "undefined" || window.fbq) return;
+  /* eslint-disable */
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  /* eslint-enable */
+  try { window.fbq("init", META_PIXEL_ID); window.fbq("track", "PageView"); }
+  catch { /* ignora */ }
+}
+
+function metaTrack(name, params) {
+  try { if (typeof window !== "undefined" && window.fbq) window.fbq("track", name, params); }
+  catch { /* ignora */ }
+}
+
+/** Inicializa analytics no boot do app: captura atribuição + carrega Pixel. */
+export function initAnalytics() {
+  captureAttribution();
+  loadMetaPixel();
+}
+
+// ── API principal ─────────────────────────────────────────────────────────────
+export function track(evento, props = {}) {
+  // Anexa a origem (source/campaign) pra montar funil por campanha no Vercel.
+  const attrib = getAttribution();
+  const enriched = attrib
+    ? { ...props, ...(attrib.utm_source ? { src: attrib.utm_source } : {}), ...(attrib.utm_campaign ? { camp: attrib.utm_campaign } : {}) }
+    : props;
+
+  try { vercelTrack(evento, enriched); } catch { /* indisponível: ignora */ }
   try {
     if (typeof window !== "undefined" && window.posthog?.capture) {
-      window.posthog.capture(evento, props);
+      window.posthog.capture(evento, enriched);
     }
   } catch { /* idem */ }
-  if (import.meta.env?.DEV) console.debug("[track]", evento, props);
+
+  // Espelha no Meta os eventos padronizados (pra otimização do tráfego pago).
+  const stdName = META_STD[evento];
+  if (stdName) {
+    const params = {};
+    if (evento === "plan_clicked") {
+      params.value = Number(props.valor) || PRECOS[props.plano] || 0;
+      params.currency = "BRL";
+      if (props.plano) params.content_name = props.plano;
+    }
+    metaTrack(stdName, params);
+  }
+
+  if (import.meta.env?.DEV) console.debug("[track]", evento, enriched);
+}
+
+/** Compra confirmada (volta do Mercado Pago). Dispara Purchase no Meta. */
+export function trackPurchase({ plano, valor, tipo } = {}) {
+  const value = Number(valor) || PRECOS[plano] || 0;
+  track("purchase_success", { plano, tipo, valor: value });
+  metaTrack("Purchase", { value, currency: "BRL", ...(plano ? { content_name: plano } : {}) });
 }

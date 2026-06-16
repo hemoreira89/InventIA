@@ -15,7 +15,7 @@ function fmtPreco(v) {
 }
 
 function abrirCheckout(plano, email) {
-  track("plan_clicked", { plano: plano.id, tipo: "assinatura" });
+  track("plan_clicked", { plano: plano.id, tipo: "assinatura", valor: plano.preco });
   iniciarCheckout(plano, email).catch((err) => {
     if (err?.message === "login_required") {
       // Defensivo: o Paywall só aparece logado, mas se a sessão caiu, recarrega
@@ -28,7 +28,7 @@ function abrirCheckout(plano, email) {
 }
 
 function abrirAvulso(plano, email) {
-  track("plan_clicked", { plano: plano.id, tipo: "avulso" });
+  track("plan_clicked", { plano: plano.id, tipo: "avulso", valor: plano.preco });
   iniciarPagamentoAvulso(plano, email).catch((err) => {
     if (err?.message === "login_required") window.location.reload();
     else console.error("[paywall] avulso:", err);

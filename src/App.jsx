@@ -53,7 +53,7 @@ import TelegramModal from "./components/TelegramModal";
 import { carregarUniverso, salvarUniverso, supabase } from "./supabase";
 import Paywall from "./components/Paywall";
 import { carregarPerfilPlano, statusPlano, cancelarAssinatura } from "./lib/plano";
-import { track } from "./lib/track";
+import { track, trackPurchase } from "./lib/track";
 import { BRAND } from "./lib/brand";
 import { getDefaultUniverso, getSetorPorTicker, amostrarUniversoBalanceado } from "./lib/catalogoB3";
 import { useCotacoes } from "./hooks/useCotacoes";
@@ -5633,12 +5633,24 @@ export default function App({ session, onLogout }) {
     window.addEventListener("plano-bloqueado", onBloqueio);
     return () => window.removeEventListener("plano-bloqueado", onBloqueio);
   }, [userId]);
-  // Retorno do checkout do Mercado Pago (?pagamento=ok|falha|pendente).
+  // Retorno do checkout do Mercado Pago: avulso (?pagamento=ok|falha|pendente)
+  // ou assinatura recorrente (?assinatura=ok).
   useEffect(() => {
-    const pg = new URLSearchParams(window.location.search).get("pagamento");
-    if (!pg) return;
+    const sp = new URLSearchParams(window.location.search);
+    const pg = sp.get("pagamento");
+    const assin = sp.get("assinatura");
+    if (!pg && !assin) return;
     window.history.replaceState({}, "", window.location.pathname);
-    if (pg === "ok") {
+
+    const sucesso = pg === "ok" || assin === "ok";
+    if (sucesso) {
+      // Conversão p/ o tráfego pago (Meta Purchase) usando a intenção salva.
+      try {
+        const intent = JSON.parse(localStorage.getItem("cauril_checkout_intent") || "null");
+        if (intent) { trackPurchase(intent); localStorage.removeItem("cauril_checkout_intent"); }
+        else trackPurchase({});
+      } catch { /* ignora */ }
+
       showToast("Pagamento recebido! Ativando seu plano…", "success");
       setShowPlanos(false);
       // O webhook ativa o plano de forma assíncrona — recarrega o perfil algumas vezes.

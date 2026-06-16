@@ -186,7 +186,12 @@ VITE_SUPABASE_ANON_KEY=...
 VITE_CHECKOUT_URL_MENSAL=...   # link de pagamento ESTÁTICO (pula o MP recorrente)
 VITE_CHECKOUT_URL_ANUAL=...
 VITE_CONTATO_EMAIL=...         # default: contato@cauril.com.br
+
+# Tráfego pago (opcional — sem ele nada do Meta é carregado)
+VITE_META_PIXEL_ID=...         # ID do Pixel do Meta (Gerenciador de Anúncios)
 ```
+
+> **Tráfego pago / Meta Pixel:** com `VITE_META_PIXEL_ID` setado, o app carrega o Pixel e espelha o funil em eventos padrão do Meta para otimização: `signup_started→Lead`, `signup_success→CompleteRegistration`, `plan_clicked→InitiateCheckout` (com `value`/`currency`), e `purchase_success→Purchase` na volta do MP (`?assinatura=ok`/`?pagamento=ok`, valor da intenção salva em `cauril_checkout_intent`). A **atribuição first-touch** (utm_*, fbclid, gclid) é capturada na 1ª visita em `localStorage` (`cauril_attrib`) e a origem (source/campaign) é anexada aos eventos do Vercel Analytics. Tudo em `src/lib/track.js` (`initAnalytics` chamado no boot em `main.jsx`). Sem o Pixel ID, vira no-op. *Próxima fase (quando houver campanhas): persistir UTM no `profiles` + Conversions API server-side no `mp-webhook` + CAC por origem no Painel.*
 
 > A anon key é pública (protegida por RLS). A chave do Gemini e a SERVICE_ROLE ficam apenas no servidor (Vercel).
 >
