@@ -185,7 +185,7 @@ VITE_SUPABASE_ANON_KEY=...
 # Monetização (opcionais — sem elas o botão "Assinar" cai no contato por email)
 VITE_CHECKOUT_URL_MENSAL=...   # link de pagamento ESTÁTICO (pula o MP recorrente)
 VITE_CHECKOUT_URL_ANUAL=...
-VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
+VITE_CONTATO_EMAIL=...         # default: contato@cauril.com.br
 ```
 
 > A anon key é pública (protegida por RLS). A chave do Gemini e a SERVICE_ROLE ficam apenas no servidor (Vercel).

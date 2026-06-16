@@ -16,7 +16,7 @@ export const TRIAL_DIAS = 7;
 // Sem link configurado, o botão cai no contato por email.
 const CHECKOUT_MENSAL = import.meta.env?.VITE_CHECKOUT_URL_MENSAL || "";
 const CHECKOUT_ANUAL = import.meta.env?.VITE_CHECKOUT_URL_ANUAL || "";
-export const CONTATO_EMAIL = import.meta.env?.VITE_CONTATO_EMAIL || "hemoreira89@gmail.com";
+export const CONTATO_EMAIL = import.meta.env?.VITE_CONTATO_EMAIL || "contato@cauril.com.br";
 
 export const PLANOS = [
   {

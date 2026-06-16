@@ -413,16 +413,23 @@ const LANDING_CSS = `
 
 .lp-cta{
   display:inline-flex;align-items:center;gap:8px;border:none;border-radius:10px;cursor:pointer;
-  background:linear-gradient(135deg,#7b61ff,#5540dd);color:#fff;font-weight:800;
+  background:linear-gradient(135deg,#7b61ff,#5540dd);color:#fff;font-weight:800;white-space:nowrap;
   box-shadow:0 4px 24px rgba(123,97,255,0.4);transition:transform .15s ease,box-shadow .15s ease;
 }
 .lp-cta:hover{transform:translateY(-1px);box-shadow:0 6px 32px rgba(123,97,255,0.55)}
 .lp-ghost{
   display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #2a2a42;
-  border-radius:10px;padding:10px 18px;color:#b8b8cc;font-weight:700;font-size:13;cursor:pointer;
+  border-radius:10px;padding:10px 18px;color:#b8b8cc;font-weight:700;font-size:13;cursor:pointer;white-space:nowrap;
   transition:border-color .15s ease,color .15s ease;font-size:13px;
 }
 .lp-ghost:hover{border-color:#7b61ff;color:#e8e8f2}
+/* Celular: cabeçalho compacto pra o logo e os botões caberem numa linha só
+   (sem o "Teste grátis" quebrar em duas linhas nem espremer o wordmark). */
+@media(max-width:560px){
+  .lp-nav-inner{padding:12px 14px}
+  .lp-nav-inner .lp-ghost{padding:9px 14px}
+  .lp-nav-inner .lp-cta{padding:9px 14px;font-size:13px}
+}
 
 .lp-hero{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:clamp(48px,9vh,96px) 24px clamp(40px,7vh,72px)}
 .lp-hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:48px;align-items:center}
