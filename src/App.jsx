@@ -6497,7 +6497,7 @@ Regras:
               <button
                 onClick={() => pedirConfirmacao({
                   titulo: "Cancelar assinatura?",
-                  mensagem: "Dentro de 7 dias da compra você recebe reembolso integral automático (direito de arrependimento) e o acesso encerra. Após 7 dias, a renovação é cancelada e o acesso vale até o fim do período já pago.",
+                  mensagem: "Ao cancelar, seu acesso é encerrado imediatamente. Se a compra foi há até 7 dias, você recebe reembolso integral automático (direito de arrependimento). Após 7 dias não há reembolso do valor já pago.",
                   perigoso: true,
                   onConfirm: async () => {
                     try {
@@ -6505,9 +6505,9 @@ Regras:
                       if (res?.semAssinatura) {
                         showToast("Você não tem uma assinatura recorrente ativa.", "info");
                       } else if (res?.reembolsado) {
-                        showToast(`Assinatura cancelada e reembolsada (R$ ${(res.valor || 0).toFixed(2).replace(".", ",")}) ✓ — dentro do prazo de 7 dias. O acesso foi encerrado.`, "success");
+                        showToast(`Assinatura cancelada e reembolsada (R$ ${(res.valor || 0).toFixed(2).replace(".", ",")}) ✓ — dentro do prazo de 7 dias. Acesso encerrado.`, "success");
                       } else {
-                        showToast("Assinatura cancelada ✓ — não será mais renovada. Seu acesso vale até o fim do período já pago.", "success");
+                        showToast("Assinatura cancelada ✓ — acesso encerrado.", "success");
                       }
                       if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
                     } catch (e) { showToast("Não foi possível cancelar: " + e.message, "error"); }
