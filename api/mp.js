@@ -148,12 +148,14 @@ async function cancelarAssinatura(req, res, token, user) {
     }
   } catch (e) { console.error("[mp] refund flow:", e.message); }
 
-  // 3) Encerra o acesso imediatamente no cancelamento (decisão de produto) e
-  // limpa a assinatura. (Reembolso, quando aplicável, já foi feito acima.)
+  // 3) Limpa a assinatura. Se houve reembolso (<=7 dias) encerra o acesso agora;
+  // sem reembolso (>7 dias) o acesso vale até o fim do período já pago.
+  const patch = { mp_preapproval_id: null, updated_at: new Date().toISOString() };
+  if (reembolsado) patch.plano_expira_em = new Date().toISOString();
   await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${user.id}`, {
     method: "PATCH",
     headers: { ...supaHeaders, Prefer: "return=minimal" },
-    body: JSON.stringify({ mp_preapproval_id: null, plano_expira_em: new Date().toISOString(), updated_at: new Date().toISOString() }),
+    body: JSON.stringify(patch),
     signal: AbortSignal.timeout(8000),
   });
 
