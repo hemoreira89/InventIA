@@ -6283,6 +6283,14 @@ Regras:
         @media (max-width: 760px) {
           .carteira-grid { grid-template-columns: 1fr !important; }
           .carteira-aside { position: static !important; top: auto !important; }
+          /* Mobile-only: cabeçalho/navegação/conteúdo mais compactos (desktop intocado) */
+          .hide-mobile { display: none !important; }
+          .app-main { padding: 14px 10px !important; }
+          .topbar-row { padding: 8px 10px !important; gap: 8px !important; }
+          .topbar-nav { flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .topbar-nav::-webkit-scrollbar { height: 0; display: none; }
+          .topbar-metrics { gap: 14px !important; justify-content: flex-start !important; flex-wrap: nowrap !important; overflow-x: auto !important; flex: 1 1 100% !important; }
+          .topbar-metrics::-webkit-scrollbar { height: 0; display: none; }
         }
       `}</style>
 
@@ -6295,7 +6303,7 @@ Regras:
         boxShadow: themeApi.isLight ? "0 1px 3px rgba(0,0,0,0.04)" : "none"
       }}>
         {/* Linha 1: Brand + Métricas + Status */}
-        <div style={{
+        <div className="topbar-row" style={{
           display:"flex",alignItems:"center",justifyContent:"space-between",
           padding:"10px clamp(12px,3vw,24px)",gap:"clamp(10px,2vw,24px)",flexWrap:"wrap"
         }}>
@@ -6389,7 +6397,7 @@ Regras:
           </div>
 
           {/* Métricas centralizadas com sparklines */}
-          <div style={{display:"flex",alignItems:"center",gap:"clamp(14px,3vw,32px)",flex:"1 1 240px",justifyContent:"center",flexWrap:"wrap",rowGap:8}}>
+          <div className="topbar-metrics" style={{display:"flex",alignItems:"center",gap:"clamp(14px,3vw,32px)",flex:"1 1 240px",justifyContent:"center",flexWrap:"wrap",rowGap:8}}>
             <Metric
               label="PATRIMÔNIO"
               value={metricaCarteira>0 ? (privacy.hidden ? "R$●●●●" : fmtK(metricaCarteira)) : "—"}
@@ -6425,7 +6433,7 @@ Regras:
             )}
 
             {/* Botão de ajuda de atalhos */}
-            <button onClick={() => setShowShortcutsHelp(true)} title="Atalhos de teclado (?)" aria-label="Atalhos de teclado" style={{
+            <button className="hide-mobile" onClick={() => setShowShortcutsHelp(true)} title="Atalhos de teclado (?)" aria-label="Atalhos de teclado" style={{
               background:"var(--ui-bg-secondary)",
               border:"1px solid var(--ui-border)",
               borderRadius:6,
@@ -6575,7 +6583,7 @@ Regras:
         })()}
 
         {/* Linha 2: Tabs agrupadas em dropdowns */}
-        <div style={{
+        <div className="topbar-nav" style={{
           display:"flex",padding:"0 clamp(8px,3vw,24px)",gap:0,
           borderTop:"1px solid var(--ui-border)",
           alignItems:"center",position:"relative",flexWrap:"wrap"
@@ -6691,7 +6699,7 @@ Regras:
       </div>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <div style={{padding:"20px clamp(12px,4vw,24px)",maxWidth:1600,margin:"0 auto"}}>
+      <div className="app-main" style={{padding:"20px clamp(12px,4vw,24px)",maxWidth:1600,margin:"0 auto"}}>
         {/* PAINEL DE ANÁLISE - Horizontal (apenas na aba Análise IA) */}
         {tab === "analise" && (
         <div className="anim" style={{
