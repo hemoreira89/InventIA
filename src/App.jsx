@@ -6279,6 +6279,9 @@ Regras:
         /* No light mode, recharts adapta */
         [data-theme="light"] .recharts-cartesian-axis-tick-value { fill: var(--ui-text-faint) !important; }
         [data-theme="light"] .recharts-cartesian-grid line { stroke: var(--ui-border) !important; }
+        /* Faixa de abas mobile: só aparece no celular (regra no @media abaixo). */
+        .mobile-tabs { display: none; overflow-x: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--ui-border); padding: 0 4px; scrollbar-width: none; }
+        .mobile-tabs::-webkit-scrollbar { height: 0; display: none; }
         /* Aba Carteira: sidebar 360px + conteúdo no desktop; empilha no mobile. */
         @media (max-width: 760px) {
           .carteira-grid { grid-template-columns: 1fr !important; }
@@ -6287,10 +6290,10 @@ Regras:
           .hide-mobile { display: none !important; }
           .app-main { padding: 14px 10px !important; }
           .topbar-row { padding: 8px 10px !important; gap: 8px 10px !important; }
-          /* Nav: continua quebrando linha (NÃO usar overflow aqui — recorta os
-             dropdowns absolutos). Só deixa os botões mais compactos pra caber. */
-          .topbar-nav { padding: 0 4px !important; }
-          .topbar-nav .tab-btn { padding: 10px 10px !important; font-size: 12.5px !important; gap: 6px !important; }
+          /* Nav: no celular troca a barra agrupada (com dropdowns que seriam
+             recortados por overflow) por uma faixa única rolável de abas. */
+          .topbar-nav { display: none !important; }
+          .mobile-tabs { display: flex !important; }
           /* Métricas: redundantes no celular (cada uma tem aba própria) — escondidas
              pra deixar o cabeçalho limpo e dar espaço ao conteúdo. */
           .topbar-metrics { display: none !important; }
@@ -6698,6 +6701,36 @@ Regras:
               </button>
             </>
           )}
+        </div>
+
+        {/* Nav MOBILE: faixa única rolável de abas (sem dropdowns p/ não recortar).
+            Só visível no celular; o desktop usa a barra agrupada acima. */}
+        <div className="mobile-tabs">
+          {[...GRUPOS_NAV.flatMap(g => g.tabs), ...(userEmail === OWNER_EMAIL ? ["admin"] : [])].map(k => {
+            const t = k === "admin"
+              ? { label:"Painel", icon:ShieldCheck, cor:"var(--ui-accent)" }
+              : TAB_MAP[k];
+            if (!t) return null;
+            const Icon = t.icon;
+            const ativo = tab === k;
+            return (
+              <button key={k} onClick={()=>setTab(k)}
+                style={{
+                  flex:"0 0 auto",
+                  background: ativo ? "var(--ui-bg-secondary)" : "transparent",
+                  border:"none",
+                  borderBottom:`2px solid ${ativo ? t.cor : "transparent"}`,
+                  padding:"11px 12px",
+                  display:"flex",alignItems:"center",gap:6,
+                  fontSize:13,fontWeight: ativo ? 700 : 600,
+                  color: ativo ? "var(--ui-text)" : "var(--ui-text-muted)",
+                  whiteSpace:"nowrap",cursor:"pointer"
+                }}>
+                <Icon size={15} strokeWidth={2} color={ativo ? t.cor : undefined}/>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
