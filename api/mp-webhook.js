@@ -182,8 +182,9 @@ export default async function handler(req, res) {
     // ── 2) Ciclo de vida da assinatura → guarda/limpa o id (p/ cancelamento) ──
     if (tipo === "subscription_preapproval" || tipo === "preapproval") {
       const pr = await mpGet(`/preapproval/${objId}`, token);
-      if (!pr.ok) return res.status(500).json({ retry: `preapproval ${pr.status}` });
+      if (!pr.ok) { dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: "PREAPPROVAL_FAIL" }); return res.status(500).json({ retry: `preapproval ${pr.status}` }); }
       const pre = await pr.json();
+      dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pre.status, external_reference: pre.external_reference ?? null, extra: ("payer=" + (pre.payer_email || "")).slice(0, 300) });
       const [userId] = String(pre.external_reference || "").split(":");
       if (!userId) return res.status(200).json({ ignored: "ref inválida" });
       if (pre.status === "authorized") {
