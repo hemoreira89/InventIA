@@ -109,8 +109,10 @@ export default async function handler(req, res) {
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
+  let kr = "?";
+  try { kr = JSON.parse(Buffer.from(key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()).role; } catch (_) {}
   const insSt = await dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
-  console.log("WHKINS " + insSt + " " + String(tipo).slice(0, 12));
+  console.log("WHKINS " + insSt + " role=" + kr + " len=" + key.length);
 
   try {
     // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
