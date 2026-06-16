@@ -11,6 +11,11 @@ export const config = { maxDuration: 15 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const APP_URL = "https://cauril.com.br";
+// Anon key é pública (protegida por RLS) — fallback embutido como em analyze.js,
+// pra validar o JWT do usuário mesmo se a env var não estiver no Vercel.
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
+  || process.env.VITE_SUPABASE_ANON_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqZ2hhcXR5aWp2bG53bGVzcnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTQwOTUsImV4cCI6MjA5MzMzMDA5NX0.wugciBsGln_K5kkWi479M6KpFV32e8Vyd51bjkhc2vE';
 
 // Preço/recorrência definidos no SERVIDOR (nunca confiar no cliente).
 const PLANOS = {
@@ -21,9 +26,8 @@ const PLANOS = {
 async function getUser(auth) {
   if (!auth || !auth.startsWith("Bearer ")) return null;
   try {
-    const anon = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
     const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: anon, Authorization: auth },
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: auth },
       signal: AbortSignal.timeout(6000),
     });
     if (r.ok) return await r.json();
