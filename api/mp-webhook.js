@@ -75,6 +75,7 @@ export default async function handler(req, res) {
   const tipo = req.body?.type || req.query?.type || req.query?.topic;
   const objId = req.body?.data?.id || req.query?.["data.id"] || req.query?.id;
   if (!objId) return res.status(200).json({ ignored: "sem id" });
+  console.log(`[MP] webhook recebido: tipo=${tipo} id=${objId}`);
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
