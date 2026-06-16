@@ -19,14 +19,17 @@ const MESES = { mensal: 1, anual: 12 };
 const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
 
 // Diagnóstico: grava o que chega/decide numa tabela legível por SQL (logs do
-// Vercel truncam). Fire-and-forget, nunca quebra o fluxo.
-function dbg(key, row) {
-  fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
-    method: "POST",
-    headers: { ...supaHeaders(key), Prefer: "return=minimal" },
-    body: JSON.stringify(row),
-    signal: AbortSignal.timeout(4000),
-  }).catch(() => {});
+// Vercel truncam). AWAIT obrigatório — em serverless, fetch fire-and-forget não
+// completa após o response (a lambda congela). À prova de falha.
+async function dbg(key, row) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
+      method: "POST",
+      headers: { ...supaHeaders(key), Prefer: "return=minimal" },
+      body: JSON.stringify(row),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch (_) { /* nunca quebra o fluxo */ }
 }
 
 async function mpGet(path, token) {
@@ -106,7 +109,7 @@ export default async function handler(req, res) {
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
-  dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
+  await dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
 
   try {
     // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
@@ -117,12 +120,12 @@ export default async function handler(req, res) {
         const pr = await mpGet(`/v1/payments/${objId}`, token);
         if (!pr.ok) {
           const errBody = await pr.text().catch(() => "");
-          dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: ("FETCH_FAIL " + errBody).slice(0, 400) });
+          await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: ("FETCH_FAIL " + errBody).slice(0, 400) });
           return res.status(500).json({ retry: `payment ${pr.status}` });
         }
         const pay = await pr.json();
         email = pay.payer?.email || null;
-        dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("payer=" + (email || "") + " meta=" + JSON.stringify(pay.metadata || {})).slice(0, 400) });
+        await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("payer=" + (email || "") + " meta=" + JSON.stringify(pay.metadata || {})).slice(0, 400) });
         if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
         valor = pay.transaction_amount ?? 0;
         refId = String(pay.id || objId);
@@ -140,7 +143,7 @@ export default async function handler(req, res) {
       } else {
         // Cobrança recorrente: authorized_payment + preapproval pai (ref confiável).
         const ar = await mpGet(`/authorized_payments/${objId}`, token);
-        if (!ar.ok) { dbg(key, { tipo, obj_id: String(objId), fetch_status: ar.status, extra: "AUTHPAY_FAIL" }); return res.status(500).json({ retry: `authpay ${ar.status}` }); }
+        if (!ar.ok) { await dbg(key, { tipo, obj_id: String(objId), fetch_status: ar.status, extra: "AUTHPAY_FAIL" }); return res.status(500).json({ retry: `authpay ${ar.status}` }); }
         const ap = await ar.json();
         const aprovado = ap?.payment?.status === "approved" || ap?.status === "processed";
         const preId = ap.preapproval_id;
@@ -155,7 +158,7 @@ export default async function handler(req, res) {
           const pf = await getProfileByPreapproval(key, preId);
           if (pf?.user_id) { userId = pf.user_id; if (!plano) plano = valor >= 100 ? "anual" : "mensal"; }
         }
-        dbg(key, { tipo, obj_id: String(objId), pay_status: (ap?.payment?.status || ap?.status), external_reference: pre.external_reference ?? null, extra: ("preId=" + preId + " aprovado=" + aprovado).slice(0, 400) });
+        await dbg(key, { tipo, obj_id: String(objId), pay_status: (ap?.payment?.status || ap?.status), external_reference: pre.external_reference ?? null, extra: ("preId=" + preId + " aprovado=" + aprovado).slice(0, 400) });
         if (!aprovado) return res.status(200).json({ ignored: ap?.status || "nao aprovado" });
       }
 
@@ -182,9 +185,9 @@ export default async function handler(req, res) {
     // ── 2) Ciclo de vida da assinatura → guarda/limpa o id (p/ cancelamento) ──
     if (tipo === "subscription_preapproval" || tipo === "preapproval") {
       const pr = await mpGet(`/preapproval/${objId}`, token);
-      if (!pr.ok) { dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: "PREAPPROVAL_FAIL" }); return res.status(500).json({ retry: `preapproval ${pr.status}` }); }
+      if (!pr.ok) { await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: "PREAPPROVAL_FAIL" }); return res.status(500).json({ retry: `preapproval ${pr.status}` }); }
       const pre = await pr.json();
-      dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pre.status, external_reference: pre.external_reference ?? null, extra: ("payer=" + (pre.payer_email || "")).slice(0, 300) });
+      await dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pre.status, external_reference: pre.external_reference ?? null, extra: ("payer=" + (pre.payer_email || "")).slice(0, 300) });
       const [userId] = String(pre.external_reference || "").split(":");
       if (!userId) return res.status(200).json({ ignored: "ref inválida" });
       if (pre.status === "authorized") {
