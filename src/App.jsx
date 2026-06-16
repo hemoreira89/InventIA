@@ -283,10 +283,12 @@ function Badge({ val, suffix="%" }) {
 
 function Card({ children, style={}, accent=false, className="" }) {
   return (
-    <div className={`card-hover ${className}`} style={{
+    // padding padrão vem da classe .ui-card (16px desktop / 12px mobile). Cards
+    // que passam `padding` em `style` mantêm o seu (inline vence a classe).
+    <div className={`card-hover ui-card ${className}`} style={{
       background:"var(--ui-bg-card)",
       border:`1px solid ${accent?"rgba(123,97,255,0.27)":"var(--ui-border)"}`,
-      borderRadius:10,padding:"16px",
+      borderRadius:10,
       boxShadow:"var(--ui-shadow-sm)",
       ...style
     }}>
@@ -6252,6 +6254,8 @@ Regras:
         .tab-btn{transition:all .15s ease}
         .tab-btn:hover{background:var(--ui-bg-secondary)!important;color:var(--ui-text-secondary)!important}
         .card-hover{transition:border-color .2s ease,transform .2s ease}
+        /* Padding padrão do <Card>; Cards com padding inline mantêm o seu. */
+        .ui-card{padding:16px}
         .card-hover:hover{border-color:var(--ui-border-strong)!important;transform:translateY(-1px)}
         .metric-clickable{cursor:pointer;padding:4px 8px;margin:-4px -8px;border-radius:6px;transition:background .15s}
         .metric-clickable:hover{background:var(--ui-bg-secondary)}
@@ -6297,6 +6301,9 @@ Regras:
           /* Métricas: redundantes no celular (cada uma tem aba própria) — escondidas
              pra deixar o cabeçalho limpo e dar espaço ao conteúdo. */
           .topbar-metrics { display: none !important; }
+          /* Cards: padding padrão menor no celular pra ganhar largura útil
+             (cards com padding inline próprio — ex.: vazios/tabela — não mudam). */
+          .ui-card { padding: 12px; }
         }
       `}</style>
 
