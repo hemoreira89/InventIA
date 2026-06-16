@@ -6286,11 +6286,13 @@ Regras:
           /* Mobile-only: cabeçalho/navegação/conteúdo mais compactos (desktop intocado) */
           .hide-mobile { display: none !important; }
           .app-main { padding: 14px 10px !important; }
-          .topbar-row { padding: 8px 10px !important; gap: 8px !important; }
-          .topbar-nav { flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-          .topbar-nav::-webkit-scrollbar { height: 0; display: none; }
-          .topbar-metrics { gap: 14px !important; justify-content: flex-start !important; flex-wrap: nowrap !important; overflow-x: auto !important; flex: 1 1 100% !important; }
-          .topbar-metrics::-webkit-scrollbar { height: 0; display: none; }
+          .topbar-row { padding: 8px 10px !important; gap: 8px 10px !important; }
+          /* Nav: continua quebrando linha (NÃO usar overflow aqui — recorta os
+             dropdowns absolutos). Só deixa os botões mais compactos pra caber. */
+          .topbar-nav { padding: 0 4px !important; }
+          .topbar-nav .tab-btn { padding: 9px 9px !important; font-size: 12px !important; gap: 5px !important; }
+          /* Métricas: tira o sublinhado/scroll e só compacta o espaçamento. */
+          .topbar-metrics { gap: 10px 16px !important; flex: 1 1 100% !important; }
         }
       `}</style>
 
