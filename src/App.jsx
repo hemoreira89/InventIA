@@ -6493,7 +6493,7 @@ Regras:
               <User size={13} color="var(--ui-accent)"/>
               <span style={{fontSize:11,color:"var(--ui-text-secondary)",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
             </div>
-            {(planoStatus?.plano === "mensal" || planoStatus?.plano === "anual") && !planoStatus?.expirado && (
+            {planoStatus?.assinaturaAtiva && (
               <button
                 onClick={() => pedirConfirmacao({
                   titulo: "Cancelar assinatura?",
@@ -6505,9 +6505,9 @@ Regras:
                       if (res?.semAssinatura) {
                         showToast("Você não tem uma assinatura recorrente ativa.", "info");
                       } else {
-                        showToast("Assinatura cancelada. Acesso mantido até o fim do período pago.", "success");
-                        if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
+                        showToast("Assinatura cancelada ✓ — não será mais renovada. Seu acesso vale até o fim do período já pago.", "success");
                       }
+                      if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
                     } catch (e) { showToast("Não foi possível cancelar: " + e.message, "error"); }
                   }
                 })}

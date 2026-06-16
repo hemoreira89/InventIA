@@ -70,7 +70,7 @@ export function statusPlano(perfil, agora = new Date()) {
     const exp = perfil.plano_expira_em ? new Date(perfil.plano_expira_em) : null;
     const ativo = !exp || exp > agora;
     const diasRestantes = exp ? Math.max(0, Math.ceil((exp - agora) / 86400000)) : null;
-    return { plano: perfil.plano, ativo, trial: false, expirado: !ativo, diasRestantes, trialFim: null };
+    return { plano: perfil.plano, ativo, trial: false, expirado: !ativo, diasRestantes, trialFim: null, assinaturaAtiva: !!perfil.mp_preapproval_id };
   }
 
   // trial (ou valor desconhecido — trata como trial pela trial_fim)
@@ -99,7 +99,7 @@ export async function carregarPerfilPlano(userId) {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("plano, trial_fim, plano_expira_em")
+      .select("plano, trial_fim, plano_expira_em, mp_preapproval_id")
       .eq("user_id", userId)
       .maybeSingle();
     if (error) {
