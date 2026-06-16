@@ -52,7 +52,7 @@ import TickerAutocomplete from "./components/TickerAutocomplete";
 import TelegramModal from "./components/TelegramModal";
 import { carregarUniverso, salvarUniverso, supabase } from "./supabase";
 import Paywall from "./components/Paywall";
-import { carregarPerfilPlano, statusPlano } from "./lib/plano";
+import { carregarPerfilPlano, statusPlano, cancelarAssinatura } from "./lib/plano";
 import { track } from "./lib/track";
 import { BRAND } from "./lib/brand";
 import { getDefaultUniverso, getSetorPorTicker, amostrarUniversoBalanceado } from "./lib/catalogoB3";
@@ -6493,6 +6493,31 @@ Regras:
               <User size={13} color="var(--ui-accent)"/>
               <span style={{fontSize:11,color:"var(--ui-text-secondary)",fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userEmail}</span>
             </div>
+            {(planoStatus?.plano === "mensal" || planoStatus?.plano === "anual") && !planoStatus?.expirado && (
+              <button
+                onClick={() => pedirConfirmacao({
+                  titulo: "Cancelar assinatura?",
+                  mensagem: "Você continua com acesso até o fim do período já pago. Depois disso, a assinatura não será renovada e o acesso pausa.",
+                  perigoso: true,
+                  onConfirm: async () => {
+                    try {
+                      const res = await cancelarAssinatura();
+                      if (res?.semAssinatura) {
+                        showToast("Você não tem uma assinatura recorrente ativa.", "info");
+                      } else {
+                        showToast("Assinatura cancelada. Acesso mantido até o fim do período pago.", "success");
+                        if (userId) carregarPerfilPlano(userId).then(setPerfilPlano);
+                      }
+                    } catch (e) { showToast("Não foi possível cancelar: " + e.message, "error"); }
+                  }
+                })}
+                title="Cancelar assinatura"
+                style={{
+                  background:"var(--ui-bg-secondary)", border:"1px solid var(--ui-border)",
+                  borderRadius:6, padding:"7px 10px", color:"var(--ui-text-muted)",
+                  cursor:"pointer", fontSize:11, fontWeight:600, whiteSpace:"nowrap"
+                }}>Cancelar assinatura</button>
+            )}
             <button onClick={onLogout} title="Sair" aria-label="Sair da conta" style={{
               background:"var(--ui-bg-secondary)",
               border:"1px solid var(--ui-border)",

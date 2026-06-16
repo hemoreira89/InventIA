@@ -145,7 +145,8 @@ export async function iniciarCheckout(plano, email) {
     return;
   }
   try {
-    const r = await fetch("/api/mp-criar-pagamento", {
+    // Assinatura recorrente (preapproval): cobra automático a cada ciclo até cancelar.
+    const r = await fetch("/api/mp-criar-assinatura", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -166,4 +167,22 @@ export async function iniciarCheckout(plano, email) {
     `Olá! Quero assinar o plano ${plano.nome} do ${BRAND.full}.\n\nMinha conta: ${conta}`
   );
   window.location.href = `mailto:${CONTATO_EMAIL}?subject=${assunto}&body=${corpo}`;
+}
+
+/**
+ * Cancela a assinatura recorrente do usuário logado. O acesso continua até o fim
+ * do ciclo já pago (plano_expira_em) e então expira. Lança em erro.
+ */
+export async function cancelarAssinatura() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("login_required");
+  const r = await fetch("/api/mp-cancelar-assinatura", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "falha ao cancelar assinatura");
+  }
+  return r.json();
 }

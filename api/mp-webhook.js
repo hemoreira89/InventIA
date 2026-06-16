@@ -1,12 +1,14 @@
-// ─── /api/mp-webhook — notificação de pagamento do Mercado Pago ──────────────
-// O MP chama esta URL quando há evento de pagamento. NÃO confiamos no corpo:
-// buscamos o pagamento na API do MP (autoritativo) e, se "approved", registramos
-// a receita em `pagamentos` e ativamos o plano do usuário em profiles (via service
-// role). O registro em `pagamentos` (com índice único parcial sobre o id do MP) é
-// a trava de IDEMPOTÊNCIA: o MP reenvia a mesma notificação várias vezes, e só a
-// primeira ativa/estende o plano (evita renovação dupla).
+// ─── /api/mp-webhook — notificações do Mercado Pago ──────────────────────────
+// Trata 3 tipos de evento (NÃO confiamos no corpo: buscamos o recurso na API do
+// MP, que é autoritativa):
+//   • payment                          → pagamento avulso (Checkout Pro legado)
+//   • subscription_authorized_payment  → cada cobrança recorrente da assinatura
+//   • subscription_preapproval         → ciclo de vida da assinatura (autorizada/cancelada)
 //
-// external_reference = "<userId>:<plano>" (definido em mp-criar-pagamento).
+// Idempotência: cada cobrança é gravada em `pagamentos` com referencia = id do
+// pagamento (índice único parcial p/ metodo='mercadopago'); duplicatas → 409 → não
+// reativam. external_reference = "<userId>:<plano>".
+//
 // Gated: sem MERCADOPAGO_ACCESS_TOKEN, responde 200 (no-op).
 // ENV: MERCADOPAGO_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE
 export const config = { maxDuration: 15 };
@@ -14,79 +16,138 @@ export const config = { maxDuration: 15 };
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const MESES = { mensal: 1, anual: 12 };
 
+const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
+
+async function mpGet(path, token) {
+  const r = await fetch(`https://api.mercadopago.com${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  return r;
+}
+
+async function getProfile(key, userId) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=email,plano_expira_em&user_id=eq.${userId}`, { headers: supaHeaders(key), signal: AbortSignal.timeout(6000) });
+  const a = await r.json().catch(() => []);
+  return a?.[0] || null;
+}
+
+// Registra a receita (idempotente). Retorna o status HTTP do insert.
+async function recordPagamento(key, row) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos`, {
+    method: "POST",
+    headers: { ...supaHeaders(key), Prefer: "return=minimal" },
+    body: JSON.stringify(row),
+    signal: AbortSignal.timeout(8000),
+  });
+  return r.status;
+}
+
+// Estende o plano a partir do maior entre agora e a expiração atual (renovação justa).
+async function extendPlan(key, userId, plano, meses, atualExpiraStr) {
+  let base = new Date();
+  const atual = atualExpiraStr ? new Date(atualExpiraStr) : null;
+  if (atual && atual > base) base = atual;
+  const expira = new Date(base);
+  expira.setMonth(expira.getMonth() + meses);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${userId}`, {
+    method: "PATCH",
+    headers: { ...supaHeaders(key), Prefer: "return=minimal" },
+    body: JSON.stringify({ plano, plano_expira_em: expira.toISOString(), updated_at: new Date().toISOString() }),
+    signal: AbortSignal.timeout(8000),
+  });
+  return { ok: r.ok, status: r.status, expira: expira.toISOString() };
+}
+
+async function setPreapprovalId(key, userId, preId) {
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${userId}`, {
+    method: "PATCH",
+    headers: { ...supaHeaders(key), Prefer: "return=minimal" },
+    body: JSON.stringify({ mp_preapproval_id: preId, updated_at: new Date().toISOString() }),
+    signal: AbortSignal.timeout(8000),
+  });
+}
+
 export default async function handler(req, res) {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!token) return res.status(200).json({ skipped: "mp não configurado" });
 
-  // O id do pagamento pode vir no corpo (data.id) ou na query.
   const tipo = req.body?.type || req.query?.type || req.query?.topic;
-  const paymentId = req.body?.data?.id || req.query?.["data.id"] || req.query?.id;
-  if (tipo && tipo !== "payment") return res.status(200).json({ ignored: tipo });
-  if (!paymentId) return res.status(200).json({ ignored: "sem id" });
+  const objId = req.body?.data?.id || req.query?.["data.id"] || req.query?.id;
+  if (!objId) return res.status(200).json({ ignored: "sem id" });
+
+  const key = process.env.SUPABASE_SERVICE_ROLE;
+  if (!key) return res.status(500).json({ retry: "service role ausente" });
 
   try {
-    // 1) Confirma o pagamento direto no MP.
-    const pr = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!pr.ok) return res.status(500).json({ retry: `payment ${pr.status}` }); // 5xx → MP tenta de novo
-    const pay = await pr.json();
-    if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
+    // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
+    if (tipo === "payment" || tipo === "subscription_authorized_payment") {
+      let userId, plano, valor, refId, pagoEm, email = null;
 
-    const [userId, plano] = String(pay.external_reference || "").split(":");
-    const meses = MESES[plano];
-    if (!userId || !meses) return res.status(200).json({ ignored: "ref inválida" });
+      if (tipo === "payment") {
+        const pr = await mpGet(`/v1/payments/${objId}`, token);
+        if (!pr.ok) return res.status(500).json({ retry: `payment ${pr.status}` });
+        const pay = await pr.json();
+        if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
+        [userId, plano] = String(pay.external_reference || "").split(":");
+        valor = pay.transaction_amount ?? 0;
+        refId = String(pay.id || objId);
+        pagoEm = pay.date_approved || new Date().toISOString();
+        email = pay.payer?.email || null;
+      } else {
+        // Cobrança recorrente: busca o authorized_payment e o preapproval pai (p/ ref).
+        const ar = await mpGet(`/authorized_payments/${objId}`, token);
+        if (!ar.ok) return res.status(500).json({ retry: `authpay ${ar.status}` });
+        const ap = await ar.json();
+        const aprovado = ap?.payment?.status === "approved" || ap?.status === "processed";
+        if (!aprovado) return res.status(200).json({ ignored: ap?.status || "nao aprovado" });
+        const preId = ap.preapproval_id;
+        const pre = preId ? await (await mpGet(`/preapproval/${preId}`, token)).json().catch(() => ({})) : {};
+        [userId, plano] = String(pre.external_reference || "").split(":");
+        valor = ap.transaction_amount ?? 0;
+        refId = String(ap.payment?.id || ap.id || objId);
+        pagoEm = ap.date_created || new Date().toISOString();
+        email = pre.payer_email || null;
+      }
 
-    const key = process.env.SUPABASE_SERVICE_ROLE;
-    if (!key) return res.status(500).json({ retry: "service role ausente" });
-    const supaHeaders = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+      const meses = MESES[plano];
+      if (!userId || !meses) return res.status(200).json({ ignored: "ref inválida" });
 
-    // 2) Perfil atual: email (p/ a receita) + expiração (p/ renovação justa).
-    let emailPerfil = pay.payer?.email || null;
-    let base = new Date();
-    try {
-      const gr = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=email,plano_expira_em&user_id=eq.${userId}`, { headers: supaHeaders, signal: AbortSignal.timeout(6000) });
-      const arr = await gr.json();
-      if (arr?.[0]?.email) emailPerfil = arr[0].email;
-      const atual = arr?.[0]?.plano_expira_em ? new Date(arr[0].plano_expira_em) : null;
-      if (atual && atual > base) base = atual;
-    } catch { /* usa agora + email do pagador */ }
+      const prof = await getProfile(key, userId);
+      if (prof?.email) email = prof.email;
 
-    // 3) Registra a receita. O índice único parcial (referencia, metodo='mercadopago')
-    //    garante idempotência: notificação duplicada → 409 → não reativa o plano.
-    const ins = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos`, {
-      method: "POST",
-      headers: { ...supaHeaders, Prefer: "return=minimal" },
-      body: JSON.stringify({
-        user_id: userId,
-        email: emailPerfil,
-        plano,
-        valor: pay.transaction_amount ?? 0,
-        metodo: "mercadopago",
-        referencia: String(paymentId),
-        pago_em: pay.date_approved || new Date().toISOString(),
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (ins.status === 409) return res.status(200).json({ ok: true, duplicate: true }); // já processado
-    if (!ins.ok) return res.status(500).json({ retry: `insert ${ins.status}` });
+      // Idempotência: grava o pagamento; se já existe (409), não reativa.
+      const st = await recordPagamento(key, {
+        user_id: userId, email, plano, valor,
+        metodo: "mercadopago", referencia: refId, pago_em: pagoEm,
+      });
+      if (st === 409) return res.status(200).json({ ok: true, duplicate: true });
+      if (st >= 400) return res.status(500).json({ retry: `insert ${st}` });
 
-    // 4) Pagamento novo → ativa/estende o plano.
-    const expira = new Date(base);
-    expira.setMonth(expira.getMonth() + meses);
-    const ur = await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${userId}`, {
-      method: "PATCH",
-      headers: { ...supaHeaders, Prefer: "return=minimal" },
-      body: JSON.stringify({ plano, plano_expira_em: expira.toISOString(), updated_at: new Date().toISOString() }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!ur.ok) return res.status(500).json({ retry: `update ${ur.status}` }); // 5xx → MP tenta de novo
+      const up = await extendPlan(key, userId, plano, meses, prof?.plano_expira_em);
+      if (!up.ok) return res.status(500).json({ retry: `update ${up.status}` });
+      console.log(`[MP] ${tipo}: ${plano} p/ ${userId} até ${up.expira} (ref ${refId})`);
+      return res.status(200).json({ ok: true });
+    }
 
-    console.log(`[MP] ativado ${plano} p/ ${userId} até ${expira.toISOString()} (pgto ${paymentId})`);
-    return res.status(200).json({ ok: true });
+    // ── 2) Ciclo de vida da assinatura → guarda/limpa o id (p/ cancelamento) ──
+    if (tipo === "subscription_preapproval" || tipo === "preapproval") {
+      const pr = await mpGet(`/preapproval/${objId}`, token);
+      if (!pr.ok) return res.status(500).json({ retry: `preapproval ${pr.status}` });
+      const pre = await pr.json();
+      const [userId] = String(pre.external_reference || "").split(":");
+      if (!userId) return res.status(200).json({ ignored: "ref inválida" });
+      if (pre.status === "authorized") {
+        await setPreapprovalId(key, userId, String(pre.id || objId));
+      } else if (pre.status === "cancelled" || pre.status === "paused") {
+        await setPreapprovalId(key, userId, null);
+      }
+      return res.status(200).json({ ok: true, status: pre.status });
+    }
+
+    return res.status(200).json({ ignored: tipo || "sem tipo" });
   } catch (e) {
     console.error("[MP] webhook:", e.message);
-    return res.status(500).json({ retry: e.message }); // erro transitório → MP tenta de novo
+    return res.status(500).json({ retry: e.message });
   }
 }

@@ -175,18 +175,22 @@ Cron semanal → /api/cron-fundamentos → bolsai → screening_fundamentos (Sup
 GEMINI_API_KEY=...
 BOLSAI_TOKEN=...
 CRON_SECRET=...
+MERCADOPAGO_ACCESS_TOKEN=...   # assinatura recorrente (preapproval) + webhook
+SUPABASE_SERVICE_ROLE=...      # usado pelo webhook/cancelamento p/ ativar plano
 
 # Supabase (embutidas no frontend — anon key pública)
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 
 # Monetização (opcionais — sem elas o botão "Assinar" cai no contato por email)
-VITE_CHECKOUT_URL_MENSAL=...   # link de pagamento (Stripe/Mercado Pago/Kiwify)
+VITE_CHECKOUT_URL_MENSAL=...   # link de pagamento ESTÁTICO (pula o MP recorrente)
 VITE_CHECKOUT_URL_ANUAL=...
 VITE_CONTATO_EMAIL=...         # default: hemoreira89@gmail.com
 ```
 
-> A anon key é pública (protegida por RLS). A chave do Gemini fica apenas no servidor (Vercel).
+> A anon key é pública (protegida por RLS). A chave do Gemini e a SERVICE_ROLE ficam apenas no servidor (Vercel).
+>
+> **Assinatura recorrente (Mercado Pago):** `iniciarCheckout` → `/api/mp-criar-assinatura` cria um *preapproval* (cobra automático a cada ciclo). O `/api/mp-webhook` trata `subscription_authorized_payment` (cada cobrança → ativa/estende plano + grava receita, idempotente) e `subscription_preapproval` (guarda/limpa `profiles.mp_preapproval_id`). Cancelamento: botão no header → `/api/mp-cancelar-assinatura` (acesso mantido até o fim do ciclo pago). **No painel do MP é preciso configurar o webhook** (URL `https://cauril.com.br/api/mp-webhook`, eventos de assinatura). Se `VITE_CHECKOUT_URL_*` estiver setada, o app usa o link estático e pula o MP.
 
 ---
 
