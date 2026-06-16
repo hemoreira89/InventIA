@@ -18,6 +18,17 @@ const MESES = { mensal: 1, anual: 12 };
 
 const supaHeaders = (key) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
 
+// Diagnóstico: grava o que chega/decide numa tabela legível por SQL (logs do
+// Vercel truncam). Fire-and-forget, nunca quebra o fluxo.
+function dbg(key, row) {
+  fetch(`${SUPABASE_URL}/rest/v1/mp_debug`, {
+    method: "POST",
+    headers: { ...supaHeaders(key), Prefer: "return=minimal" },
+    body: JSON.stringify(row),
+    signal: AbortSignal.timeout(4000),
+  }).catch(() => {});
+}
+
 async function mpGet(path, token) {
   const r = await fetch(`https://api.mercadopago.com${path}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -79,6 +90,7 @@ export default async function handler(req, res) {
 
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!key) return res.status(500).json({ retry: "service role ausente" });
+  dbg(key, { tipo, obj_id: String(objId), extra: "recebido" });
 
   try {
     // ── 1) Cobrança (avulsa OU recorrente) → ativa/estende plano + registra receita ──
@@ -89,11 +101,11 @@ export default async function handler(req, res) {
         const pr = await mpGet(`/v1/payments/${objId}`, token);
         if (!pr.ok) {
           const errBody = await pr.text().catch(() => "");
-          console.log(`[MP] payment fetch FALHOU ${pr.status}: ${errBody.slice(0, 300)}`);
+          dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, extra: ("FETCH_FAIL " + errBody).slice(0, 400) });
           return res.status(500).json({ retry: `payment ${pr.status}` });
         }
         const pay = await pr.json();
-        console.log(`[MP] payment ${objId} status=${pay.status} extref=${JSON.stringify(pay.external_reference)} metadata=${JSON.stringify(pay.metadata)}`);
+        dbg(key, { tipo, obj_id: String(objId), fetch_status: pr.status, pay_status: pay.status, external_reference: pay.external_reference ?? null, extra: ("meta=" + JSON.stringify(pay.metadata || {}) + " desc=" + (pay.description || "")).slice(0, 400) });
         if (pay.status !== "approved") return res.status(200).json({ ignored: pay.status });
         [userId, plano] = String(pay.external_reference || "").split(":");
         valor = pay.transaction_amount ?? 0;
