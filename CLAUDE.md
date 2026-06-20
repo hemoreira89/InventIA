@@ -243,6 +243,7 @@ VITE_META_PIXEL_ID=...         # ID do Pixel do Meta (Gerenciador de Anúncios)
 - **Sem B3 API direta:** exige contrato comercial + compliance LGPD.
 - **Sem Open Finance (Pluggy/Belvo):** caro e desnecessário para uso pessoal.
 - **Sazonalidade de dividendos real:** pesos mensais customizados (FIIs mensais; ações concentradas em mar/mai/ago/nov) em vez de distribuição flat.
+- **Alertas no Telegram do dono (cadastros + vendas):** via `pg_net` em triggers do Postgres (migração `2026-06-20_admin_telegram_alerts.sql`), não em função da Vercel — já estamos no limite de 12 functions do plano Hobby. O `handle_new_user` dispara alerta a cada cadastro; um trigger novo em `pagamentos` (insert) dispara a cada venda. Lê o token de uma database setting (`app.telegram_bot_token`) e o chat_id do `telegram_links` do dono. Falha silenciosa se faltar setup ou se Telegram cair — nunca bloqueia signup/pagamento.
 
 ---
 
