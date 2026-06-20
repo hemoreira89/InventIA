@@ -1,4 +1,4 @@
-// Gera um código de vínculo temporário (INV-XXXXXX) para o usuário autenticado.
+// Gera um código de vínculo temporário (CAU-XXXXXX) para o usuário autenticado.
 // O bot do Telegram detecta esse padrão e vincula o chat_id ao perfil.
 
 import { createClient } from "@supabase/supabase-js";
@@ -10,7 +10,7 @@ const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O e 1/I (evita confusão)
 
 function gerarCodigo() {
-  let code = "INV-";
+  let code = "CAU-";
   for (let i = 0; i < 6; i++) code += CHARS[randomInt(0, CHARS.length)];
   return code;
 }
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME || "InvestIA_AppBot";
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || "Cauril_app_bot";
     return res.status(200).json({
       code,
       botUrl: `https://t.me/${botUsername}`,

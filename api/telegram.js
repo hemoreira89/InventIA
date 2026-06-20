@@ -4,7 +4,7 @@
 export const config = { maxDuration: 30 };
 
 const SUPABASE_URL = "https://bjghaqtyijvlnwlesrst.supabase.co";
-const CODE_PATTERN = /^INV-[A-Z0-9]{6}$/i;
+const CODE_PATTERN = /^CAU-[A-Z0-9]{6}$/i;
 
 // ─── Supabase REST helpers ────────────────────────────────────────────────────
 
