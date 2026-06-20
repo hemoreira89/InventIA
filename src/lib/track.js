@@ -24,6 +24,11 @@ import { track as vercelTrack } from "@vercel/analytics";
 // ID do Pixel do Meta — só no .env (Vercel). Sem ele, nada do Meta é carregado.
 const META_PIXEL_ID = import.meta.env?.VITE_META_PIXEL_ID || "";
 
+// Google Ads (conta Cauril). Rótulos vêm do painel: Metas → Conversões.
+const GOOGLE_ADS_ID = "AW-18257647048";
+const GADS_CONV_SIGNUP = `${GOOGLE_ADS_ID}/X7IjCKnd2MIcEMir9oFE`;
+const GADS_CONV_PURCHASE = `${GOOGLE_ADS_ID}/h1A0CKzd2MIcEMir9oFE`;
+
 // Preço por plano (fallback quando o evento não traz `valor`).
 const PRECOS = { mensal: 24.9, anual: 199 };
 
@@ -83,10 +88,32 @@ function metaTrack(name, params, opts) {
   } catch { /* ignora */ }
 }
 
-/** Inicializa analytics no boot do app: captura atribuição + carrega Pixel. */
+// ── Google Ads (gtag) ────────────────────────────────────────────────────────
+function loadGoogleAds() {
+  if (!GOOGLE_ADS_ID || typeof window === "undefined" || window.gtag) return;
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", GOOGLE_ADS_ID);
+}
+
+function gtagConversion(sendTo, params = {}) {
+  try {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "conversion", { send_to: sendTo, ...params });
+    }
+  } catch { /* ignora */ }
+}
+
+/** Inicializa analytics no boot do app: captura atribuição + carrega Pixel + gtag. */
 export function initAnalytics() {
   captureAttribution();
   loadMetaPixel();
+  loadGoogleAds();
 }
 
 // ── API principal ─────────────────────────────────────────────────────────────
@@ -116,6 +143,9 @@ export function track(evento, props = {}) {
     metaTrack(stdName, params);
   }
 
+  // Google Ads: dispara conversão de Cadastro no signup concluído.
+  if (evento === "signup_success") gtagConversion(GADS_CONV_SIGNUP);
+
   if (import.meta.env?.DEV) console.debug("[track]", evento, enriched);
 }
 
@@ -129,4 +159,7 @@ export function trackPurchase({ plano, valor, tipo, event_id } = {}) {
   track("purchase_success", { plano, tipo, valor: value });
   metaTrack("Purchase", { value, currency: "BRL", ...(plano ? { content_name: plano } : {}) },
     event_id ? { eventID: event_id } : undefined);
+  gtagConversion(GADS_CONV_PURCHASE, {
+    value, currency: "BRL", ...(event_id ? { transaction_id: event_id } : {}),
+  });
 }
