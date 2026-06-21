@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Cauril — Instagram post</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a0a12;
+    --bg-2:#101019;
+    --line:rgba(201,168,76,.14);
+    --line-strong:rgba(201,168,76,.32);
+    --gold:#c9a84c;
+    --gold-soft:#d9bb6a;
+    --gold-deep:#8b7233;
+    --text:#f4eede;
+    --text-mute:#9a9180;
+    --text-faint:#5b574a;
+    --up:#4ade80;
+    --down:#f87171;
+    --card:#13131c;
+    --card-2:#181822;
+  }
+  html,body{background:#000;font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  body{min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px;gap:24px;flex-wrap:wrap}
+
+  /* Frame: exact 1080x1350 px canvas — Instagram feed 4:5 */
+  .post{
+    width:1080px;height:1350px;position:relative;
+    background:
+      radial-gradient(900px 500px at 78% -10%, rgba(201,168,76,.13), transparent 65%),
+      radial-gradient(700px 600px at 8% 105%, rgba(201,168,76,.07), transparent 70%),
+      linear-gradient(180deg,#0a0a12 0%,#0c0c16 55%,#080810 100%);
+    overflow:hidden;
+    border-radius:8px;
+    box-shadow:0 30px 100px -20px rgba(0,0,0,.8);
+  }
+  /* dot grid background */
+  .post::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:32px 32px;
+    background-position:0 0;
+    mask-image:linear-gradient(180deg,#000 0%,#000 70%,transparent 100%);
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 70%,transparent 100%);
+    pointer-events:none;
+  }
+  /* subtle vertical line guides */
+  .post::after{
+    content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(90deg, transparent calc(50% - .5px), rgba(201,168,76,.04) 50%, transparent calc(50% + .5px));
+    pointer-events:none;
+  }
+
+  /* ─ Header bar ─ */
+  .header{
+    position:absolute;top:48px;left:64px;right:64px;
+    display:flex;align-items:center;justify-content:space-between;
+    z-index:5;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-mark{
+    width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #f0d989, #c9a84c 55%, #6b5826 100%);
+    box-shadow:0 0 18px rgba(201,168,76,.45), inset 0 -3px 6px rgba(0,0,0,.45);
+    position:relative;
+  }
+  .brand-mark::after{
+    content:"";position:absolute;inset:8px;border-radius:50%;
+    border:1px solid rgba(0,0,0,.35);
+  }
+  .brand-name{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:500;font-size:30px;letter-spacing:.06em;
+    color:var(--gold-soft);
+    line-height:1;
+  }
+  .brand-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--text-faint);margin-top:4px;
+  }
+  .pill{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+    padding:10px 16px;border-radius:999px;
+    background:rgba(74,222,128,.08);
+    border:1px solid rgba(74,222,128,.35);
+    color:#86efac;
+    box-shadow:0 0 22px rgba(74,222,128,.18);
+  }
+  .pill::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:#4ade80;box-shadow:0 0 12px #4ade80;
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{50%{opacity:.45}}
+
+  /* ─ Hero / Headline ─ */
+  .hero{
+    position:absolute;top:140px;left:64px;right:64px;
+    z-index:4;
+  }
+  .kicker{
+    display:flex;align-items:center;gap:14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--text-mute);
+    margin-bottom:24px;
+  }
+  .kicker .bar{
+    width:38px;height:1px;background:var(--gold);
+  }
+  h1.headline{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:500;
+    font-size:92px;line-height:.98;letter-spacing:-.02em;
+    color:var(--text);
+  }
+  h1.headline em{
+    font-style:italic;font-weight:500;
+    color:var(--gold);
+    position:relative;
+  }
+  h1.headline em::after{
+    content:"";position:absolute;left:0;right:0;bottom:6px;height:3px;
+    background:linear-gradient(90deg, var(--gold), transparent);
+    border-radius:2px;opacity:.4;
+  }
+  .sub{
+    margin-top:22px;
+    font-size:20px;line-height:1.45;letter-spacing:.005em;
+    color:var(--text-mute);max-width:720px;font-weight:400;
+  }
+  .sub b{color:var(--text);font-weight:500}
+
+  /* ─ Dashboard mock ─ */
+  .mock{
+    position:absolute;top:560px;left:64px;right:64px;
+    background:linear-gradient(180deg,#15151f 0%,#0e0e17 100%);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;
+    padding:0;
+    box-shadow:
+      0 50px 80px -30px rgba(0,0,0,.85),
+      0 0 1px rgba(201,168,76,.2),
+      inset 0 1px 0 rgba(255,255,255,.04);
+    overflow:hidden;
+  }
+  .mock-bar{
+    display:flex;align-items:center;gap:8px;
+    padding:14px 18px;
+    border-bottom:1px solid rgba(255,255,255,.05);
+    background:rgba(0,0,0,.25);
+  }
+  .mock-bar .dot{width:11px;height:11px;border-radius:50%}
+  .mock-bar .dot.r{background:#ff5f57}
+  .mock-bar .dot.y{background:#febc2e}
+  .mock-bar .dot.g{background:#28c840}
+  .mock-bar .url{
+    margin-left:18px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:#5b5b76;letter-spacing:.04em;
+  }
+  .mock-bar .url::before{content:"⌘ "}
+  .mock-body{
+    display:grid;
+    grid-template-columns: 1.05fr .95fr;
+    gap:0;
+  }
+  .mock-left{padding:28px 30px 30px 30px;border-right:1px solid rgba(255,255,255,.05)}
+  .mock-right{padding:28px 30px 30px 30px}
+
+  .metric-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--text-faint);margin-bottom:10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .metric-label::after{
+    content:"";flex:1;height:1px;background:rgba(255,255,255,.05);
+  }
+  .patrimonio{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:500;
+    font-size:54px;color:var(--text);letter-spacing:-.02em;
+    line-height:1;
+  }
+  .patrimonio .cents{font-size:32px;color:var(--text-mute)}
+  .delta-row{
+    margin-top:14px;display:flex;align-items:center;gap:18px;
+  }
+  .delta{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;font-weight:600;
+    padding:6px 10px;border-radius:6px;
+    color:var(--up);
+    background:rgba(74,222,128,.08);
+    border:1px solid rgba(74,222,128,.22);
+  }
+  .delta svg{display:block}
+  .delta-note{
+    font-size:12px;color:var(--text-faint);
+    font-family:'Inter',sans-serif;
+  }
+  /* chart */
+  .chart{
+    margin-top:22px;height:88px;width:100%;
+    position:relative;
+  }
+  .chart svg{display:block;width:100%;height:100%}
+  .chart-baseline{
+    position:absolute;left:0;right:0;bottom:0;height:1px;
+    background:linear-gradient(90deg,transparent, rgba(255,255,255,.08),transparent);
+  }
+
+  /* right column: tickers */
+  .tickers{
+    list-style:none;display:flex;flex-direction:column;gap:0;
+  }
+  .ticker{
+    display:grid;grid-template-columns:auto 1fr auto;
+    gap:14px;align-items:center;
+    padding:13px 0;
+    border-bottom:1px dashed rgba(255,255,255,.05);
+  }
+  .ticker:last-child{border-bottom:0}
+  .ticker-symbol{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:600;font-size:14px;color:var(--text);
+    letter-spacing:.04em;
+  }
+  .ticker-name{
+    font-family:'Inter',sans-serif;font-size:11px;color:var(--text-faint);
+    letter-spacing:.02em;
+  }
+  .ticker-price{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;
+    text-align:right;
+  }
+  .ticker-var{
+    font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;
+    text-align:right;
+    display:block;margin-top:2px;
+  }
+  .up{color:var(--up)}
+  .down{color:var(--down)}
+
+  /* ─ Feature grid ─ */
+  .features{
+    position:absolute;top:980px;left:64px;right:64px;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:18px 28px;
+    z-index:4;
+  }
+  .feat{
+    display:flex;align-items:flex-start;gap:14px;
+  }
+  .feat-ico{
+    width:38px;height:38px;border-radius:9px;flex-shrink:0;
+    background:linear-gradient(180deg, rgba(201,168,76,.18), rgba(201,168,76,.05));
+    border:1px solid rgba(201,168,76,.28);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold-soft);
+    box-shadow: 0 0 16px rgba(201,168,76,.15), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .feat-text{padding-top:5px}
+  .feat-title{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:16px;
+    color:var(--text);letter-spacing:.005em;
+  }
+  .feat-desc{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--text-faint);
+    letter-spacing:.12em;text-transform:uppercase;margin-top:4px;
+  }
+
+  /* ─ CTA ─ */
+  .cta-wrap{
+    position:absolute;left:64px;right:64px;bottom:48px;
+    z-index:5;
+    display:flex;flex-direction:column;align-items:stretch;
+  }
+  .cta-divider{
+    height:1px;width:100%;
+    background:linear-gradient(90deg, transparent, var(--line-strong) 50%, transparent);
+    margin-bottom:30px;
+  }
+  .cta{
+    position:relative;display:flex;align-items:center;justify-content:space-between;
+    padding:24px 32px;border-radius:14px;
+    background:linear-gradient(180deg,#d6b766 0%, #c9a84c 50%, #a48732 100%);
+    color:#1a1408;
+    box-shadow:
+      0 20px 60px -10px rgba(201,168,76,.55),
+      0 0 0 1px rgba(255,255,255,.16) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset;
+    overflow:hidden;
+  }
+  .cta::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.25) 50%, transparent 70%);
+    pointer-events:none;
+  }
+  .cta-text{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;font-size:30px;line-height:1;
+    letter-spacing:-.005em;
+  }
+  .cta-text small{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;
+    color:rgba(26,20,8,.65);margin-top:6px;
+  }
+  .cta-arrow{
+    width:54px;height:54px;border-radius:50%;
+    background:#1a1408;color:var(--gold-soft);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(201,168,76,.4);
+  }
+  .footer{
+    margin-top:18px;display:flex;align-items:center;justify-content:center;gap:14px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--text-mute);
+  }
+  .footer .dot-sep{
+    width:4px;height:4px;border-radius:50%;background:var(--gold);
+    box-shadow:0 0 8px var(--gold);
+  }
+  .footer a{color:var(--gold-soft);text-decoration:none}
+
+  /* ─ Side print marker (editorial detail) ─ */
+  .side-print{
+    position:absolute;top:48px;right:-6px;
+    transform:rotate(90deg);transform-origin:right top;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;letter-spacing:.4em;text-transform:uppercase;
+    color:var(--text-faint);
+    pointer-events:none;
+    display:none; /* hidden to not clash with pill; can be re-enabled */
+  }
+
+  /* ─ Corner ornaments ─ */
+  .corner{
+    position:absolute;width:34px;height:34px;
+    border:1px solid var(--gold);opacity:.35;
+  }
+  .corner.tl{top:18px;left:18px;border-right:0;border-bottom:0}
+  .corner.tr{top:18px;right:18px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:18px;left:18px;border-right:0;border-top:0}
+  .corner.br{bottom:18px;right:18px;border-left:0;border-top:0}
+
+  /* ─ Helper label outside the post for screenshot guidance ─ */
+  .hint{
+    width:100%;text-align:center;color:#888;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin:8px 0 0 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="post" id="post">
+  <!-- corner art-deco ornaments -->
+  <span class="corner tl"></span>
+  <span class="corner tr"></span>
+  <span class="corner bl"></span>
+  <span class="corner br"></span>
+
+  <!-- header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Cauril</div>
+        <div class="brand-tag">B3 · IA · educacional</div>
+      </div>
+    </div>
+    <span class="pill">7 dias grátis · sem cartão</span>
+  </header>
+
+  <!-- hero -->
+  <section class="hero">
+    <div class="kicker">
+      <span class="bar"></span>
+      <span>análise de carteira</span>
+      <span class="bar"></span>
+    </div>
+    <h1 class="headline">
+      Sua carteira da&nbsp;B3,<br/>
+      <em>analisada por IA</em><br/>
+      em 60 segundos.
+    </h1>
+    <p class="sub">
+      <b>Risco</b>, <b>rebalanceamento</b>, <b>dividendos</b> e <b>IR</b> calculados sobre os seus ativos reais — cotações ao vivo da B3 e fundamentos atualizados, sem planilha.
+    </p>
+  </section>
+
+  <!-- dashboard mock -->
+  <section class="mock">
+    <div class="mock-bar">
+      <span class="dot r"></span>
+      <span class="dot y"></span>
+      <span class="dot g"></span>
+      <span class="url">cauril.com.br/analise/carteira</span>
+    </div>
+    <div class="mock-body">
+      <div class="mock-left">
+        <div class="metric-label">Patrimônio · 12m</div>
+        <div class="patrimonio">R$ 248,3<span class="cents">k</span></div>
+        <div class="delta-row">
+          <span class="delta">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2 L10 8 L2 8 Z" fill="currentColor"/></svg>
+            +18,4%
+          </span>
+          <span class="delta-note">vs CDI no período: <b style="color:var(--text)">+6,2pp</b></span>
+        </div>
+        <!-- mini chart -->
+        <div class="chart">
+          <svg viewBox="0 0 360 88" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#4ade80" stop-opacity=".35"/>
+                <stop offset="100%" stop-color="#4ade80" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="g2" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stop-color="#86efac"/>
+                <stop offset="100%" stop-color="#4ade80"/>
+              </linearGradient>
+            </defs>
+            <!-- baseline grid -->
+            <line x1="0" y1="22" x2="360" y2="22" stroke="rgba(255,255,255,.04)" stroke-dasharray="2 4"/>
+            <line x1="0" y1="50" x2="360" y2="50" stroke="rgba(255,255,255,.04)" stroke-dasharray="2 4"/>
+            <!-- fill -->
+            <path d="M0 70 L30 66 L60 62 L90 58 L120 48 L150 52 L180 40 L210 36 L240 30 L270 24 L300 20 L330 14 L360 10 L360 88 L0 88 Z"
+                  fill="url(#g1)"/>
+            <!-- line -->
+            <path d="M0 70 L30 66 L60 62 L90 58 L120 48 L150 52 L180 40 L210 36 L240 30 L270 24 L300 20 L330 14 L360 10"
+                  stroke="url(#g2)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- end dot -->
+            <circle cx="360" cy="10" r="4.5" fill="#4ade80"/>
+            <circle cx="360" cy="10" r="9" fill="#4ade80" opacity=".18"/>
+          </svg>
+          <div class="chart-baseline"></div>
+        </div>
+      </div>
+
+      <div class="mock-right">
+        <div class="metric-label">Carteira · hoje</div>
+        <ul class="tickers">
+          <li class="ticker">
+            <div>
+              <div class="ticker-symbol">PETR4</div>
+              <div class="ticker-name">Petrobras</div>
+            </div>
+            <span></span>
+            <div>
+              <div class="ticker-price">R$ 38,42</div>
+              <span class="ticker-var up">▲ +1,24%</span>
+            </div>
+          </li>
+          <li class="ticker">
+            <div>
+              <div class="ticker-symbol">VALE3</div>
+              <div class="ticker-name">Vale</div>
+            </div>
+            <span></span>
+            <div>
+              <div class="ticker-price">R$ 61,80</div>
+              <span class="ticker-var down">▼ −0,62%</span>
+            </div>
+          </li>
+          <li class="ticker">
+            <div>
+              <div class="ticker-symbol">ITUB4</div>
+              <div class="ticker-name">Itaú Unibanco</div>
+            </div>
+            <span></span>
+            <div>
+              <div class="ticker-price">R$ 34,15</div>
+              <span class="ticker-var up">▲ +0,88%</span>
+            </div>
+          </li>
+          <li class="ticker">
+            <div>
+              <div class="ticker-symbol">MXRF11</div>
+              <div class="ticker-name">Maxi Renda FII</div>
+            </div>
+            <span></span>
+            <div>
+              <div class="ticker-price">R$ 10,42</div>
+              <span class="ticker-var up">▲ +0,19%</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- features -->
+  <section class="features">
+    <div class="feat">
+      <div class="feat-ico">
+        <!-- brain / AI -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 3a2.5 2.5 0 0 0-2.5 2.5v.5a2.5 2.5 0 0 0-1.5 4.6A2.5 2.5 0 0 0 6.5 15v.5A2.5 2.5 0 0 0 9 18h.5V3z"/>
+          <path d="M14.5 3A2.5 2.5 0 0 1 17 5.5v.5a2.5 2.5 0 0 1 1.5 4.6A2.5 2.5 0 0 1 17.5 15v.5a2.5 2.5 0 0 1-2.5 2.5h-.5V3z"/>
+        </svg>
+      </div>
+      <div class="feat-text">
+        <div class="feat-title">Análise IA em 60s</div>
+        <div class="feat-desc">Gemini + dados reais</div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-ico">
+        <!-- live signal -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12h4l2-6 4 12 2-6h6"/>
+        </svg>
+      </div>
+      <div class="feat-text">
+        <div class="feat-title">Cotações ao vivo</div>
+        <div class="feat-desc">B3 a cada 60s</div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-ico">
+        <!-- shield / risk -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-3z"/>
+          <path d="M9.5 12.5l2 2 3.5-4"/>
+        </svg>
+      </div>
+      <div class="feat-text">
+        <div class="feat-title">Risco & rebalanceamento</div>
+        <div class="feat-desc">HHI · concentração · plano</div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-ico">
+        <!-- coin -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="6" rx="8" ry="3"/>
+          <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/>
+          <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
+        </svg>
+      </div>
+      <div class="feat-text">
+        <div class="feat-title">Renda passiva projetada</div>
+        <div class="feat-desc">Sazonalidade real B3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- cta -->
+  <section class="cta-wrap">
+    <div class="cta-divider"></div>
+    <div class="cta">
+      <div class="cta-text">
+        Teste 7 dias grátis
+        <small>Sem cartão · cancele quando quiser</small>
+      </div>
+      <div class="cta-arrow">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>
+        </svg>
+      </div>
+    </div>
+    <div class="footer">
+      <span>cauril.com.br</span>
+      <span class="dot-sep"></span>
+      <span>análise educacional</span>
+      <span class="dot-sep"></span>
+      <span>não é recomendação</span>
+    </div>
+  </section>
+</div>
+
+<div class="hint">post 1080×1350 (4:5) · screenshot direto deste cartão</div>
+
+</body>
+</html>
