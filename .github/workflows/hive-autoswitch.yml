@@ -1,0 +1,77 @@
+name: Hive OS autoswitch (rig rtx5080)
+
+# De hora em hora: compara a rentabilidade das moedas do coins.json para a
+# placa e troca a flight sheet no Hive OS se outra render 10%+ a mais por
+# 6 verificações seguidas. Relatório no Telegram às 23h UTC (20h BRT) e a
+# cada troca. Não tem nada a ver com o app — vive aqui só para aproveitar
+# o cron gratuito do Actions.
+#
+# Secrets:  HIVE_TOKEN (obrigatório), TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# Vars:     HIVE_WORKER_NAME (default rtx5080), KWH_BRL (default 1.00),
+#           HIVE_FARM_ID (opcional), USD_BRL (fallback do câmbio)
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só simular (não troca flight sheet)"
+        type: boolean
+        default: true
+      report:
+        description: "Mandar relatório no Telegram mesmo sem troca"
+        type: boolean
+        default: true
+
+concurrency:
+  group: hive-autoswitch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write   # necessário para salvar o cache de estado
+
+jobs:
+  autoswitch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/hive-autoswitch
+          sparse-checkout-cone-mode: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Estado (benchmarks observados + histerese) sobrevive entre execuções
+      # via cache. A chave muda a cada run para forçar o save; restore-keys
+      # pega o mais recente.
+      - name: Restaurar estado
+        uses: actions/cache/restore@v4
+        with:
+          path: .hive-state
+          key: hive-state-${{ github.run_id }}
+          restore-keys: hive-state-
+
+      - name: Rodar autoswitch
+        env:
+          HIVE_TOKEN: ${{ secrets.HIVE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HIVE_WORKER_NAME: ${{ vars.HIVE_WORKER_NAME }}
+          HIVE_FARM_ID: ${{ vars.HIVE_FARM_ID }}
+          KWH_BRL: ${{ vars.KWH_BRL }}
+          USD_BRL: ${{ vars.USD_BRL }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+          REPORT_ALWAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.report && '1' || '' }}
+        run: node scripts/hive-autoswitch/autoswitch.mjs
+
+      - name: Salvar estado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .hive-state
+          key: hive-state-${{ github.run_id }}

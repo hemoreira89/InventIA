@@ -1,0 +1,49 @@
+{
+  "_doc": [
+    "Candidatos que o autoswitch pode escolher. Cada um precisa de uma flight sheet",
+    "no Hive OS cujo NOME contenha o `coin` ou um dos `aliases` (sem distinguir maiúsculas).",
+    "`algos` (opcional) filtra a observação: só calibra se o algo reportado pelo Hive bater.",
+    "`wtmId` é o id da moeda no WhatToMine (https://whattomine.com/coins/<id>).",
+    "`unit` é a unidade que o WhatToMine usa para essa moeda (Th/s, Gh/s, Mh/s...).",
+    "`hashrate`/`watts` são só o chute inicial: assim que o rig minerar a moeda por",
+    "uma hora, o script passa a usar o valor OBSERVADO e ignora estes."
+  ],
+  "overheadW": 40,
+  "thresholdPct": 10,
+  "minStreak": 6,
+  "candidates": [
+    {
+      "coin": "PRL",
+      "aliases": [
+        "Pearl",
+        "pearlhash"
+      ],
+      "wtmId": 469,
+      "unit": "Th/s",
+      "hashrate": 207,
+      "watts": 190,
+      "poolFeePct": 1,
+      "algos": [
+        "pearlhash"
+      ]
+    },
+    {
+      "coin": "QTC",
+      "aliases": [
+        "Quantus",
+        "qpow",
+        "poseidon"
+      ],
+      "wtmId": 473,
+      "unit": "Mh/s",
+      "hashrate": null,
+      "watts": null,
+      "poolFeePct": 1,
+      "algos": [
+        "qpow",
+        "poseidon",
+        "quantus"
+      ]
+    }
+  ]
+}
